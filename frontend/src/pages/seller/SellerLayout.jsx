@@ -1,26 +1,33 @@
 import { Link, NavLink, Outlet, useLocation } from "react-router-dom";
 import { LayoutDashboard, Package, PlusCircle, ShoppingBag, Store, Bell, Search, LogOut } from "lucide-react";
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Menu } from "lucide-react";
 import { SellerProvider, useSeller } from "@/context/SellerContext";
 
-const nav = [
-    { to: "/vendeur", end: true, icon: LayoutDashboard, label: "Tableau de bord" },
-    { to: "/vendeur/commandes", icon: ShoppingBag, label: "Commandes", badge: true },
-    { to: "/vendeur/produits", icon: Package, label: "Produits" },
-    { to: "/vendeur/ajouter", icon: PlusCircle, label: "Ajouter un produit" },
+const useBase = () => {
+    const { pathname } = useLocation();
+    return pathname.startsWith("/admin") ? "/admin" : "/vendeur";
+};
+
+const buildNav = (base) => [
+    { to: base, end: true, icon: LayoutDashboard, label: "Tableau de bord" },
+    { to: `${base}/commandes`, icon: ShoppingBag, label: "Commandes", badge: true },
+    { to: `${base}/produits`, icon: Package, label: "Produits" },
+    { to: `${base}/ajouter`, icon: PlusCircle, label: "Ajouter un produit" },
 ];
 
 const SidebarContent = ({ onNavigate }) => {
     const { orders, liveEvents } = useSeller();
+    const base = useBase();
+    const nav = useMemo(() => buildNav(base), [base]);
     const activeCount = orders.filter((o) => o.status !== "livrée").length;
     return (
         <div className="flex flex-col h-full bg-ink text-ink-foreground">
             <div className="p-6 border-b border-ink-foreground/10">
-                <Link to="/vendeur" onClick={onNavigate} className="flex items-center gap-2.5">
+                <Link to={base} onClick={onNavigate} className="flex items-center gap-2.5">
                     <span className="h-9 w-9 rounded-xl bg-gradient-accent flex items-center justify-center shadow-warm">
                         <Store className="h-4 w-4 text-primary-foreground" />
                     </span>
@@ -101,13 +108,18 @@ const SidebarContent = ({ onNavigate }) => {
 
 const LayoutInner = () => {
     const location = useLocation();
+    const base = useBase();
     const [mobileOpen, setMobileOpen] = useState(false);
-    const pageTitle = {
-        "/vendeur": "Tableau de bord",
-        "/vendeur/commandes": "Commandes en temps réel",
-        "/vendeur/produits": "Mes produits",
-        "/vendeur/ajouter": "Ajouter un produit",
-    }[location.pathname] || "Espace vendeur";
+    const titles = {
+        [base]: "Tableau de bord",
+        [`${base}/commandes`]: "Commandes en temps réel",
+        [`${base}/produits`]: "Mes produits",
+        [`${base}/ajouter`]: "Ajouter un produit",
+        [`${base}/orders`]: "Commandes en temps réel",
+        [`${base}/products`]: "Mes produits",
+        [`${base}/add`]: "Ajouter un produit",
+    };
+    const pageTitle = titles[location.pathname] || "Espace vendeur";
 
     return (
         <div className="min-h-screen flex bg-secondary/30">

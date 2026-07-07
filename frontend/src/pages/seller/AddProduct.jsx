@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { Upload, Package, Sparkles, X, ImagePlus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -27,6 +27,8 @@ const PALETTE = ["#111111", "#F5F1EA", "#C64C3A", "#8A5A44", "#C9A26A", "#7A6A54
 export default function AddProduct() {
     const { addProduct } = useSeller();
     const navigate = useNavigate();
+    const { pathname } = useLocation();
+    const base = pathname.startsWith("/admin") ? "/admin" : "/vendeur";
 
     const [form, setForm] = useState({
         name: "",
@@ -61,7 +63,7 @@ export default function AddProduct() {
         };
         addProduct(product);
         toast.success("Produit ajouté ✦", { description: form.name });
-        navigate("/vendeur/produits");
+        navigate(`${base}/produits`);
     };
 
     const catObj = categories.find((c) => c.id === form.category);
@@ -241,7 +243,7 @@ export default function AddProduct() {
                         <Button type="submit" size="lg" className="bg-primary hover:bg-primary/90 text-primary-foreground shadow-warm rounded-full h-12">
                             <Upload className="h-4 w-4" /> Publier le produit
                         </Button>
-                        <Button type="button" variant="outline" size="lg" onClick={() => navigate("/vendeur/produits")} className="rounded-full">
+                        <Button type="button" variant="outline" size="lg" onClick={() => navigate(`${base}/produits`)} className="rounded-full">
                             Annuler
                         </Button>
                     </div>

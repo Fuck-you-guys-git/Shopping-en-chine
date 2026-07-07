@@ -19,7 +19,7 @@ import AddProduct from "@/pages/seller/AddProduct";
 
 function Shell({ children }) {
     const { pathname } = useLocation();
-    const isSeller = pathname.startsWith("/vendeur");
+    const isSeller = pathname.startsWith("/vendeur") || pathname.startsWith("/admin");
     return (
         <>
             {!isSeller && <Navbar />}
@@ -45,12 +45,21 @@ function App() {
                             <Route path="/panier" element={<Cart />} />
                             <Route path="/commande" element={<Checkout />} />
 
-                            {/* Seller / admin area */}
+                            {/* Seller / admin area — accessible via /vendeur or /admin */}
                             <Route path="/vendeur" element={<SellerLayout />}>
                                 <Route index element={<Dashboard />} />
                                 <Route path="commandes" element={<Orders />} />
                                 <Route path="produits" element={<SellerProducts />} />
                                 <Route path="ajouter" element={<AddProduct />} />
+                            </Route>
+                            <Route path="/admin" element={<SellerLayout />}>
+                                <Route index element={<Dashboard />} />
+                                <Route path="commandes" element={<Orders />} />
+                                <Route path="produits" element={<SellerProducts />} />
+                                <Route path="ajouter" element={<AddProduct />} />
+                                <Route path="orders" element={<Orders />} />
+                                <Route path="products" element={<SellerProducts />} />
+                                <Route path="add" element={<AddProduct />} />
                             </Route>
                         </Routes>
                     </Shell>

@@ -120,7 +120,7 @@ export default function Dashboard() {
                             <p className="text-xs text-muted-foreground mt-0.5">Mises à jour en temps réel</p>
                         </div>
                         <Button asChild variant="ghost" size="sm">
-                            <Link to="/vendeur/commandes">Voir tout <ArrowRight className="ml-1 h-4 w-4" /></Link>
+                            <Link to="commandes">Voir tout <ArrowRight className="ml-1 h-4 w-4" /></Link>
                         </Button>
                     </div>
                     <div className="divide-y divide-border">

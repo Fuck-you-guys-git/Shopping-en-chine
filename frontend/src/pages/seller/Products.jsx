@@ -42,7 +42,7 @@ export default function Products() {
                     </SelectContent>
                 </Select>
                 <Button asChild className="bg-primary hover:bg-primary/90">
-                    <Link to="/vendeur/ajouter"><PlusCircle className="h-4 w-4" /> Nouveau produit</Link>
+                    <Link to="../ajouter"><PlusCircle className="h-4 w-4" /> Nouveau produit</Link>
                 </Button>
             </div>
 
