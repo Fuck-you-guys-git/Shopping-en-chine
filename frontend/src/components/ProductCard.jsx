@@ -4,8 +4,13 @@ import { Button } from "@/components/ui/button";
 import { useCart } from "@/context/CartContext";
 import { toast } from "sonner";
 
-export const formatPrice = (v) =>
-    new Intl.NumberFormat("fr-FR", { style: "currency", currency: "EUR" }).format(v);
+export const formatPrice = (v) => {
+    // Prices are in CFA (XOF). Format: "12 500 F CFA"
+    const formatted = new Intl.NumberFormat("fr-FR", {
+        maximumFractionDigits: 0,
+    }).format(Math.round(v));
+    return `${formatted} F`;
+};
 
 export const ProductCard = ({ product, index = 0 }) => {
     const { addItem } = useCart();

@@ -12,7 +12,7 @@ export default function Cart() {
     const { items, updateQty, removeItem, subtotal, clear } = useCart();
     const [promo, setPromo] = useState("");
     const [discount, setDiscount] = useState(0);
-    const shipping = subtotal > 49 || subtotal === 0 ? 0 : 4.9;
+    const shipping = subtotal > 30000 || subtotal === 0 ? 0 : 3000;
     const total = Math.max(0, subtotal + shipping - discount);
 
     const applyPromo = (e) => {

@@ -43,10 +43,10 @@ export const Navbar = () => {
                 <div className="container mx-auto flex items-center justify-between py-2 px-5">
                     <p className="hidden sm:block opacity-80">
                         <i className="fa-solid fa-truck-fast mr-2" />
-                        Livraison offerte dès 49€ · Retours 30 jours
+                        Livraison offerte dès 30 000 F · Retours 30 jours
                     </p>
                     <div className="flex items-center gap-4 opacity-80 mx-auto sm:mx-0">
-                        <span>FR · EUR €</span>
+                        <span>FR · F CFA</span>
                         <span className="hidden sm:inline">Service client 7j/7</span>
                     </div>
                 </div>

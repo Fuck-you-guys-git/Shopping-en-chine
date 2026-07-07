@@ -25,7 +25,7 @@ export const Footer = () => {
                             <Logo />
                         </div>
                         <p className="mt-6 text-sm text-ink-foreground/70 max-w-md leading-relaxed">
-                            De la Chine à votre porte, une seule promesse : tout ce dont vous avez besoin, simple à trouver, rapide à recevoir.
+                            Livraison rapide · Paiement Mobile Money, Carte, PayPal · Retours 30 jours. Tout ce dont vous avez besoin, simple à trouver.
                         </p>
                         <form onSubmit={onNewsletter} className="mt-8 flex gap-2 max-w-md">
                             <Input

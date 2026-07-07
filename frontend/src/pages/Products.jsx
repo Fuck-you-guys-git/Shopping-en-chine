@@ -16,7 +16,7 @@ export default function Products() {
     const [searchParams] = useSearchParams();
     const searchQuery = searchParams.get("q") || "";
 
-    const [priceRange, setPriceRange] = useState([0, 300]);
+    const [priceRange, setPriceRange] = useState([0, 200000]);
     const [selectedCats, setSelectedCats] = useState(categoryId ? [categoryId] : []);
     const [sortBy, setSortBy] = useState("pertinence");
 
@@ -80,13 +80,13 @@ export default function Products() {
                     value={priceRange}
                     onValueChange={setPriceRange}
                     min={0}
-                    max={300}
-                    step={5}
+                    max={200000}
+                    step={1000}
                     className="mb-3"
                 />
                 <div className="flex justify-between text-sm text-muted-foreground">
-                    <span>{priceRange[0]} €</span>
-                    <span>{priceRange[1]} €</span>
+                    <span>{new Intl.NumberFormat("fr-FR").format(priceRange[0])} F</span>
+                    <span>{new Intl.NumberFormat("fr-FR").format(priceRange[1])} F</span>
                 </div>
             </div>
 
@@ -159,7 +159,7 @@ export default function Products() {
                     </div>
                 </div>
 
-                {(selectedCats.length > 0 || priceRange[0] > 0 || priceRange[1] < 300) && (
+                {(selectedCats.length > 0 || priceRange[0] > 0 || priceRange[1] < 200000) && (
                     <div className="flex flex-wrap items-center gap-2 mt-4">
                         {selectedCats.map((id) => {
                             const c = categories.find((x) => x.id === id);
@@ -170,13 +170,13 @@ export default function Products() {
                                 </Badge>
                             );
                         })}
-                        {(priceRange[0] > 0 || priceRange[1] < 300) && (
+                        {(priceRange[0] > 0 || priceRange[1] < 200000) && (
                             <Badge variant="secondary" className="rounded-full px-3 py-1 gap-1">
-                                {priceRange[0]}–{priceRange[1]} €
-                                <button onClick={() => setPriceRange([0, 300])}><X className="h-3 w-3" /></button>
+                                {new Intl.NumberFormat("fr-FR").format(priceRange[0])}–{new Intl.NumberFormat("fr-FR").format(priceRange[1])} F
+                                <button onClick={() => setPriceRange([0, 200000])}><X className="h-3 w-3" /></button>
                             </Badge>
                         )}
-                        <button onClick={() => { setSelectedCats([]); setPriceRange([0, 300]); }} className="text-xs text-primary hover:underline ml-2">Effacer tout</button>
+                        <button onClick={() => { setSelectedCats([]); setPriceRange([0, 200000]); }} className="text-xs text-primary hover:underline ml-2">Effacer tout</button>
                     </div>
                 )}
             </div>
@@ -199,7 +199,7 @@ export default function Products() {
                             <div className="text-5xl mb-4 opacity-40">🌿</div>
                             <h3 className="font-display text-xl mb-2">Aucun produit trouvé</h3>
                             <p className="text-muted-foreground text-sm mb-6">Essayez d'ajuster vos filtres.</p>
-                            <Button onClick={() => { setSelectedCats([]); setPriceRange([0, 300]); }} variant="outline" className="rounded-full">
+                            <Button onClick={() => { setSelectedCats([]); setPriceRange([0, 200000]); }} variant="outline" className="rounded-full">
                                 Réinitialiser les filtres
                             </Button>
                         </div>

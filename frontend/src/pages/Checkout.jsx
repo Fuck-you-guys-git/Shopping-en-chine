@@ -15,7 +15,7 @@ export default function Checkout() {
     const navigate = useNavigate();
     const [step, setStep] = useState(1);
     const [payment, setPayment] = useState("card");
-    const shipping = subtotal > 49 || subtotal === 0 ? 0 : 4.9;
+    const shipping = subtotal > 30000 || subtotal === 0 ? 0 : 3000;
     const total = subtotal + shipping;
     const [complete, setComplete] = useState(false);
 

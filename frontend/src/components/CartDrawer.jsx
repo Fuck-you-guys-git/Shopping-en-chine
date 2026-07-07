@@ -8,7 +8,7 @@ import { formatPrice } from "@/components/ProductCard";
 
 export const CartDrawer = () => {
     const { items, drawerOpen, setDrawerOpen, updateQty, removeItem, subtotal, count } = useCart();
-    const shipping = subtotal > 49 || subtotal === 0 ? 0 : 4.9;
+    const shipping = subtotal > 30000 || subtotal === 0 ? 0 : 3000;
     const total = subtotal + shipping;
 
     return (
