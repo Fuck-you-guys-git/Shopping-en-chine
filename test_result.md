@@ -285,10 +285,118 @@ frontend:
         agent: "testing"
         comment: "✅ Public routes remain accessible without authentication. Verified: / (home), /boutique, /panier all work without login and do not redirect to login page. All 3 tests passed."
 
+  - task: "Seller signup/registration - Two-tab UI"
+    implemented: true
+    working: true
+    file: "/app/frontend/src/pages/seller/Login.jsx"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: true
+        agent: "testing"
+        comment: "✅ Login page has two tabs: 'Se connecter' and 'Créer un compte'. 'Se connecter' is active by default. Clicking 'Créer un compte' changes heading to 'Créez votre compte.' and displays signup form with all required fields: Nom complet, Nom de la boutique, Adresse email, Mot de passe, Confirmer le mot de passe, and terms checkbox. All UI elements present and functional."
+
+  - task: "Seller signup/registration - Form validation"
+    implemented: true
+    working: true
+    file: "/app/frontend/src/pages/seller/Login.jsx"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: true
+        agent: "testing"
+        comment: "✅ All validation rules working correctly: (1) Submit without accepting terms shows 'Vous devez accepter les conditions d'utilisation', (2) Password mismatch shows 'Les mots de passe ne correspondent pas', (3) Password strength meter appears with colored bars showing strength from 'Trop court' to 'Excellent', (4) Reserved email (admin@shoppingenchine.com) shows 'Cet email est réservé'."
+
+  - task: "Seller signup/registration - Successful signup and auto-login"
+    implemented: true
+    working: true
+    file: "/app/frontend/src/context/SellerAuthContext.jsx"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: true
+        agent: "testing"
+        comment: "✅ Successful signup flow works perfectly. Created account with name 'Marie Dupont', shop 'Ma Belle Boutique', email 'marie@boutique.com', password 'motdepasse123'. User is automatically logged in after signup and redirected to /admin dashboard. User name and shop name visible in top-right corner of dashboard."
+
+  - task: "Seller signup/registration - Re-login with new account"
+    implemented: true
+    working: true
+    file: "/app/frontend/src/context/SellerAuthContext.jsx"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: true
+        agent: "testing"
+        comment: "✅ Newly-created user can log in again successfully. After logout, logged back in with email 'marie@boutique.com' and password 'motdepasse123'. Successfully redirected to /admin dashboard with user name 'Marie Dupont' visible."
+
+  - task: "Seller signup/registration - Demo account compatibility"
+    implemented: true
+    working: true
+    file: "/app/frontend/src/context/SellerAuthContext.jsx"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: true
+        agent: "testing"
+        comment: "✅ Demo account still works after adding signup functionality. 'Remplir automatiquement →' button correctly fills email (admin@shoppingenchine.com) and password (shopping2026). Demo login successful and redirects to dashboard."
+
+  - task: "Seller signup/registration - Duplicate email prevention"
+    implemented: true
+    working: true
+    file: "/app/frontend/src/context/SellerAuthContext.jsx"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: true
+        agent: "testing"
+        comment: "✅ Duplicate email prevention working correctly. Attempting to create another account with existing email 'marie@boutique.com' shows error 'Un compte existe déjà avec cet email'."
+
+  - task: "Seller signup/registration - Password strength indicator"
+    implemented: true
+    working: true
+    file: "/app/frontend/src/pages/seller/Login.jsx"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: true
+        agent: "testing"
+        comment: "✅ Password strength indicator works correctly. Empty password shows no meter. Weak password ('abc') shows 'Trop court'. Medium password ('abcdef') shows 'Faible'. Strong password ('Abcdef1!') shows 'Bon'. Colored bars (4 bars) update dynamically based on password strength."
+
+  - task: "Seller signup/registration - /vendeur/login compatibility"
+    implemented: true
+    working: true
+    file: "/app/frontend/src/pages/seller/Login.jsx"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: true
+        agent: "testing"
+        comment: "✅ /vendeur/login works identically to /admin/login. Two tabs present, signup form functional. Created account 'Jean Martin' with shop 'Boutique Jean' from /vendeur/login. Successfully redirected to /vendeur dashboard after signup."
+
+  - task: "Seller signup/registration - Console errors check"
+    implemented: true
+    working: true
+    file: "N/A"
+    stuck_count: 0
+    priority: "medium"
+    needs_retesting: false
+    status_history:
+      - working: true
+        agent: "testing"
+        comment: "✅ No critical console errors detected during signup flow testing. Total of 22 console messages logged, 0 page errors. Application functions without JavaScript errors."
+
 metadata:
   created_by: "testing_agent"
   version: "1.0"
-  test_sequence: 2
+  test_sequence: 3
   run_ui: true
   last_updated: "2026-07-07"
 
@@ -303,3 +411,5 @@ agent_communication:
     message: "Completed comprehensive testing of /admin route and all related functionality. All 8 test scenarios passed successfully. The implementation correctly handles both /admin and /vendeur routes with proper sidebar navigation context switching. English aliases work as expected. No critical issues found."
   - agent: "testing"
     message: "Completed comprehensive testing of seller authentication flow. All 9 test scenarios passed successfully (36 individual tests). Authentication implementation is fully functional: route protection redirects work, login page UI is complete with all elements, invalid login shows proper error messages, successful login redirects correctly, session persists across page reloads, redirect to originally-requested route works, logout functionality is complete, public routes remain accessible, and no critical console errors detected. Demo credentials (admin@shoppingenchine.com / shopping2026) work perfectly. No issues found."
+  - agent: "testing"
+    message: "Completed comprehensive testing of NEW signup/registration flow. All 9 test scenarios passed successfully: (1) Two-tab UI with 'Se connecter' and 'Créer un compte' tabs working correctly, (2) All form validations working (terms required, password mismatch, reserved email, password strength meter), (3) Successful signup with auto-login to dashboard, (4) Re-login with newly-created account works, (5) Demo account still functional after adding signup, (6) Duplicate email prevention working, (7) Password strength indicator shows 4 levels from 'Trop court' to 'Excellent', (8) /vendeur/login signup works identically to /admin/login, (9) No console errors detected. User data stored in localStorage under 'sec_seller_users_v1'. Implementation is production-ready. No issues found."
