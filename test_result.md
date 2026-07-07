@@ -102,7 +102,7 @@
 # Testing Data - Main Agent and testing sub agent both should log testing data below this section
 #====================================================================================================
 
-user_problem_statement: "Test the /admin route on the Shopping en Chine app. Verify direct URL access, sub-routes (French and English aliases), sidebar navigation from /admin and /vendeur, backwards compatibility, and top-bar 'Espace vendeur' link."
+user_problem_statement: "Test the seller authentication flow on Shopping en Chine app. Verify login gate protection for /admin and /vendeur routes, login page UI, invalid/valid login attempts, session persistence, redirect to originally-requested route, logout functionality, and public routes accessibility."
 
 frontend:
   - task: "Direct URL access to /admin route"
@@ -189,10 +189,106 @@ frontend:
         agent: "testing"
         comment: "✅ No critical console errors detected during navigation. Total of 24 warnings/errors logged but 0 critical errors (likely favicon and other non-critical warnings). Application functions without JavaScript errors."
 
+  - task: "Seller authentication - Route protection redirects"
+    implemented: true
+    working: true
+    file: "/app/frontend/src/components/ProtectedSellerRoute.jsx"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: true
+        agent: "testing"
+        comment: "✅ All protected routes correctly redirect to login when not authenticated. Tested: /admin → /admin/login, /admin/commandes → /admin/login, /admin/produits → /admin/login, /admin/ajouter → /admin/login, /vendeur → /vendeur/login, /vendeur/commandes → /vendeur/login. All 6 tests passed."
+
+  - task: "Seller authentication - Login page UI"
+    implemented: true
+    working: true
+    file: "/app/frontend/src/pages/seller/Login.jsx"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: true
+        agent: "testing"
+        comment: "✅ Login page UI fully functional. All elements present and working: 'Bon retour parmi nous.' heading, email field, password field, 'Se connecter' button, demo credentials box (admin@shoppingenchine.com / shopping2026), 'Remplir automatiquement →' button (auto-fills correctly), password show/hide toggle (Eye/EyeOff icons work), right-side hero panel visible on desktop. All 10 tests passed."
+
+  - task: "Seller authentication - Invalid login handling"
+    implemented: true
+    working: true
+    file: "/app/frontend/src/context/SellerAuthContext.jsx"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: true
+        agent: "testing"
+        comment: "✅ Invalid login attempts handled correctly. Error message 'Identifiants incorrects' displayed both inline (red banner) and as toast notification. User remains on /admin/login page after failed login. Both tests passed."
+
+  - task: "Seller authentication - Successful login"
+    implemented: true
+    working: true
+    file: "/app/frontend/src/context/SellerAuthContext.jsx"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: true
+        agent: "testing"
+        comment: "✅ Successful login works perfectly. Using credentials admin@shoppingenchine.com / shopping2026, user is redirected to /admin dashboard. All KPI cards visible: Revenu (2038000 F), Commandes (14), Panier moyen (145571 F), Actives (9). Both tests passed."
+
+  - task: "Seller authentication - Session persistence"
+    implemented: true
+    working: true
+    file: "/app/frontend/src/context/SellerAuthContext.jsx"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: true
+        agent: "testing"
+        comment: "✅ Session persistence working correctly. After successful login and page reload, user stays on /admin (not redirected to login). Auth data persists in localStorage under key 'sec_seller_auth_v1'. Both tests passed."
+
+  - task: "Seller authentication - Redirect to originally-requested route"
+    implemented: true
+    working: true
+    file: "/app/frontend/src/pages/seller/Login.jsx"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: true
+        agent: "testing"
+        comment: "✅ Redirect to originally-requested route works correctly. When attempting to access /admin/commandes while logged out, user is redirected to /admin/login. After successful login, user lands on /admin/commandes (the original page requested), not just /admin. Test passed."
+
+  - task: "Seller authentication - Logout functionality"
+    implemented: true
+    working: true
+    file: "/app/frontend/src/pages/seller/SellerLayout.jsx"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: true
+        agent: "testing"
+        comment: "✅ Logout functionality works perfectly. Logout button found in top-right (LogOut icon next to user avatar). Clicking logout shows toast 'Vous êtes déconnecté' and redirects to /admin/login. Attempting to access /admin after logout correctly redirects to login, confirming logout worked. All 3 tests passed."
+
+  - task: "Seller authentication - Public routes accessibility"
+    implemented: true
+    working: true
+    file: "/app/frontend/src/App.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: true
+        agent: "testing"
+        comment: "✅ Public routes remain accessible without authentication. Verified: / (home), /boutique, /panier all work without login and do not redirect to login page. All 3 tests passed."
+
 metadata:
   created_by: "testing_agent"
   version: "1.0"
-  test_sequence: 1
+  test_sequence: 2
   run_ui: true
   last_updated: "2026-07-07"
 
@@ -205,3 +301,5 @@ test_plan:
 agent_communication:
   - agent: "testing"
     message: "Completed comprehensive testing of /admin route and all related functionality. All 8 test scenarios passed successfully. The implementation correctly handles both /admin and /vendeur routes with proper sidebar navigation context switching. English aliases work as expected. No critical issues found."
+  - agent: "testing"
+    message: "Completed comprehensive testing of seller authentication flow. All 9 test scenarios passed successfully (36 individual tests). Authentication implementation is fully functional: route protection redirects work, login page UI is complete with all elements, invalid login shows proper error messages, successful login redirects correctly, session persists across page reloads, redirect to originally-requested route works, logout functionality is complete, public routes remain accessible, and no critical console errors detected. Demo credentials (admin@shoppingenchine.com / shopping2026) work perfectly. No issues found."

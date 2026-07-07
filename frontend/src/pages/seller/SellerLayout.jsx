@@ -1,4 +1,4 @@
-import { Link, NavLink, Outlet, useLocation } from "react-router-dom";
+import { Link, NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { LayoutDashboard, Package, PlusCircle, ShoppingBag, Store, Bell, Search, LogOut } from "lucide-react";
 import { useState, useMemo } from "react";
 import { Button } from "@/components/ui/button";
@@ -6,6 +6,8 @@ import { Input } from "@/components/ui/input";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Menu } from "lucide-react";
 import { SellerProvider, useSeller } from "@/context/SellerContext";
+import { useSellerAuth } from "@/context/SellerAuthContext";
+import { toast } from "sonner";
 
 const useBase = () => {
     const { pathname } = useLocation();
@@ -21,9 +23,18 @@ const buildNav = (base) => [
 
 const SidebarContent = ({ onNavigate }) => {
     const { orders, liveEvents } = useSeller();
+    const { user, logout } = useSellerAuth();
+    const navigate = useNavigate();
     const base = useBase();
     const nav = useMemo(() => buildNav(base), [base]);
     const activeCount = orders.filter((o) => o.status !== "livrée").length;
+
+    const handleLogout = () => {
+        logout();
+        toast.success("Vous êtes déconnecté");
+        navigate(`${base}/login`, { replace: true });
+        if (onNavigate) onNavigate();
+    };
     return (
         <div className="flex flex-col h-full bg-ink text-ink-foreground">
             <div className="p-6 border-b border-ink-foreground/10">
@@ -97,8 +108,16 @@ const SidebarContent = ({ onNavigate }) => {
             </div>
 
             <div className="p-4 border-t border-ink-foreground/10">
-                <Link to="/" onClick={onNavigate} className="flex items-center gap-2 text-xs text-ink-foreground/60 hover:text-ink-foreground">
+                <button
+                    type="button"
+                    onClick={handleLogout}
+                    className="flex items-center gap-2 text-xs text-ink-foreground/60 hover:text-primary w-full"
+                >
                     <LogOut className="h-3.5 w-3.5" />
+                    Se déconnecter
+                </button>
+                <Link to="/" onClick={onNavigate} className="flex items-center gap-2 text-xs text-ink-foreground/40 hover:text-ink-foreground/70 mt-2">
+                    <i className="fa-solid fa-arrow-left text-[10px]" />
                     Retour à la boutique
                 </Link>
             </div>
@@ -108,8 +127,10 @@ const SidebarContent = ({ onNavigate }) => {
 
 const LayoutInner = () => {
     const location = useLocation();
+    const navigate = useNavigate();
     const base = useBase();
     const [mobileOpen, setMobileOpen] = useState(false);
+    const { user, logout } = useSellerAuth();
     const titles = {
         [base]: "Tableau de bord",
         [`${base}/commandes`]: "Commandes en temps réel",
@@ -157,12 +178,25 @@ const LayoutInner = () => {
                         </Button>
                         <div className="hidden sm:flex items-center gap-2 pl-3 border-l border-border">
                             <div className="h-8 w-8 rounded-full bg-gradient-accent flex items-center justify-center text-primary-foreground text-xs font-semibold">
-                                SC
+                                {(user?.name || "SC").split(" ").map((n) => n[0]).join("").slice(0, 2)}
                             </div>
                             <div className="text-xs leading-tight">
-                                <p className="font-medium">Shop Center</p>
-                                <p className="text-muted-foreground">Vendeur Pro</p>
+                                <p className="font-medium">{user?.name || "Vendeur"}</p>
+                                <p className="text-muted-foreground">{user?.role || "Vendeur Pro"}</p>
                             </div>
+                            <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8 ml-1 text-muted-foreground hover:text-destructive"
+                                onClick={() => {
+                                    logout();
+                                    toast.success("Vous êtes déconnecté");
+                                    navigate(`${base}/login`, { replace: true });
+                                }}
+                                title="Se déconnecter"
+                            >
+                                <LogOut className="h-4 w-4" />
+                            </Button>
                         </div>
                     </div>
                 </header>
