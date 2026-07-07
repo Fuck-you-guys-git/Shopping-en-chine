@@ -400,6 +400,61 @@ metadata:
   run_ui: true
   last_updated: "2026-07-07"
 
+  - task: "Updated seller authentication - Single fixed account only"
+    implemented: true
+    working: true
+    file: "/app/frontend/src/context/SellerAuthContext.jsx"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: true
+        agent: "testing"
+        comment: "✅ CREDENTIALS UPDATE VERIFIED: Only ONE fixed account now works (Modou.ba.568@gmail.com / 40881215.Com). Old demo credentials (admin@shoppingenchine.com / shopping2026) correctly rejected. Email is case-insensitive, password is case-sensitive as expected. User info displays correctly as 'Modou Ba' / 'Propriétaire'."
+
+  - task: "Updated seller authentication - Login UI cleanup (no signup)"
+    implemented: true
+    working: true
+    file: "/app/frontend/src/pages/seller/Login.jsx"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: true
+        agent: "testing"
+        comment: "✅ LOGIN UI CLEANUP VERIFIED: NO signup UI present. NO 'Créer un compte' tab, NO signup form, NO 'Créer mon compte' button, NO demo credentials box. Only login form elements present: email field, password field, 'Rester connecté' checkbox, 'Se connecter' button. 'Connexion vendeur' heading and 'Zone privée · Accès restreint' badge visible."
+
+  - task: "Updated seller authentication - Session & logout"
+    implemented: true
+    working: true
+    file: "/app/frontend/src/context/SellerAuthContext.jsx"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: true
+        agent: "testing"
+        comment: "✅ SESSION & LOGOUT VERIFIED: Session persists correctly after page reload. Logout functionality works - redirects to login page and prevents access to protected routes. Auth data stored in localStorage under 'sec_seller_auth_v1'."
+
+  - task: "Updated seller authentication - /vendeur/login compatibility"
+    implemented: true
+    working: true
+    file: "/app/frontend/src/pages/seller/Login.jsx"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: true
+        agent: "testing"
+        comment: "✅ /vendeur/login VERIFIED: Works identically to /admin/login. Same UI (no signup tab), same credentials work, redirects to /vendeur dashboard correctly with user info displayed."
+
+metadata:
+  created_by: "testing_agent"
+  version: "1.0"
+  test_sequence: 4
+  run_ui: true
+  last_updated: "2026-07-07"
+
 test_plan:
   current_focus: []
   stuck_tasks: []
@@ -413,3 +468,5 @@ agent_communication:
     message: "Completed comprehensive testing of seller authentication flow. All 9 test scenarios passed successfully (36 individual tests). Authentication implementation is fully functional: route protection redirects work, login page UI is complete with all elements, invalid login shows proper error messages, successful login redirects correctly, session persists across page reloads, redirect to originally-requested route works, logout functionality is complete, public routes remain accessible, and no critical console errors detected. Demo credentials (admin@shoppingenchine.com / shopping2026) work perfectly. No issues found."
   - agent: "testing"
     message: "Completed comprehensive testing of NEW signup/registration flow. All 9 test scenarios passed successfully: (1) Two-tab UI with 'Se connecter' and 'Créer un compte' tabs working correctly, (2) All form validations working (terms required, password mismatch, reserved email, password strength meter), (3) Successful signup with auto-login to dashboard, (4) Re-login with newly-created account works, (5) Demo account still functional after adding signup, (6) Duplicate email prevention working, (7) Password strength indicator shows 4 levels from 'Trop court' to 'Excellent', (8) /vendeur/login signup works identically to /admin/login, (9) No console errors detected. User data stored in localStorage under 'sec_seller_users_v1'. Implementation is production-ready. No issues found."
+  - agent: "testing"
+    message: "Completed comprehensive testing of UPDATED seller authentication with single fixed account. All 10 scenarios passed successfully: (1) Login page has NO signup UI - verified no 'Créer un compte' tab, no signup form, no demo credentials box, (2) New credentials work - Modou.ba.568@gmail.com / 40881215.Com successfully logs in and displays 'Modou Ba' / 'Propriétaire', (3) Email is case-insensitive - uppercase email works, (4) Password is case-sensitive - lowercase 'c' in .Com fails with correct error message, (5) Old demo credentials no longer work - admin@shoppingenchine.com / shopping2026 correctly rejected, (6) Other random credentials fail as expected, (7) /vendeur/login works identically with same UI and credentials, (8) Session persists after page reload, (9) Logout works and prevents access to protected routes, (10) No critical console errors (only WebSocket connection warnings which are non-critical). Implementation is production-ready. No issues found."

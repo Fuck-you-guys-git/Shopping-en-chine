@@ -17,10 +17,10 @@ const AUTH_KEY = "sec_seller_auth_v1";
  */
 const CREDENTIALS = [
     {
-        email: "admin@shoppingenchine.com",
-        password: "shopping2026",
-        name: "Shop Center",
-        role: "Vendeur Pro",
+        email: "Modou.ba.568@gmail.com",
+        password: "40881215.Com",
+        name: "Modou Ba",
+        role: "Propriétaire",
     },
 ];
 
