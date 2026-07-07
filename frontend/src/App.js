@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom";
 import "@/App.css";
 import { Toaster } from "@/components/ui/sonner";
 import { CartProvider } from "@/context/CartContext";
@@ -11,6 +11,24 @@ import ProductDetail from "@/pages/ProductDetail";
 import Cart from "@/pages/Cart";
 import Checkout from "@/pages/Checkout";
 import ScrollToTop from "@/components/ScrollToTop";
+import SellerLayout from "@/pages/seller/SellerLayout";
+import Dashboard from "@/pages/seller/Dashboard";
+import Orders from "@/pages/seller/Orders";
+import SellerProducts from "@/pages/seller/Products";
+import AddProduct from "@/pages/seller/AddProduct";
+
+function Shell({ children }) {
+    const { pathname } = useLocation();
+    const isSeller = pathname.startsWith("/vendeur");
+    return (
+        <>
+            {!isSeller && <Navbar />}
+            <main>{children}</main>
+            {!isSeller && <Footer />}
+            {!isSeller && <CartDrawer />}
+        </>
+    );
+}
 
 function App() {
     return (
@@ -18,8 +36,7 @@ function App() {
             <BrowserRouter>
                 <CartProvider>
                     <ScrollToTop />
-                    <Navbar />
-                    <main>
+                    <Shell>
                         <Routes>
                             <Route path="/" element={<Home />} />
                             <Route path="/boutique" element={<Products />} />
@@ -27,10 +44,16 @@ function App() {
                             <Route path="/produit/:id" element={<ProductDetail />} />
                             <Route path="/panier" element={<Cart />} />
                             <Route path="/commande" element={<Checkout />} />
+
+                            {/* Seller / admin area */}
+                            <Route path="/vendeur" element={<SellerLayout />}>
+                                <Route index element={<Dashboard />} />
+                                <Route path="commandes" element={<Orders />} />
+                                <Route path="produits" element={<SellerProducts />} />
+                                <Route path="ajouter" element={<AddProduct />} />
+                            </Route>
                         </Routes>
-                    </main>
-                    <Footer />
-                    <CartDrawer />
+                    </Shell>
                     <Toaster position="bottom-right" />
                 </CartProvider>
             </BrowserRouter>

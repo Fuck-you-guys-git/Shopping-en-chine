@@ -48,6 +48,10 @@ export const Navbar = () => {
                     <div className="flex items-center gap-4 opacity-80 mx-auto sm:mx-0">
                         <span>FR · F CFA</span>
                         <span className="hidden sm:inline">Service client 7j/7</span>
+                        <Link to="/vendeur" className="hidden sm:inline-flex items-center gap-1.5 text-ink-foreground hover:text-primary transition-colors font-medium">
+                            <i className="fa-solid fa-store text-[10px]" />
+                            Espace vendeur
+                        </Link>
                     </div>
                 </div>
             </div>
