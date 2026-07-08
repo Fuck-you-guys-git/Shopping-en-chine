@@ -46,6 +46,7 @@ export const paxityDirectPayin = async ({
 
     const body = {
         amount: Math.round(amount),
+        country: undefined,
         currency: (currency || DEFAULT_CURRENCY).toUpperCase(),
         phoneNumber: String(phone_number || "").replace(/\D/g, ""),
         prefixPhone: String(prefix_phone || DEFAULT_PREFIX),
@@ -54,6 +55,7 @@ export const paxityDirectPayin = async ({
         description: description || "Commande Shopping en Chine",
         idClient: order_id,
     };
+    Object.keys(body).forEach((k) => body[k] === undefined && delete body[k]);
 
     let resp;
     try {
@@ -78,7 +80,11 @@ export const paxityDirectPayin = async ({
     const data = resp.data || {};
     if (resp.status >= 400) {
         const msg =
-            (typeof data === "object" && (data.message || data.error || data.detail)) ||
+            (typeof data === "object" &&
+                (data.message ||
+                    data.error ||
+                    data.detail ||
+                    (data.data && data.data.message))) ||
             `Paxity a renvoyé ${resp.status}`;
         const e = new Error(String(msg));
         e.status = resp.status;
@@ -86,7 +92,9 @@ export const paxityDirectPayin = async ({
         throw e;
     }
 
-    const rawStatus = String(data.status || "pending").toLowerCase();
+    // Transaction fields are nested inside `data`
+    const root = data && typeof data.data === "object" && data.data ? data.data : data;
+    const rawStatus = String(root.status || "pending").toLowerCase();
     const SUCCESS = ["success", "successful", "completed", "paid", "ok", "done", "confirmed"];
     const FAILED = ["failed", "failure", "error", "cancelled", "canceled", "declined", "rejected", "expired", "timeout", "aborted"];
     let status = "pending";
@@ -96,9 +104,11 @@ export const paxityDirectPayin = async ({
     return {
         status,
         order_id,
-        transaction_id: data.transactionId || data.id || data.txId || `direct_${Date.now()}`,
-        paxity_transaction_id: data.transactionId || data.id || data.txId,
-        message: data.message,
+        transaction_id: root.transactionId || root.id || root.txId || `direct_${Date.now()}`,
+        paxity_transaction_id: root.transactionId || root.id || root.txId,
+        payment_link: root.link || root.paymentLink || root.url,
+        qr_code: root.qrCode || root.qr_code,
+        message: data.message || root.message,
         raw: data,
         via: "browser-direct",
     };

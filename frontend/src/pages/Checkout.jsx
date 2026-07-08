@@ -282,7 +282,7 @@ export default function Checkout() {
                     )}
                     <div className="flex flex-wrap gap-3 justify-center">
                         <Button asChild size="lg" className="rounded-full bg-ink text-ink-foreground hover:bg-ink/90">
-                            <Link to="/">Retour à l'accueil</Link>
+                            <Link to="/">Retour à l&apos;accueil</Link>
                         </Button>
                         <Button asChild size="lg" variant="outline" className="rounded-full">
                             <Link to="/boutique">Continuer les achats</Link>
@@ -303,8 +303,32 @@ export default function Checkout() {
                     </div>
                     <h1 className="font-display text-3xl sm:text-4xl mb-3">Paiement en cours…</h1>
                     <p className="text-muted-foreground mb-2">
-                        Ouvrez l'application <span className="font-semibold text-foreground">{operatorIconMeta.label}</span> sur votre téléphone et validez la transaction.
+                        Ouvrez l&apos;application <span className="font-semibold text-foreground">{operatorIconMeta.label}</span> sur votre téléphone et validez la transaction.
                     </p>
+                    {transaction.payment_link && (
+                        <div className="my-6 space-y-4">
+                            <Button
+                                asChild
+                                size="lg"
+                                className="rounded-full bg-ink text-ink-foreground hover:bg-ink/90"
+                                data-testid="paxity-payment-link-btn"
+                            >
+                                <a href={transaction.payment_link} target="_blank" rel="noopener noreferrer">
+                                    Payer maintenant
+                                </a>
+                            </Button>
+                            {transaction.qr_code && (
+                                <div className="flex justify-center">
+                                    <img
+                                        src={transaction.qr_code.startsWith("data:") ? transaction.qr_code : `data:image/png;base64,${transaction.qr_code}`}
+                                        alt="QR code de paiement"
+                                        className="h-40 w-40 rounded-lg border border-border bg-white p-2"
+                                        data-testid="paxity-qr-code"
+                                    />
+                                </div>
+                            )}
+                        </div>
+                    )}
                     <p className="text-sm text-muted-foreground mb-8">
                         Nous mettrons cette page à jour automatiquement dès la confirmation.
                     </p>
@@ -507,7 +531,7 @@ export default function Checkout() {
                                         <div className="mt-3 p-3 rounded-lg bg-white border border-amber-300 text-amber-900">
                                             <p className="font-semibold text-xs">🎯 Cause probable</p>
                                             <p className="text-xs mt-1 leading-relaxed">
-                                                Le serveur ne peut pas résoudre <code>api.paxity.com</code> depuis Emergent. Ce sont probablement les <strong>restrictions réseau de l'hébergement</strong>. Contactez <a href="mailto:support@emergent.sh" className="underline">support@emergent.sh</a> en leur envoyant cette capture pour demander l'autorisation d'appels sortants vers <code>api.paxity.com</code>.
+                                                Le serveur ne peut pas résoudre <code>{diagnostic.host || "api.paxity.io"}</code> depuis Emergent. Ce sont probablement les <strong>restrictions réseau de l&apos;hébergement</strong>. Contactez <a href="mailto:support@emergent.sh" className="underline">support@emergent.sh</a> en leur envoyant cette capture pour demander l&apos;autorisation d&apos;appels sortants vers <code>{diagnostic.host || "api.paxity.io"}</code>.
                                             </p>
                                         </div>
                                     )}
@@ -515,7 +539,7 @@ export default function Checkout() {
                                         <div className="mt-3 p-3 rounded-lg bg-white border border-amber-300 text-amber-900">
                                             <p className="font-semibold text-xs">🎯 Cause probable</p>
                                             <p className="text-xs mt-1 leading-relaxed">
-                                                DNS OK mais l'API HTTP ne répond pas. Vérifiez que <code>{diagnostic.base_url}</code> est bien l'URL correcte de l'API Paxity dans votre dashboard.
+                                                DNS OK mais l&apos;API HTTP ne répond pas. Vérifiez que <code>{diagnostic.base_url}</code> est bien l&apos;URL correcte de l&apos;API Paxity dans votre dashboard.
                                             </p>
                                         </div>
                                     )}
@@ -638,7 +662,7 @@ export default function Checkout() {
                                 <form onSubmit={handlePayment} className="space-y-4">
                                     <div className="p-4 rounded-xl bg-secondary/40 border text-xs text-muted-foreground">
                                         <CreditCard className="h-4 w-4 inline mr-1 text-foreground" />
-                                        Le paiement par carte s'effectue via Paxity. Vous serez redirigé selon la configuration marchand.
+                                        Le paiement par carte s&apos;effectue via Paxity. Vous serez redirigé selon la configuration marchand.
                                     </div>
                                     <div className="flex gap-2 pt-2">
                                         <Button type="button" variant="outline" onClick={() => setStep(2)} className="rounded-full h-11 px-6">Retour</Button>

@@ -54,6 +54,9 @@ PAXITY_ENV = os.environ.get("PAXITY_ENV", "production")
 PAXITY_DEFAULT_CURRENCY = os.environ.get("PAXITY_DEFAULT_CURRENCY", "XOF")
 PAXITY_DEFAULT_PREFIX = os.environ.get("PAXITY_DEFAULT_PREFIX", "221")
 PAXITY_MAX_RETRIES = int(os.environ.get("PAXITY_MAX_RETRIES", "3"))
+# Instant Payment Notification callback URL Paxity will POST to when a
+# transaction status changes. Should point to /api/paxity/webhook of this app.
+PAXITY_IPN_URL = os.environ.get("PAXITY_IPN_URL", "")
 
 PAXITY_CONFIGURED = bool(PAXITY_API_KEY and PAXITY_API_TOKEN and PAXITY_BASE_URL)
 
@@ -159,6 +162,22 @@ def _extract_error_message(data: object, status_code: int) -> str:
     return f"Paxity a renvoyé une erreur ({status_code})"
 
 
+def _payload_root(data: object) -> dict:
+    """
+    Paxity wraps the transaction details in a nested `data` object:
+        {"code": 201, "message": "...", "data": {"status": "PENDING",
+         "transactionId": "...", "link": "...", "qrCode": "..."}}
+    Return the inner object when present, otherwise the top-level dict so the
+    parser keeps working if Paxity ever flattens the schema.
+    """
+    if isinstance(data, dict):
+        inner = data.get("data")
+        if isinstance(inner, dict) and inner:
+            return inner
+        return data
+    return {}
+
+
 # --------------------------------------------------------------------------
 # Pydantic models
 # --------------------------------------------------------------------------
@@ -199,6 +218,8 @@ class PaxityTransaction(BaseModel):
     status: str = "pending"  # pending | success | failed
     paxity_transaction_id: Optional[str] = None
     paxity_reference: Optional[str] = None
+    payment_link: Optional[str] = None
+    qr_code: Optional[str] = None
     customer_name: str
     customer_email: Optional[str] = None
     description: str
@@ -439,6 +460,7 @@ async def create_payin(payload: PaxityPayinRequest, request: Request, bg: Backgr
 
     body = {
         "amount": int(payload.amount),
+        "country": method_meta.get("country") if method_meta.get("country") not in (None, "*") else None,
         "currency": currency,
         "phoneNumber": payload.phone_number.replace(" ", ""),
         "prefixPhone": payload.prefix_phone,
@@ -447,6 +469,10 @@ async def create_payin(payload: PaxityPayinRequest, request: Request, bg: Backgr
         "description": payload.description,
         "idClient": order_id,
     }
+    if PAXITY_IPN_URL:
+        body["ipn"] = PAXITY_IPN_URL
+    # Drop keys that resolved to None (e.g. country for CARD) so we send a clean payload
+    body = {k: v for k, v in body.items() if v is not None}
 
     logger.info(
         f"[Paxity] PayIn request order={order_id} amount={payload.amount} "
@@ -471,14 +497,18 @@ async def create_payin(payload: PaxityPayinRequest, request: Request, bg: Backgr
             data = {"raw_text": text_preview}
             logger.warning(f"[Paxity] Non-JSON response ({resp.status_code}): {text_preview!r}")
 
-    # Update transaction with whatever we have
+    # Update transaction with whatever we have (fields live inside the nested
+    # `data` object per Paxity's response envelope)
+    root = _payload_root(data)
     try:
         tx.raw_response = data
-        if isinstance(data, dict):
+        if root:
             tx.paxity_transaction_id = (
-                data.get("transactionId") or data.get("id") or data.get("txId")
+                root.get("transactionId") or root.get("id") or root.get("txId")
             )
-            tx.paxity_reference = data.get("reference") or data.get("ref")
+            tx.paxity_reference = root.get("reference") or root.get("ref")
+            tx.payment_link = root.get("link") or root.get("paymentLink") or root.get("url")
+            tx.qr_code = root.get("qrCode") or root.get("qr_code")
     except Exception:
         logger.exception("[Paxity] Failed to parse Paxity fields")
 
@@ -513,8 +543,8 @@ async def create_payin(payload: PaxityPayinRequest, request: Request, bg: Backgr
         )
         raise HTTPException(status_code=resp.status_code, detail=str(message))
 
-    # 2xx — parse status with comprehensive mapping
-    raw_status = data.get("status") if isinstance(data, dict) else None
+    # 2xx — parse status with comprehensive mapping (status lives in nested data)
+    raw_status = root.get("status") if root else None
     tx.status = _map_status(raw_status)
 
     try:
@@ -536,7 +566,9 @@ async def create_payin(payload: PaxityPayinRequest, request: Request, bg: Backgr
         "amount": payload.amount,
         "currency": currency,
         "paxity_transaction_id": tx.paxity_transaction_id,
-        "message": data.get("message") if isinstance(data, dict) else None,
+        "payment_link": tx.payment_link,
+        "qr_code": tx.qr_code,
+        "message": (data.get("message") if isinstance(data, dict) else None),
         "requires_otp": bool(method_meta.get("requires_otp")),
     }
 
@@ -573,13 +605,14 @@ async def paxity_webhook(request: Request):
         payload = {}
     logger.info(f"[Paxity] Webhook received: {payload}")
 
+    root = _payload_root(payload)
     paxity_tx_id = (
-        payload.get("transactionId")
-        or payload.get("id")
-        or payload.get("txId")
+        root.get("transactionId")
+        or root.get("id")
+        or root.get("txId")
     )
-    order_id = payload.get("idClient") or payload.get("orderId")
-    normalized = _map_status(payload.get("status"))
+    order_id = root.get("idClient") or root.get("orderId") or payload.get("idClient") or payload.get("orderId")
+    normalized = _map_status(root.get("status") or payload.get("status"))
 
     update = {
         "status": normalized,
