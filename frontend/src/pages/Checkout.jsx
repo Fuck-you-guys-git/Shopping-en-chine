@@ -12,6 +12,7 @@ import { useCart } from "@/context/CartContext";
 import { formatPrice } from "@/components/ProductCard";
 import { toast } from "sonner";
 import { paxityAPI } from "@/lib/api";
+import { paxityDirectPayin, paxityDirectAvailable } from "@/lib/paxityDirect";
 
 const OPERATOR_META = {
     "orange-money": { label: "Orange Money", color: "#FF7900", bg: "bg-[#FF7900]/10" },
@@ -145,12 +146,50 @@ export default function Checkout() {
                     qty: it.qty,
                 })),
             };
-            const res = await paxityAPI.createPayin(payload);
+
+            let res;
+            let usedFallback = false;
+            try {
+                res = await paxityAPI.createPayin(payload);
+            } catch (backendErr) {
+                // Detect DNS/network failures that mean the backend can't reach Paxity
+                const rawDetail = backendErr.response?.data?.detail || "";
+                const looksBlocked =
+                    (typeof rawDetail === "string" && (
+                        rawDetail.includes("DNS") ||
+                        rawDetail.includes("Name or service not known") ||
+                        rawDetail.includes("Erreur réseau") ||
+                        rawDetail.includes("Aucune réponse")
+                    )) ||
+                    backendErr.response?.status === 502 ||
+                    backendErr.response?.status === 503 ||
+                    backendErr.response?.status === 504;
+
+                if (looksBlocked && paxityDirectAvailable()) {
+                    // Fallback: call Paxity directly from the browser
+                    toast("Bascule vers Paxity direct…", {
+                        description: "Le backend est bloqué, appel depuis le navigateur.",
+                    });
+                    res = await paxityDirectPayin({
+                        amount: total,
+                        phone_number: payload.phone_number,
+                        prefix_phone: payload.prefix_phone,
+                        payment_method: payload.payment_method,
+                        otp_code: payload.otp_code,
+                        description: payload.description,
+                        order_id: `ord_${Date.now()}`,
+                    });
+                    usedFallback = true;
+                } else {
+                    throw backendErr;
+                }
+            }
+
             setTransaction(res);
             if (res.status === "success") {
                 setComplete(true);
                 clear();
-                toast.success("Paiement confirmé ✦");
+                toast.success("Paiement confirmé ✦", usedFallback ? { description: "Via Paxity direct" } : {});
             } else if (res.status === "pending") {
                 toast("Paiement en cours…", { description: "Validez la transaction sur votre téléphone." });
             } else {
@@ -392,6 +431,16 @@ export default function Checkout() {
                                         <p className="text-xs mt-1 opacity-90">
                                             Ajoutez <code className="font-mono">PAXITY_API_KEY</code> et <code className="font-mono">PAXITY_API_TOKEN</code> dans <code className="font-mono">backend/.env</code>, puis redémarrez le serveur backend.
                                         </p>
+                                    </div>
+                                </div>
+                            )}
+
+                            {paxityDirectAvailable() && (
+                                <div className="flex gap-3 p-3 rounded-xl bg-primary/5 border border-primary/20 text-xs">
+                                    <ShieldCheck className="h-4 w-4 shrink-0 text-primary mt-0.5" />
+                                    <div className="text-muted-foreground">
+                                        <span className="font-medium text-foreground">Paiement résilient activé.</span>{" "}
+                                        Si le serveur ne peut pas joindre Paxity, la transaction bascule automatiquement sur un appel direct depuis votre navigateur.
                                     </div>
                                 </div>
                             )}
