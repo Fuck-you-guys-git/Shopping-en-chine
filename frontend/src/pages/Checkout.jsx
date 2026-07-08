@@ -1,6 +1,8 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { Check, CreditCard, Truck, ShieldCheck, ArrowLeft } from "lucide-react";
+import {
+    Check, CreditCard, Truck, ShieldCheck, ArrowLeft, Phone, Loader2, XCircle, AlertTriangle,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -9,26 +11,127 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { useCart } from "@/context/CartContext";
 import { formatPrice } from "@/components/ProductCard";
 import { toast } from "sonner";
+import { paxityAPI } from "@/lib/api";
+
+const OPERATOR_META = {
+    "orange-money": { label: "Orange Money", color: "#FF7900", bg: "bg-[#FF7900]/10" },
+    wave: { label: "Wave", color: "#1DC7FA", bg: "bg-[#1DC7FA]/10" },
+    mtn: { label: "MTN", color: "#FFCC00", bg: "bg-[#FFCC00]/15" },
+    moov: { label: "Moov", color: "#0060A9", bg: "bg-[#0060A9]/10" },
+    card: { label: "Carte", color: "#111", bg: "bg-secondary" },
+};
 
 export default function Checkout() {
     const { items, subtotal, clear } = useCart();
     const navigate = useNavigate();
     const [step, setStep] = useState(1);
-    const [payment, setPayment] = useState("card");
     const shipping = subtotal > 30000 || subtotal === 0 ? 0 : 3000;
     const total = subtotal + shipping;
+
+    const [buyer, setBuyer] = useState({
+        firstName: "", lastName: "", email: "",
+        phone: "", address: "", zip: "", city: "",
+    });
+
+    const [paxityConfig, setPaxityConfig] = useState(null);
+    const [paxityError, setPaxityError] = useState(null);
+    const [paymentMethod, setPaymentMethod] = useState("");
+    const [prefix, setPrefix] = useState("221");
+    const [otp, setOtp] = useState("");
+
+    const [processing, setProcessing] = useState(false);
+    const [transaction, setTransaction] = useState(null); // { transaction_id, status, order_id, ... }
     const [complete, setComplete] = useState(false);
 
-    const handleConfirm = (e) => {
+    // Fetch backend config
+    useEffect(() => {
+        paxityAPI.getConfig()
+            .then((cfg) => {
+                setPaxityConfig(cfg);
+                // Pre-select first available method
+                if (cfg.methods && cfg.methods.length > 0) {
+                    setPaymentMethod(cfg.methods[0].code);
+                    setPrefix(cfg.methods[0].prefix !== "*" ? cfg.methods[0].prefix : "221");
+                }
+            })
+            .catch(() => setPaxityError("Impossible de contacter le service de paiement."));
+    }, []);
+
+    // Poll status while pending
+    useEffect(() => {
+        if (!transaction || transaction.status !== "pending") return;
+        const interval = setInterval(async () => {
+            try {
+                const res = await paxityAPI.getStatus(transaction.transaction_id);
+                if (res.status !== transaction.status) {
+                    setTransaction((prev) => ({ ...prev, status: res.status }));
+                }
+                if (res.status === "success") {
+                    setComplete(true);
+                    clear();
+                    toast.success("Paiement confirmé ✦", { description: `Commande ${res.order_id}` });
+                    clearInterval(interval);
+                } else if (res.status === "failed") {
+                    toast.error("Paiement échoué", { description: "Veuillez réessayer" });
+                    clearInterval(interval);
+                }
+            } catch (e) {
+                // ignore transient errors
+            }
+        }, 3500);
+        return () => clearInterval(interval);
+    }, [transaction, clear]);
+
+    const buyerValid = () =>
+        buyer.firstName && buyer.lastName && buyer.email && buyer.phone && buyer.address && buyer.city;
+
+    const selectedMethod = paxityConfig?.methods?.find((m) => m.code === paymentMethod);
+    const operatorIconMeta = selectedMethod ? (OPERATOR_META[selectedMethod.icon] || OPERATOR_META.card) : OPERATOR_META.card;
+
+    const handlePayment = async (e) => {
         e.preventDefault();
-        setComplete(true);
-        clear();
-        toast.success("Commande confirmée ✦", {
-            description: "Vous recevrez un email de confirmation.",
-        });
-        setTimeout(() => navigate("/"), 4000);
+        setProcessing(true);
+        try {
+            const payload = {
+                amount: total,
+                phone_number: buyer.phone.replace(/\s+/g, ""),
+                prefix_phone: prefix,
+                payment_method: paymentMethod,
+                otp_code: otp || undefined,
+                description: `Commande Shopping en Chine · ${items.length} article(s)`,
+                customer: {
+                    name: `${buyer.firstName} ${buyer.lastName}`,
+                    email: buyer.email,
+                    city: buyer.city,
+                },
+                items: items.map((it) => ({
+                    product_id: it.id,
+                    name: it.name,
+                    price: it.price,
+                    qty: it.qty,
+                })),
+            };
+            const res = await paxityAPI.createPayin(payload);
+            setTransaction(res);
+            if (res.status === "success") {
+                setComplete(true);
+                clear();
+                toast.success("Paiement confirmé ✦");
+            } else if (res.status === "pending") {
+                toast("Paiement en cours…", { description: "Validez la transaction sur votre téléphone." });
+            } else {
+                toast.error("Paiement refusé", { description: res.message || "Réessayez ou changez de moyen." });
+            }
+        } catch (err) {
+            const detail = err.response?.data?.detail || err.message;
+            toast.error("Erreur de paiement", { description: detail });
+            setPaxityError(detail);
+        } finally {
+            setProcessing(false);
+        }
     };
 
+    // ---------- Success screen ----------
     if (complete) {
         return (
             <div className="container mx-auto px-5 py-24 text-center">
@@ -36,18 +139,54 @@ export default function Checkout() {
                     <div className="h-20 w-20 mx-auto rounded-full bg-success/10 text-success flex items-center justify-center mb-6">
                         <Check className="h-10 w-10" />
                     </div>
-                    <h1 className="font-display text-4xl sm:text-5xl mb-3">Merci !</h1>
-                    <p className="text-muted-foreground mb-8">
-                        Votre commande est confirmée. Un email de confirmation vous a été envoyé. Vous serez redirigé dans quelques secondes.
+                    <h1 className="font-display text-4xl sm:text-5xl mb-3">Merci !</h1>
+                    <p className="text-muted-foreground mb-2">
+                        Votre paiement de <span className="font-semibold text-foreground">{formatPrice(total)}</span> a été confirmé.
                     </p>
-                    <Button asChild size="lg" className="rounded-full bg-ink text-ink-foreground hover:bg-ink/90">
-                        <Link to="/">Retour à l'accueil</Link>
-                    </Button>
+                    {transaction?.order_id && (
+                        <p className="text-xs font-mono text-muted-foreground mb-8">Commande {transaction.order_id}</p>
+                    )}
+                    <div className="flex flex-wrap gap-3 justify-center">
+                        <Button asChild size="lg" className="rounded-full bg-ink text-ink-foreground hover:bg-ink/90">
+                            <Link to="/">Retour à l'accueil</Link>
+                        </Button>
+                        <Button asChild size="lg" variant="outline" className="rounded-full">
+                            <Link to="/boutique">Continuer les achats</Link>
+                        </Button>
+                    </div>
                 </div>
             </div>
         );
     }
 
+    // ---------- Pending screen ----------
+    if (transaction && transaction.status === "pending") {
+        return (
+            <div className="container mx-auto px-5 py-24 text-center">
+                <div className="max-w-lg mx-auto">
+                    <div className="h-20 w-20 mx-auto rounded-full bg-primary/10 text-primary flex items-center justify-center mb-6">
+                        <Loader2 className="h-10 w-10 animate-spin" />
+                    </div>
+                    <h1 className="font-display text-3xl sm:text-4xl mb-3">Paiement en cours…</h1>
+                    <p className="text-muted-foreground mb-2">
+                        Ouvrez l'application <span className="font-semibold text-foreground">{operatorIconMeta.label}</span> sur votre téléphone et validez la transaction.
+                    </p>
+                    <p className="text-sm text-muted-foreground mb-8">
+                        Nous mettrons cette page à jour automatiquement dès la confirmation.
+                    </p>
+                    <div className="inline-flex items-center gap-2 text-xs text-muted-foreground bg-secondary/50 rounded-full px-3 py-1.5">
+                        <span className="relative flex h-2 w-2">
+                            <span className="absolute inline-flex h-full w-full rounded-full bg-primary opacity-75 animate-ping" />
+                            <span className="relative inline-flex h-2 w-2 rounded-full bg-primary" />
+                        </span>
+                        En attente de confirmation Paxity
+                    </div>
+                </div>
+            </div>
+        );
+    }
+
+    // ---------- Empty cart guard ----------
     if (items.length === 0) {
         return (
             <div className="container mx-auto px-5 py-24 text-center">
@@ -84,21 +223,28 @@ export default function Checkout() {
                 ))}
             </div>
 
-            <form onSubmit={handleConfirm} className="grid lg:grid-cols-[1fr_380px] gap-10">
+            <div className="grid lg:grid-cols-[1fr_380px] gap-10">
                 <div className="space-y-8">
                     {step === 1 && (
                         <div className="space-y-5 bg-card p-6 md:p-8 rounded-2xl shadow-card">
                             <h2 className="font-display text-2xl">Adresse de livraison</h2>
                             <div className="grid sm:grid-cols-2 gap-4">
-                                <div className="space-y-1.5"><Label>Prénom</Label><Input required placeholder="Marie" /></div>
-                                <div className="space-y-1.5"><Label>Nom</Label><Input required placeholder="Dupont" /></div>
-                                <div className="space-y-1.5 sm:col-span-2"><Label>Email</Label><Input required type="email" placeholder="marie@exemple.fr" /></div>
-                                <div className="space-y-1.5 sm:col-span-2"><Label>Adresse</Label><Input required placeholder="12 rue de la Paix" /></div>
-                                <div className="space-y-1.5"><Label>Code postal</Label><Input required placeholder="75002" /></div>
-                                <div className="space-y-1.5"><Label>Ville</Label><Input required placeholder="Paris" /></div>
-                                <div className="space-y-1.5 sm:col-span-2"><Label>Téléphone</Label><Input required type="tel" placeholder="06 12 34 56 78" /></div>
+                                <div className="space-y-1.5"><Label>Prénom</Label><Input required placeholder="Marie" value={buyer.firstName} onChange={(e) => setBuyer({ ...buyer, firstName: e.target.value })} /></div>
+                                <div className="space-y-1.5"><Label>Nom</Label><Input required placeholder="Dupont" value={buyer.lastName} onChange={(e) => setBuyer({ ...buyer, lastName: e.target.value })} /></div>
+                                <div className="space-y-1.5 sm:col-span-2"><Label>Email</Label><Input required type="email" placeholder="marie@exemple.com" value={buyer.email} onChange={(e) => setBuyer({ ...buyer, email: e.target.value })} /></div>
+                                <div className="space-y-1.5 sm:col-span-2"><Label>Adresse</Label><Input required placeholder="Rue, quartier…" value={buyer.address} onChange={(e) => setBuyer({ ...buyer, address: e.target.value })} /></div>
+                                <div className="space-y-1.5"><Label>Code postal</Label><Input placeholder="10000" value={buyer.zip} onChange={(e) => setBuyer({ ...buyer, zip: e.target.value })} /></div>
+                                <div className="space-y-1.5"><Label>Ville</Label><Input required placeholder="Dakar" value={buyer.city} onChange={(e) => setBuyer({ ...buyer, city: e.target.value })} /></div>
+                                <div className="space-y-1.5 sm:col-span-2"><Label>Téléphone</Label><Input required type="tel" placeholder="77 XXX XX XX" value={buyer.phone} onChange={(e) => setBuyer({ ...buyer, phone: e.target.value })} /></div>
                             </div>
-                            <Button type="button" onClick={() => setStep(2)} className="w-full sm:w-auto bg-ink text-ink-foreground hover:bg-ink/90 rounded-full h-11 px-8">
+                            <Button
+                                type="button"
+                                onClick={() => {
+                                    if (!buyerValid()) { toast.error("Veuillez remplir tous les champs requis"); return; }
+                                    setStep(2);
+                                }}
+                                className="w-full sm:w-auto bg-ink text-ink-foreground hover:bg-ink/90 rounded-full h-11 px-8"
+                            >
                                 Continuer
                             </Button>
                         </div>
@@ -124,16 +270,16 @@ export default function Checkout() {
                                         <p className="font-medium">Livraison express</p>
                                         <p className="text-xs text-muted-foreground">24–48h chrono</p>
                                     </div>
-                                    <span className="font-medium">7,90 €</span>
+                                    <span className="font-medium">5 000 F</span>
                                 </label>
                                 <label className="flex items-center gap-4 p-4 border rounded-xl cursor-pointer hover:border-primary transition-colors">
                                     <RadioGroupItem value="pickup" />
                                     <i className="fa-solid fa-store text-primary" />
                                     <div className="flex-1">
                                         <p className="font-medium">Point relais</p>
-                                        <p className="text-xs text-muted-foreground">3–5 jours · 500+ points en France</p>
+                                        <p className="text-xs text-muted-foreground">3–5 jours · 500+ points</p>
                                     </div>
-                                    <span className="font-medium">2,90 €</span>
+                                    <span className="font-medium">2 000 F</span>
                                 </label>
                             </RadioGroup>
                             <div className="flex gap-2 pt-2">
@@ -145,47 +291,139 @@ export default function Checkout() {
 
                     {step === 3 && (
                         <div className="space-y-5 bg-card p-6 md:p-8 rounded-2xl shadow-card">
-                            <h2 className="font-display text-2xl">Paiement</h2>
-                            <RadioGroup value={payment} onValueChange={setPayment} className="grid sm:grid-cols-3 gap-3">
-                                <label className={`flex flex-col items-center gap-2 p-4 border-2 rounded-xl cursor-pointer transition-colors ${payment === "card" ? "border-primary bg-primary/5" : "border-border"}`}>
-                                    <RadioGroupItem value="card" className="sr-only" />
-                                    <CreditCard className="h-6 w-6" />
-                                    <span className="text-sm font-medium">Carte</span>
-                                </label>
-                                <label className={`flex flex-col items-center gap-2 p-4 border-2 rounded-xl cursor-pointer transition-colors ${payment === "paypal" ? "border-primary bg-primary/5" : "border-border"}`}>
-                                    <RadioGroupItem value="paypal" className="sr-only" />
-                                    <i className="fa-brands fa-paypal text-2xl" />
-                                    <span className="text-sm font-medium">PayPal</span>
-                                </label>
-                                <label className={`flex flex-col items-center gap-2 p-4 border-2 rounded-xl cursor-pointer transition-colors ${payment === "apple" ? "border-primary bg-primary/5" : "border-border"}`}>
-                                    <RadioGroupItem value="apple" className="sr-only" />
-                                    <i className="fa-brands fa-apple-pay text-2xl" />
-                                    <span className="text-sm font-medium">Apple Pay</span>
-                                </label>
-                            </RadioGroup>
+                            <div className="flex items-center justify-between">
+                                <h2 className="font-display text-2xl">Paiement Mobile Money</h2>
+                                {paxityConfig && (
+                                    <span className={`inline-flex items-center gap-1.5 text-[10px] uppercase tracking-widest font-semibold px-2 py-1 rounded-full ${paxityConfig.configured ? "bg-success/15 text-success" : "bg-amber-100 text-amber-700"}`}>
+                                        <ShieldCheck className="h-3 w-3" /> Paxity {paxityConfig.environment}
+                                    </span>
+                                )}
+                            </div>
 
-                            {payment === "card" && (
-                                <div className="space-y-4 pt-2">
-                                    <div className="space-y-1.5"><Label>Numéro de carte</Label><Input required placeholder="1234 5678 9012 3456" /></div>
-                                    <div className="grid grid-cols-2 gap-4">
-                                        <div className="space-y-1.5"><Label>Expiration</Label><Input required placeholder="MM / AA" /></div>
-                                        <div className="space-y-1.5"><Label>CVC</Label><Input required placeholder="123" /></div>
+                            {paxityConfig && !paxityConfig.configured && (
+                                <div className="flex gap-3 p-4 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-sm">
+                                    <AlertTriangle className="h-5 w-5 shrink-0 mt-0.5" />
+                                    <div>
+                                        <p className="font-medium">Configuration Paxity requise</p>
+                                        <p className="text-xs mt-1 opacity-90">
+                                            Ajoutez <code className="font-mono">PAXITY_API_KEY</code> et <code className="font-mono">PAXITY_API_TOKEN</code> dans <code className="font-mono">backend/.env</code>, puis redémarrez le serveur backend.
+                                        </p>
                                     </div>
-                                    <div className="space-y-1.5"><Label>Nom sur la carte</Label><Input required placeholder="Marie Dupont" /></div>
                                 </div>
                             )}
 
-                            <div className="flex items-center gap-2 text-xs text-muted-foreground pt-2">
-                                <ShieldCheck className="h-4 w-4 text-success" />
-                                Paiement sécurisé SSL · 3D Secure
+                            {paxityError && (
+                                <div className="flex gap-3 p-4 rounded-xl bg-destructive/10 border border-destructive/20 text-destructive text-sm">
+                                    <XCircle className="h-5 w-5 shrink-0 mt-0.5" />
+                                    <div className="flex-1">{paxityError}</div>
+                                </div>
+                            )}
+
+                            {/* Method picker */}
+                            <div>
+                                <p className="text-sm font-medium mb-3">Choisissez votre moyen de paiement</p>
+                                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                                    {paxityConfig?.methods?.map((m) => {
+                                        const meta = OPERATOR_META[m.icon] || OPERATOR_META.card;
+                                        const active = paymentMethod === m.code;
+                                        return (
+                                            <button
+                                                key={m.code}
+                                                type="button"
+                                                onClick={() => {
+                                                    setPaymentMethod(m.code);
+                                                    if (m.prefix !== "*") setPrefix(m.prefix);
+                                                }}
+                                                className={`flex flex-col items-center gap-1.5 p-3 rounded-xl border-2 transition-all ${active ? "border-primary bg-primary/5" : "border-border hover:border-foreground/30"}`}
+                                            >
+                                                <span className={`h-10 w-10 rounded-full flex items-center justify-center ${meta.bg}`}>
+                                                    {m.icon === "card" ? (
+                                                        <CreditCard className="h-4 w-4" style={{ color: meta.color }} />
+                                                    ) : (
+                                                        <Phone className="h-4 w-4" style={{ color: meta.color }} />
+                                                    )}
+                                                </span>
+                                                <span className="text-xs font-medium text-center leading-tight">{m.label}</span>
+                                            </button>
+                                        );
+                                    })}
+                                </div>
                             </div>
 
-                            <div className="flex gap-2 pt-2">
-                                <Button type="button" variant="outline" onClick={() => setStep(2)} className="rounded-full h-11 px-6">Retour</Button>
-                                <Button type="submit" className="bg-primary hover:bg-primary/90 text-primary-foreground rounded-full h-11 px-8 flex-1 sm:flex-none shadow-warm">
-                                    Confirmer et payer {formatPrice(total)}
-                                </Button>
-                            </div>
+                            {/* Phone form (hidden for card) */}
+                            {selectedMethod && selectedMethod.icon !== "card" && (
+                                <form onSubmit={handlePayment} className="space-y-4">
+                                    <div className="grid grid-cols-[100px_1fr] gap-2">
+                                        <div className="space-y-1.5">
+                                            <Label>Indicatif</Label>
+                                            <div className="relative">
+                                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">+</span>
+                                                <Input value={prefix} onChange={(e) => setPrefix(e.target.value.replace(/\D/g, ""))} className="pl-6" />
+                                            </div>
+                                        </div>
+                                        <div className="space-y-1.5">
+                                            <Label>Numéro de téléphone</Label>
+                                            <Input
+                                                required
+                                                type="tel"
+                                                placeholder="77 XXX XX XX"
+                                                value={buyer.phone}
+                                                onChange={(e) => setBuyer({ ...buyer, phone: e.target.value })}
+                                            />
+                                        </div>
+                                    </div>
+                                    <div className="space-y-1.5">
+                                        <Label>Code OTP (si demandé)</Label>
+                                        <Input
+                                            value={otp}
+                                            onChange={(e) => setOtp(e.target.value)}
+                                            placeholder="Laissez vide si non requis"
+                                            className="font-mono tracking-wider"
+                                        />
+                                        <p className="text-[11px] text-muted-foreground">
+                                            Certains opérateurs demandent un code (ex : Wave génère un OTP via l'app). Sinon, laissez vide.
+                                        </p>
+                                    </div>
+
+                                    <div className="flex items-center gap-2 text-xs text-muted-foreground pt-2">
+                                        <ShieldCheck className="h-4 w-4 text-success" />
+                                        Paiement sécurisé via Paxity · Chiffrement bout-en-bout
+                                    </div>
+
+                                    <div className="flex gap-2 pt-2">
+                                        <Button type="button" variant="outline" onClick={() => setStep(2)} className="rounded-full h-11 px-6">Retour</Button>
+                                        <Button
+                                            type="submit"
+                                            disabled={processing || !paxityConfig?.configured}
+                                            className="bg-primary hover:bg-primary/90 text-primary-foreground rounded-full h-11 px-8 flex-1 sm:flex-none shadow-warm"
+                                        >
+                                            {processing ? (
+                                                <>
+                                                    <Loader2 className="h-4 w-4 animate-spin" />
+                                                    Traitement…
+                                                </>
+                                            ) : (
+                                                <>Payer {formatPrice(total)}</>
+                                            )}
+                                        </Button>
+                                    </div>
+                                </form>
+                            )}
+
+                            {selectedMethod && selectedMethod.icon === "card" && (
+                                <form onSubmit={handlePayment} className="space-y-4">
+                                    <div className="p-4 rounded-xl bg-secondary/40 border text-xs text-muted-foreground">
+                                        <CreditCard className="h-4 w-4 inline mr-1 text-foreground" />
+                                        Le paiement par carte s'effectue via Paxity. Vous serez redirigé selon la configuration marchand.
+                                    </div>
+                                    <div className="flex gap-2 pt-2">
+                                        <Button type="button" variant="outline" onClick={() => setStep(2)} className="rounded-full h-11 px-6">Retour</Button>
+                                        <Button type="submit" disabled={processing || !paxityConfig?.configured} className="bg-primary hover:bg-primary/90 text-primary-foreground rounded-full h-11 px-8 flex-1 shadow-warm">
+                                            {processing ? <><Loader2 className="h-4 w-4 animate-spin" /> Traitement…</> : <>Payer {formatPrice(total)}</>}
+                                        </Button>
+                                    </div>
+                                </form>
+                            )}
                         </div>
                     )}
                 </div>
@@ -220,7 +458,7 @@ export default function Checkout() {
                         </div>
                     </div>
                 </aside>
-            </form>
+            </div>
         </div>
     );
 }
