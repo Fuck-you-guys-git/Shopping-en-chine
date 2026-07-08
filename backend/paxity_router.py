@@ -490,8 +490,11 @@ async def create_payin(payload: PaxityPayinRequest, request: Request, bg: Backgr
         except Exception:
             logger.exception("[Paxity] Mongo write failed on error path")
         logger.error(f"[Paxity] Transport failure for order {order_id}: {transport_error}")
+        # Use 424 Failed Dependency (upstream gateway unreachable). We deliberately
+        # avoid 502/504 because Cloudflare rewrites those to its own HTML error
+        # page, which would strip our French error detail from the client.
         raise HTTPException(
-            status_code=502,
+            status_code=424,
             detail=transport_error or "Aucune réponse de Paxity",
         )
 

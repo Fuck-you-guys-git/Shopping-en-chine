@@ -199,7 +199,7 @@ class TestBogusConfigured:
             "customer": {"name": "Test"},
             "items": [],
         }, timeout=90)
-        assert r.status_code == 502, f"expected 502, got {r.status_code}: {r.text[:300]}"
+        assert r.status_code == 424, f"expected 424, got {r.status_code}: {r.text[:300]}"
         detail = r.json().get("detail", "")
         # Should mention a real transport error (not generic)
         assert detail and detail != "Aucune réponse de Paxity" or "nonexistent" in detail.lower() or "resolve" in detail.lower() or "connecterror" in detail.lower() or "ConnectError" in detail

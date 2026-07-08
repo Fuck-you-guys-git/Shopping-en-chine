@@ -170,6 +170,7 @@ export default function Checkout() {
                         rawDetail.includes("Erreur réseau") ||
                         rawDetail.includes("Aucune réponse")
                     )) ||
+                    backendErr.response?.status === 424 ||
                     backendErr.response?.status === 502 ||
                     backendErr.response?.status === 503 ||
                     backendErr.response?.status === 504;
