@@ -136,6 +136,82 @@ async def get_config():
     }
 
 
+@router.get("/diagnostic")
+async def diagnostic():
+    """
+    Diagnostic endpoint — call this to check if the backend can reach the
+    Paxity API from its current network. Use it when payments are failing:
+        curl https://shopenchine.com/api/paxity/diagnostic
+    Or open the URL directly in a browser.
+    """
+    import socket
+    import time as _time
+
+    result = {
+        "configured": PAXITY_CONFIGURED,
+        "environment": PAXITY_ENV,
+        "base_url": PAXITY_BASE_URL,
+        "api_key_length": len(PAXITY_API_KEY) if PAXITY_API_KEY else 0,
+        "api_token_length": len(PAXITY_API_TOKEN) if PAXITY_API_TOKEN else 0,
+        "dns_ok": False,
+        "http_reachable": False,
+        "http_status": None,
+        "http_error": None,
+        "response_preview": None,
+        "latency_ms": None,
+        "auth_test_status": None,
+        "auth_test_body": None,
+    }
+
+    # 1) DNS lookup
+    try:
+        host = "api.paxity.com"
+        socket.gethostbyname(host)
+        result["dns_ok"] = True
+    except Exception as e:
+        result["http_error"] = f"DNS lookup failed: {e}"
+        return result
+
+    # 2) Basic HTTP reachability
+    started = _time.monotonic()
+    try:
+        async with httpx.AsyncClient(timeout=15.0) as client:
+            resp = await client.get(f"{PAXITY_BASE_URL}/")
+            result["http_reachable"] = True
+            result["http_status"] = resp.status_code
+            result["response_preview"] = (resp.text or "")[:200]
+    except Exception as e:
+        result["http_error"] = f"{type(e).__name__}: {e}"
+    result["latency_ms"] = int((_time.monotonic() - started) * 1000)
+
+    # 3) Auth test — sends an intentionally-tiny bad request to see if Paxity
+    #    accepts our keys (returns 400 with meaningful message = keys OK,
+    #    returns 401/403 = keys wrong)
+    if result["http_reachable"] and PAXITY_CONFIGURED:
+        try:
+            async with httpx.AsyncClient(timeout=15.0) as client:
+                r = await client.post(
+                    f"{PAXITY_BASE_URL}/payments/payin/",
+                    headers=_headers(),
+                    json={
+                        "amount": 100,
+                        "currency": "XOF",
+                        "phoneNumber": "000000000",
+                        "prefixPhone": "221",
+                        "paymentMethod": "WAVESN",
+                        "codeOtp": "",
+                        "description": "diagnostic",
+                        "idClient": "diag_test",
+                    },
+                )
+                result["auth_test_status"] = r.status_code
+                result["auth_test_body"] = (r.text or "")[:400]
+        except Exception as e:
+            result["auth_test_body"] = f"{type(e).__name__}: {e}"
+
+    return result
+
+
 @router.post("/payin")
 async def create_payin(payload: PaxityPayinRequest, request: Request, bg: BackgroundTasks):
     """

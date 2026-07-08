@@ -90,6 +90,29 @@ export default function Checkout() {
 
     const handlePayment = async (e) => {
         e.preventDefault();
+
+        // ---- Client-side validation ----
+        const cleanPhone = buyer.phone.replace(/\D/g, "");
+        const expectedLengths = {
+            "221": [9],       // Sénégal
+            "225": [10],      // Côte d'Ivoire
+            "226": [8],       // Burkina Faso
+            "227": [8],       // Niger
+            "228": [8],       // Togo
+            "229": [8, 10],   // Bénin
+            "233": [9],       // Ghana
+            "237": [9],       // Cameroun
+            "241": [9],       // Gabon
+        };
+        const validLengths = expectedLengths[prefix] || [8, 9, 10];
+        if (!validLengths.includes(cleanPhone.length)) {
+            const expected = validLengths.join(" ou ");
+            toast.error("Numéro de téléphone invalide", {
+                description: `Pour l'indicatif +${prefix}, le numéro doit contenir ${expected} chiffres. Vous avez saisi ${cleanPhone.length} chiffres.`,
+            });
+            return;
+        }
+
         setProcessing(true);
         try {
             const payload = {
@@ -410,6 +433,13 @@ export default function Checkout() {
                                                 value={buyer.phone}
                                                 onChange={(e) => setBuyer({ ...buyer, phone: e.target.value })}
                                             />
+                                            <p className="text-[11px] text-muted-foreground">
+                                                {(() => {
+                                                    const digits = buyer.phone.replace(/\D/g, "").length;
+                                                    const expected = { "221": "9 chiffres", "225": "10 chiffres", "226": "8 chiffres", "227": "8 chiffres", "228": "8 chiffres", "233": "9 chiffres", "237": "9 chiffres" }[prefix] || "8 à 10 chiffres";
+                                                    return `+${prefix} — attendu : ${expected} · saisi : ${digits}`;
+                                                })()}
+                                            </p>
                                         </div>
                                     </div>
                                     <div className="space-y-1.5">
