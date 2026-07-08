@@ -45,12 +45,23 @@ Payments were failing with a **DNS error** because `backend/paxity_router.py` ha
 - Frontend loads (verified via screenshot)
 - Diagnostic returns correct DNS-failure message pointing at the real host from `.env`
 
+## Update — Feb 2026 (real keys + response envelope fix)
+- Added real `PAXITY_API_KEY` / `PAXITY_API_TOKEN` to `/app/backend/.env`; `configured=true`.
+- **Bug fixed**: Paxity's real response nests fields inside a `data` object (`{"code":201,"data":{"status":"PENDING","transactionId","link","qrCode"}}`). Added `_payload_root()` to unwrap it; backend + `paxityDirect.js` now parse status/transactionId/link/qrCode from the nested object. Webhook also unwraps `data`.
+- Added `country` (from method meta) + optional `ipn` (`PAXITY_IPN_URL`) fields to the payin payload per official docs.
+- Pending screen now surfaces Paxity `payment_link` (button `paxity-payment-link-btn`) and `qr_code` (`paxity-qr-code`).
+- Clearer French error for HTTP 401/403/404/429 in `_extract_error_message` (e.g. "Identifiants Paxity refusés (401)…").
+- Fixed all React unescaped-entity lint errors in `Checkout.jsx`; updated stale `api.paxity.com` diagnostic copy to use `diagnostic.host`.
+- Tests: `test_paxity_parsing.py` (11) + `test_paxity_integration.py` (7) = **18/18 pass**; frontend 3/3 flows pass (testing agent iteration_2).
+
+## CURRENT BLOCKER (external, not a code bug)
+- Paxity's live API `api.paxity.io` returns **HTTP 401 (empty body)** for the supplied merchant keys — verified via curl, diagnostic (`auth_test_status=401`), and the testing agent. DNS + HTTP reachability are OK.
+- **Resolution is on the user's side**: verify/regenerate `ApiKey`+`ApiToken` in the Paxity dashboard, confirm the merchant account is activated for production, and check whether Paxity requires **IP whitelisting** (preview outbound IP was `104.198.214.223`, changes in prod).
+
 ## Next Action Items
-- **User must set `PAXITY_BASE_URL`** in `/app/backend/.env` from their Paxity merchant dashboard (this is the actual blocker — the code is ready but needs the real host)
-- User must also set `PAXITY_API_KEY` and `PAXITY_API_TOKEN` in `.env`
-- After setting: `sudo supervisorctl restart backend` → open `/api/paxity/diagnostic` in a browser to verify `dns_ok=true` and `http_reachable=true`
-- Optional: rename the GitHub repo (current name contains offensive language)
-- Optional: register webhook URL in Paxity dashboard: `https://<domain>/api/paxity/webhook`
+- User: provide valid/activated Paxity keys (and/or whitelist server IP) → then the full payin will complete and return the Orange Money `link`/`qrCode`.
+- Register webhook URL in Paxity dashboard: `https://<domain>/api/paxity/webhook`; optionally set `PAXITY_IPN_URL` in `.env` so it's sent on each payin.
+
 
 ## Backlog (P2)
 - Add per-method `min_amount` / `max_amount` if Paxity documents limits
