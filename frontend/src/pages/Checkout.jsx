@@ -123,7 +123,47 @@ export default function Checkout() {
                 toast.error("Paiement refusé", { description: res.message || "Réessayez ou changez de moyen." });
             }
         } catch (err) {
-            const detail = err.response?.data?.detail || err.message;
+            // Extract a clean French message from the error.
+            // If the response is HTML (e.g. Cloudflare 5xx page) or contains
+            // Cloudflare error messages, we mask it with a user-friendly fallback.
+            let detail = err.response?.data?.detail || err.response?.data?.message;
+            const raw = err.response?.data;
+            
+            // Case 1: Response is a string (HTML or plain text)
+            if (!detail && typeof raw === "string") {
+                if (raw.includes("<html") || raw.includes("Cloudflare") || raw.length > 200) {
+                    detail = "Service de paiement momentanément indisponible. Veuillez réessayer dans quelques instants.";
+                } else {
+                    detail = raw;
+                }
+            }
+            
+            // Case 2: Detail was extracted but contains Cloudflare error messages
+            // (Cloudflare sometimes returns RFC 7807 Problem Details JSON with Cloudflare-specific text)
+            if (detail && typeof detail === "string") {
+                if (
+                    detail.includes("Cloudflare") ||
+                    detail.includes("origin web server") ||
+                    detail.includes("Bad gateway") ||
+                    detail.includes("overloaded or misconfigured")
+                ) {
+                    detail = "Service de paiement momentanément indisponible. Veuillez réessayer dans quelques instants.";
+                }
+            }
+            
+            // Case 3: No detail found, use fallback logic
+            if (!detail) {
+                if (err.code === "ECONNABORTED") {
+                    detail = "Délai dépassé — Paxity a mis trop de temps à répondre. Réessayez.";
+                } else if (err.response?.status >= 500) {
+                    detail = "Service de paiement momentanément indisponible. Réessayez dans quelques instants.";
+                } else if (!err.response) {
+                    detail = "Impossible de contacter le serveur. Vérifiez votre connexion.";
+                } else {
+                    detail = err.message || "Erreur inconnue";
+                }
+            }
+            
             toast.error("Erreur de paiement", { description: detail });
             setPaxityError(detail);
         } finally {

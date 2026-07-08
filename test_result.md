@@ -696,3 +696,79 @@ test_plan:
 agent_communication:
   - agent: "testing"
     message: "Completed comprehensive testing of Paxity error-handling hardening. ALL 8 SCENARIOS PASSED. Backend never crashes on Paxity failures - always returns proper JSON responses (502, 422, 400) with French error messages. Transactions persist to MongoDB despite API failures. Health endpoints remain responsive. Frontend error handling implemented correctly with toast notifications. IMPORTANT NOTE: When accessed through Cloudflare (public URL), 502 errors show Cloudflare's HTML error page, but this is expected Cloudflare behavior. The critical point is that the backend itself returns proper JSON (verified via localhost) and does NOT crash, which prevents Cloudflare 520 errors. The hardening successfully prevents the origin from crashing, which was the root cause of the reported Cloudflare 520 issue."
+
+# ============================================================================
+# Cloudflare Error Message Masking Fix (2026-07-08)
+# ============================================================================
+
+user_problem_statement_update: "Fix Cloudflare error-message masking on Shopping en Chine. User reported that 'Erreur de paiement' toast on production was showing raw Cloudflare 5xx HTML error message instead of clean French error. Applied fix: Frontend Checkout.jsx now detects Cloudflare error messages (both HTML and JSON formats) and masks them with user-friendly French fallback."
+
+frontend:
+  - task: "Cloudflare error message masking - JSON format detection"
+    implemented: true
+    working: true
+    file: "/app/frontend/src/pages/Checkout.jsx"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: false
+        agent: "testing"
+        comment: "❌ INITIAL TEST FAILED: Discovered that Cloudflare returns RFC 7807 Problem Details JSON (not HTML) with detail field containing raw error message: 'The origin web server returned an invalid or incomplete response to Cloudflare. This typically indicates the origin is overloaded or misconfigured.' Original masking logic only checked for HTML strings in response.data, but Cloudflare JSON has detail field that was extracted and displayed without masking."
+      - working: true
+        agent: "testing"
+        comment: "✅ FIX APPLIED & VERIFIED: Added additional check in Checkout.jsx error handler (lines 125-169) to detect Cloudflare-specific keywords in extracted detail string ('Cloudflare', 'origin web server', 'Bad gateway', 'overloaded or misconfigured'). When detected, replaces with clean French message: 'Service de paiement momentanément indisponible. Veuillez réessayer dans quelques instants.' Tested with real Cloudflare 502 JSON response - masking now works correctly."
+
+  - task: "Cloudflare error message masking - HTML format detection"
+    implemented: true
+    working: true
+    file: "/app/frontend/src/pages/Checkout.jsx"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: true
+        agent: "testing"
+        comment: "✅ VERIFIED: HTML error masking works correctly. When response.data is HTML string containing '<html', 'Cloudflare', or length > 200, shows clean French fallback message. Tested with simulated Cloudflare HTML 502 response - masking works as expected."
+
+  - task: "Error message masking - JSON errors NOT masked"
+    implemented: true
+    working: true
+    file: "/app/frontend/src/pages/Checkout.jsx"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: true
+        agent: "testing"
+        comment: "✅ VERIFIED: Clean JSON error messages (e.g., 'Solde insuffisant sur le compte Paxity') are NOT masked and display correctly. Only Cloudflare-specific error messages are masked. Proper error messages from backend pass through unchanged."
+
+  - task: "Success payment flow still works"
+    implemented: true
+    working: true
+    file: "/app/frontend/src/pages/Checkout.jsx"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: true
+        agent: "testing"
+        comment: "✅ VERIFIED: Success payment flow unaffected by error masking changes. Successful payment shows 'Merci!' screen, cart is emptied, order ID displayed correctly."
+
+metadata:
+  created_by: "testing_agent"
+  version: "1.2"
+  test_sequence: 7
+  run_ui: true
+  last_updated: "2026-07-08"
+  test_type: "cloudflare_error_masking_fix"
+
+test_plan:
+  current_focus: []
+  stuck_tasks: []
+  test_all: false
+  test_priority: "high_first"
+
+agent_communication:
+  - agent: "testing"
+    message: "CLOUDFLARE ERROR MASKING FIX COMPLETE. Root cause identified: Cloudflare returns RFC 7807 Problem Details JSON (not HTML) with 'detail' field containing raw error text. Original masking logic only checked for HTML strings. Fix applied: Added keyword detection for Cloudflare-specific terms ('Cloudflare', 'origin web server', 'Bad gateway', 'overloaded or misconfigured') in extracted detail string. All 4 test scenarios PASSED: (1) Real Cloudflare 502 JSON - masked correctly, (2) Simulated HTML error - masked correctly, (3) Clean JSON errors - NOT masked (correct behavior), (4) Success flow - works correctly. User-reported issue is now RESOLVED."

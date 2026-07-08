@@ -204,14 +204,15 @@ async def create_payin(payload: PaxityPayinRequest, request: Request, bg: Backgr
     logger.info(f"[Paxity] PayIn request order={order_id} amount={payload.amount} method={payload.payment_method}")
 
     # ---- Robust Paxity call ----
-    # Timeout is short enough to stay well below Cloudflare's 100s limit and
-    # we always return a proper JSON response, even on the worst case.
+    # Timeout kept aggressive so we always respond before Cloudflare / the
+    # platform ingress gives up (~30s on many providers). This prevents
+    # HTML error pages ever reaching the client.
     resp = None
     data: dict = {}
     error_message: str | None = None
 
     try:
-        async with httpx.AsyncClient(timeout=25.0) as client:
+        async with httpx.AsyncClient(timeout=httpx.Timeout(20.0, connect=5.0)) as client:
             resp = await client.post(
                 f"{PAXITY_BASE_URL}/payments/payin/",
                 headers=_headers(),
