@@ -64,7 +64,7 @@ export const Footer = () => {
                             <ul className="space-y-3 text-sm">
                                 <li><a href="#" className="hover:text-primary transition-colors">Livraison</a></li>
                                 <li><a href="#" className="hover:text-primary transition-colors">Retours</a></li>
-                                <li><a href="#" className="hover:text-primary transition-colors">Suivi de commande</a></li>
+                                <li><Link to="/suivi" className="hover:text-primary transition-colors">Suivi de commande</Link></li>
                                 <li><a href="#" className="hover:text-primary transition-colors">FAQ</a></li>
                                 <li><a href="#" className="hover:text-primary transition-colors">Contact</a></li>
                             </ul>

@@ -465,6 +465,8 @@ async def create_payin(payload: PaxityPayinRequest, request: Request, bg: Backgr
             "payment_method": payload.payment_method,
             "transaction_id": tx.id,
             "created_at": tx.created_at.isoformat(),
+            "tracking_step": "ordered",
+            "tracking_history": [{"step": "ordered", "at": tx.created_at.isoformat()}],
         })
     except Exception:
         logger.exception("[Paxity] Mongo insert failed — continuing anyway")

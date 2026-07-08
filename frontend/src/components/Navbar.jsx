@@ -14,6 +14,7 @@ const navLinks = [
     { to: "/boutique/mode", label: "Mode" },
     { to: "/boutique/tech", label: "Tech" },
     { to: "/boutique/maison", label: "Maison" },
+    { to: "/suivi", label: "Suivi de colis" },
 ];
 
 export const Navbar = () => {

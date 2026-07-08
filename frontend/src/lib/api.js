@@ -28,3 +28,9 @@ export const paxityAPI = {
     getStatus: (transactionId) => api.get(`/paxity/status/${transactionId}`).then((r) => r.data),
     getOrder: (orderId) => api.get(`/paxity/orders/${orderId}`).then((r) => r.data),
 };
+
+// --------- Suivi de commande ---------
+export const trackingAPI = {
+    track: (orderId) => api.get(`/tracking/${encodeURIComponent(orderId)}`).then((r) => r.data),
+    updateStep: (orderId, step) => api.put(`/tracking/${encodeURIComponent(orderId)}`, { step }).then((r) => r.data),
+};

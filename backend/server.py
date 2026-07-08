@@ -79,6 +79,10 @@ async def get_status_checks():
 from paxity_router import router as paxity_router
 api_router.include_router(paxity_router)
 
+# ---- Order tracking (Où est mon colis ?) ---------------------------------
+from tracking_router import router as tracking_router
+api_router.include_router(tracking_router)
+
 # Include the api router in the main app
 app.include_router(api_router)
 

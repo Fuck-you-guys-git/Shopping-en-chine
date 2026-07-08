@@ -281,6 +281,11 @@ export default function Checkout() {
                         <p className="text-xs font-mono text-muted-foreground mb-8">Commande {transaction.order_id}</p>
                     )}
                     <div className="flex flex-wrap gap-3 justify-center">
+                        {transaction?.order_id && (
+                            <Button asChild size="lg" className="rounded-full bg-primary text-primary-foreground hover:bg-primary/90" data-testid="track-order-btn">
+                                <Link to={`/suivi/${transaction.order_id}`}>Suivre ma commande</Link>
+                            </Button>
+                        )}
                         <Button asChild size="lg" className="rounded-full bg-ink text-ink-foreground hover:bg-ink/90">
                             <Link to="/">Retour à l&apos;accueil</Link>
                         </Button>

@@ -12,6 +12,7 @@ import Products from "@/pages/Products";
 import ProductDetail from "@/pages/ProductDetail";
 import Cart from "@/pages/Cart";
 import Checkout from "@/pages/Checkout";
+import TrackOrder from "@/pages/TrackOrder";
 import ScrollToTop from "@/components/ScrollToTop";
 import SellerLayout from "@/pages/seller/SellerLayout";
 import Dashboard from "@/pages/seller/Dashboard";
@@ -48,6 +49,8 @@ function App() {
                                 <Route path="/produit/:id" element={<ProductDetail />} />
                                 <Route path="/panier" element={<Cart />} />
                                 <Route path="/commande" element={<Checkout />} />
+                                <Route path="/suivi" element={<TrackOrder />} />
+                                <Route path="/suivi/:orderId" element={<TrackOrder />} />
 
                                 {/* Seller login (public) */}
                                 <Route path="/vendeur/login" element={<SellerLogin />} />
