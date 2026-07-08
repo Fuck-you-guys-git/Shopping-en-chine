@@ -65,3 +65,7 @@ class TestExtractError:
 
     def test_fallback(self):
         assert "401" in _extract_error_message({}, 401)
+        assert "Identifiants Paxity" in _extract_error_message({}, 401)
+
+    def test_generic_status_fallback(self):
+        assert "500" in _extract_error_message({}, 500)

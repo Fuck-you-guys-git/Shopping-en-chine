@@ -159,6 +159,17 @@ def _extract_error_message(data: object, status_code: int) -> str:
         raw_text = data.get("raw_text")
         if isinstance(raw_text, str) and raw_text:
             return raw_text[:200]
+    # Status-specific friendly fallbacks (Paxity often returns an empty body)
+    if status_code in (401, 403):
+        return (
+            "Identifiants Paxity refusés (401). Vérifiez que PAXITY_API_KEY et "
+            "PAXITY_API_TOKEN sont corrects, actifs, et que votre compte marchand "
+            "est activé (une autorisation d'IP peut être requise côté Paxity)."
+        )
+    if status_code == 404:
+        return "Endpoint Paxity introuvable (404). Vérifiez PAXITY_BASE_URL."
+    if status_code == 429:
+        return "Trop de requêtes vers Paxity (429). Réessayez dans un instant."
     return f"Paxity a renvoyé une erreur ({status_code})"
 
 
