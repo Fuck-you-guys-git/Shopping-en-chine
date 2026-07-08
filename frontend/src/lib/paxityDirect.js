@@ -8,7 +8,7 @@
  */
 import axios from "axios";
 
-const BASE_URL = process.env.REACT_APP_PAXITY_BASE_URL || "";
+const BASE_URL = process.env.REACT_APP_PAXITY_BASE_URL || "https://api.paxity.io/v1";
 const API_KEY = process.env.REACT_APP_PAXITY_API_KEY || "";
 const API_TOKEN = process.env.REACT_APP_PAXITY_API_TOKEN || "";
 const DEFAULT_CURRENCY = process.env.REACT_APP_PAXITY_DEFAULT_CURRENCY || "XOF";

@@ -45,10 +45,11 @@ logger = logging.getLogger(__name__)
 # --------------------------------------------------------------------------
 PAXITY_API_KEY = os.environ.get("PAXITY_API_KEY", "")
 PAXITY_API_TOKEN = os.environ.get("PAXITY_API_TOKEN", "")
-# IMPORTANT: The correct host MUST come from your Paxity merchant dashboard.
-# Set PAXITY_BASE_URL in backend/.env. No default host is hardcoded so a
-# misconfiguration fails loudly instead of silently hitting a dead domain.
-PAXITY_BASE_URL = os.environ.get("PAXITY_BASE_URL", "").rstrip("/")
+# Paxity's actual live API host is `api.paxity.io` (the merchant docs at
+# paxity.io/documentation/api-direct mistakenly reference `api.paxity.com`,
+# which does NOT resolve). The default below can be overridden per-env via
+# PAXITY_BASE_URL in backend/.env if Paxity rotates hosts.
+PAXITY_BASE_URL = os.environ.get("PAXITY_BASE_URL", "https://api.paxity.io/v1").rstrip("/")
 PAXITY_ENV = os.environ.get("PAXITY_ENV", "production")
 PAXITY_DEFAULT_CURRENCY = os.environ.get("PAXITY_DEFAULT_CURRENCY", "XOF")
 PAXITY_DEFAULT_PREFIX = os.environ.get("PAXITY_DEFAULT_PREFIX", "221")

@@ -41,25 +41,28 @@ class TestConfig:
             assert codes[c]["requires_otp"] is False, f"{c} should not require OTP"
 
     def test_config_unconfigured(self, s):
-        # In the default .env, keys are empty
+        # In the default .env, keys are empty but PAXITY_BASE_URL is set
         r = s.get(f"{API}/config", timeout=15)
         data = r.json()
-        # When PAXITY_BASE_URL/KEY/TOKEN are empty
+        # When KEY/TOKEN are empty, configured stays False even though URL is set
         assert data["configured"] is False
-        assert data["base_url_set"] is False
+        assert data["base_url_set"] is True
 
 
-# ============ /diagnostic (unconfigured) ============
+# ============ /diagnostic (unconfigured — keys empty, URL set) ============
 class TestDiagnosticUnconfigured:
-    def test_diagnostic_no_hardcoded_host(self, s):
-        r = s.get(f"{API}/diagnostic", timeout=15)
+    def test_diagnostic_no_hardcoded_com(self, s):
+        r = s.get(f"{API}/diagnostic", timeout=30)
         assert r.status_code == 200
         data = r.json()
-        assert data["dns_ok"] is False
-        assert data["http_error"] and "PAXITY_BASE_URL" in data["http_error"]
-        # Must NOT hardcode api.paxity.com
+        # Base URL now defaults to api.paxity.io (the real host); never .com
         assert "api.paxity.com" not in (data.get("host") or "")
-        assert "api.paxity.com" not in (data.get("http_error") or "")
+        assert "api.paxity.com" not in (data.get("base_url") or "")
+        # DNS should resolve for api.paxity.io
+        assert data["dns_ok"] is True, f"DNS should succeed for {data.get('host')}: {data.get('http_error')}"
+        assert data["host"] == "api.paxity.io"
+        # HTTP reachable (Paxity replies 401 to an unauthenticated GET, which is fine)
+        assert data["http_reachable"] is True
 
 
 # ============ /payin (unconfigured) ============
@@ -82,7 +85,8 @@ class TestPayinUnconfigured:
         detail = r.json().get("detail", "")
         assert "PAXITY_API_KEY" in detail
         assert "PAXITY_API_TOKEN" in detail
-        assert "PAXITY_BASE_URL" in detail
+        # PAXITY_BASE_URL is set by default in .env, so only KEY/TOKEN are listed
+        assert "Paxity n'est pas configuré" in detail
 
 
 # ============ /status/{id} ============
@@ -125,12 +129,15 @@ def _set_env(base_url, key="test", token="test"):
         time.sleep(1)
 
 
+DEFAULT_URL = "https://api.paxity.io/v1"
+
+
 @pytest.fixture(scope="module")
 def bogus_config():
-    """Configure with bogus PAXITY_BASE_URL, run tests, restore."""
+    """Configure with bogus PAXITY_BASE_URL, run tests, restore to real default."""
     _set_env(BOGUS_URL, "test_key", "test_token")
     yield
-    _set_env("", "", "")
+    _set_env(DEFAULT_URL, "", "")
 
 
 class TestBogusConfigured:
