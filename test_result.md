@@ -772,3 +772,101 @@ test_plan:
 agent_communication:
   - agent: "testing"
     message: "CLOUDFLARE ERROR MASKING FIX COMPLETE. Root cause identified: Cloudflare returns RFC 7807 Problem Details JSON (not HTML) with 'detail' field containing raw error text. Original masking logic only checked for HTML strings. Fix applied: Added keyword detection for Cloudflare-specific terms ('Cloudflare', 'origin web server', 'Bad gateway', 'overloaded or misconfigured') in extracted detail string. All 4 test scenarios PASSED: (1) Real Cloudflare 502 JSON - masked correctly, (2) Simulated HTML error - masked correctly, (3) Clean JSON errors - NOT masked (correct behavior), (4) Success flow - works correctly. User-reported issue is now RESOLVED."
+
+# ============================================================================
+# Paxity Self-Diagnostic Panel Tests (2026-07-08)
+# ============================================================================
+
+user_problem_statement_update: "Test the new self-diagnostic panel added to Shopping en Chine e-commerce checkout. User keeps getting 'Service de paiement momentanément indisponible' on production without being able to see why. Added auto-diagnostic panel that appears below payment form after failed payment, showing technical reason (DNS failure, HTTP unreachable, auth error, etc.)."
+
+frontend:
+  - task: "Scenario 1 - Diagnostic panel auto-appears on payment failure"
+    implemented: true
+    working: true
+    file: "/app/frontend/src/pages/Checkout.jsx"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: true
+        agent: "testing"
+        comment: "✅ PASSED: Diagnostic panel automatically appears after payment failure. All 8 required fields present: Configuré (✅ oui), Env. (production), DNS Paxity (❌ échec), HTTP accessible (❌ non), Statut HTTP (—), Latence (—), Test auth (—), Clé API (40 car.). Error section displays DNS lookup failure message. '🎯 Cause probable' callout present with message about contacting emergent support and mentions api.paxity.com. Panel appears in amber color with AlertTriangle icon and title 'Diagnostic de la connexion Paxity'."
+
+  - task: "Scenario 2 - Diagnostic panel can be dismissed"
+    implemented: true
+    working: true
+    file: "/app/frontend/src/pages/Checkout.jsx"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: true
+        agent: "testing"
+        comment: "✅ PASSED: Diagnostic panel can be dismissed by clicking 'Masquer' button. Panel disappears from view after clicking, allowing user to retry payment without clutter."
+
+  - task: "Scenario 3 - Simulated DNS failure diagnostic"
+    implemented: true
+    working: true
+    file: "/app/backend/paxity_router.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: true
+        agent: "testing"
+        comment: "✅ PASSED: DNS failure naturally occurs in preview environment. Diagnostic panel correctly shows 'DNS Paxity: ❌ échec' and 'HTTP accessible: ❌ non'. Error message displays DNS lookup failure. Cause callout correctly identifies network restrictions and suggests contacting support@emergent.sh."
+
+  - task: "Scenario 4 - Simulated auth failure diagnostic (401)"
+    implemented: true
+    working: true
+    file: "/app/frontend/src/pages/Checkout.jsx"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: true
+        agent: "testing"
+        comment: "✅ PASSED: Simulated 401 auth failure by intercepting diagnostic endpoint. Diagnostic panel correctly shows: DNS Paxity (✅ ok), HTTP accessible (✅ oui), Statut HTTP (401), Test auth (401), Latence (234 ms). '🎯 Cause probable' callout displays 'Clés API refusées par Paxity (401)' with suggestion to regenerate keys in Paxity dashboard and update backend/.env. All indicators correctly reflect auth failure scenario."
+
+backend:
+  - task: "Scenario 5 - Diagnostic endpoint reachable"
+    implemented: true
+    working: true
+    file: "/app/backend/paxity_router.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: true
+        agent: "testing"
+        comment: "✅ PASSED: GET /api/paxity/diagnostic returns HTTP 200 with expected JSON structure. Fields present: configured (true), environment (production), base_url, api_key_length (40), api_token_length (32), dns_ok (false), http_reachable (false), http_status, http_error, latency_ms, auth_test_status, auth_test_body. Endpoint performs DNS lookup, HTTP reachability test, and auth test with dummy request."
+
+  - task: "Scenario 6 - Existing scenarios still pass"
+    implemented: true
+    working: true
+    file: "N/A"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: true
+        agent: "testing"
+        comment: "✅ PASSED: All existing scenarios still work correctly. Home page (/) loads with 'Shopping en Chine' hero visible. Admin login page (/admin/login) loads with 'Connexion vendeur' form. No console errors detected during checkout flow. Diagnostic panel addition does not break existing functionality."
+
+metadata:
+  created_by: "testing_agent"
+  version: "1.3"
+  test_sequence: 8
+  run_ui: true
+  last_updated: "2026-07-08"
+  test_type: "paxity_diagnostic_panel"
+
+test_plan:
+  current_focus: []
+  stuck_tasks: []
+  test_all: false
+  test_priority: "high_first"
+
+agent_communication:
+  - agent: "testing"
+    message: "PAXITY SELF-DIAGNOSTIC PANEL TESTING COMPLETE. ALL 6 SCENARIOS PASSED. The new diagnostic panel successfully addresses the user's problem of not being able to see why payments fail in production. Key findings: (1) Panel auto-appears after payment failure with all 8 diagnostic fields, (2) Panel can be dismissed with 'Masquer' button, (3) DNS failure correctly detected and displayed (natural in preview environment), (4) Auth failure (401) correctly detected with appropriate cause message, (5) Backend diagnostic endpoint returns comprehensive diagnostic data, (6) Existing checkout flow unaffected. The panel provides actionable technical information: DNS/HTTP connectivity status, auth test results, API key configuration, latency, and probable cause callouts with specific remediation steps. User can now screenshot the diagnostic panel and send to support for faster troubleshooting. Implementation is production-ready."

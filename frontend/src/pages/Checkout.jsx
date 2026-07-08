@@ -21,6 +21,15 @@ const OPERATOR_META = {
     card: { label: "Carte", color: "#111", bg: "bg-secondary" },
 };
 
+const DiagnosticRow = ({ label, value, good }) => (
+    <div className="flex items-center gap-2">
+        <span className="text-amber-800/70 w-24 shrink-0">{label} :</span>
+        <span className={good === false ? "text-red-700 font-semibold" : good === true ? "text-green-700 font-semibold" : "text-amber-900"}>
+            {String(value)}
+        </span>
+    </div>
+);
+
 export default function Checkout() {
     const { items, subtotal, clear } = useCart();
     const navigate = useNavigate();
@@ -42,6 +51,8 @@ export default function Checkout() {
     const [processing, setProcessing] = useState(false);
     const [transaction, setTransaction] = useState(null); // { transaction_id, status, order_id, ... }
     const [complete, setComplete] = useState(false);
+    const [diagnostic, setDiagnostic] = useState(null);
+    const [showDiagnostic, setShowDiagnostic] = useState(false);
 
     // Fetch backend config
     useEffect(() => {
@@ -189,6 +200,16 @@ export default function Checkout() {
             
             toast.error("Erreur de paiement", { description: detail });
             setPaxityError(detail);
+
+            // Auto-run diagnostic to help identify the root cause
+            try {
+                const diag = await paxityAPI.getDiagnostic();
+                setDiagnostic(diag);
+                setShowDiagnostic(true);
+            } catch (diagErr) {
+                setDiagnostic({ error: "Diagnostic non disponible", raw: diagErr.message });
+                setShowDiagnostic(true);
+            }
         } finally {
             setProcessing(false);
         }
@@ -379,6 +400,73 @@ export default function Checkout() {
                                 <div className="flex gap-3 p-4 rounded-xl bg-destructive/10 border border-destructive/20 text-destructive text-sm">
                                     <XCircle className="h-5 w-5 shrink-0 mt-0.5" />
                                     <div className="flex-1">{paxityError}</div>
+                                </div>
+                            )}
+
+                            {/* Diagnostic panel — auto-shown after a payment failure */}
+                            {showDiagnostic && diagnostic && (
+                                <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm">
+                                    <div className="flex items-start justify-between gap-2 mb-3">
+                                        <div className="flex gap-2">
+                                            <AlertTriangle className="h-4 w-4 text-amber-600 mt-0.5" />
+                                            <div>
+                                                <p className="font-medium text-amber-900">Diagnostic de la connexion Paxity</p>
+                                                <p className="text-xs text-amber-800/80 mt-0.5">
+                                                    Voici ce que le serveur voit — envoyez cette capture au support si le problème persiste.
+                                                </p>
+                                            </div>
+                                        </div>
+                                        <button onClick={() => setShowDiagnostic(false)} className="text-amber-700 hover:text-amber-900 text-xs">
+                                            Masquer
+                                        </button>
+                                    </div>
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-3 gap-y-1.5 text-xs font-mono">
+                                        <DiagnosticRow label="Configuré" value={diagnostic.configured ? "✅ oui" : "❌ non"} good={diagnostic.configured} />
+                                        <DiagnosticRow label="Env." value={diagnostic.environment || "—"} />
+                                        <DiagnosticRow label="DNS Paxity" value={diagnostic.dns_ok ? "✅ ok" : "❌ échec"} good={diagnostic.dns_ok} />
+                                        <DiagnosticRow label="HTTP accessible" value={diagnostic.http_reachable ? "✅ oui" : "❌ non"} good={diagnostic.http_reachable} />
+                                        <DiagnosticRow label="Statut HTTP" value={diagnostic.http_status ?? "—"} />
+                                        <DiagnosticRow label="Latence" value={diagnostic.latency_ms ? `${diagnostic.latency_ms} ms` : "—"} />
+                                        <DiagnosticRow label="Test auth" value={diagnostic.auth_test_status ?? "—"} />
+                                        <DiagnosticRow label="Clé API" value={diagnostic.api_key_length ? `${diagnostic.api_key_length} car.` : "vide"} />
+                                    </div>
+                                    {diagnostic.http_error && (
+                                        <div className="mt-3 text-xs bg-amber-100 rounded p-2 font-mono text-amber-900 whitespace-pre-wrap break-words">
+                                            <strong>Erreur :</strong> {diagnostic.http_error}
+                                        </div>
+                                    )}
+                                    {diagnostic.auth_test_body && (
+                                        <details className="mt-2 text-xs">
+                                            <summary className="cursor-pointer text-amber-800 hover:text-amber-900">Voir la réponse Paxity (test auth)</summary>
+                                            <pre className="mt-2 bg-amber-100 rounded p-2 font-mono text-amber-900 whitespace-pre-wrap break-words max-h-40 overflow-auto">{diagnostic.auth_test_body}</pre>
+                                        </details>
+                                    )}
+
+                                    {/* Interpret the result for the user */}
+                                    {!diagnostic.dns_ok && (
+                                        <div className="mt-3 p-3 rounded-lg bg-white border border-amber-300 text-amber-900">
+                                            <p className="font-semibold text-xs">🎯 Cause probable</p>
+                                            <p className="text-xs mt-1 leading-relaxed">
+                                                Le serveur ne peut pas résoudre <code>api.paxity.com</code> depuis Emergent. Ce sont probablement les <strong>restrictions réseau de l'hébergement</strong>. Contactez <a href="mailto:support@emergent.sh" className="underline">support@emergent.sh</a> en leur envoyant cette capture pour demander l'autorisation d'appels sortants vers <code>api.paxity.com</code>.
+                                            </p>
+                                        </div>
+                                    )}
+                                    {diagnostic.dns_ok && !diagnostic.http_reachable && (
+                                        <div className="mt-3 p-3 rounded-lg bg-white border border-amber-300 text-amber-900">
+                                            <p className="font-semibold text-xs">🎯 Cause probable</p>
+                                            <p className="text-xs mt-1 leading-relaxed">
+                                                DNS OK mais l'API HTTP ne répond pas. Vérifiez que <code>{diagnostic.base_url}</code> est bien l'URL correcte de l'API Paxity dans votre dashboard.
+                                            </p>
+                                        </div>
+                                    )}
+                                    {diagnostic.http_reachable && diagnostic.auth_test_status === 401 && (
+                                        <div className="mt-3 p-3 rounded-lg bg-white border border-amber-300 text-amber-900">
+                                            <p className="font-semibold text-xs">🎯 Cause probable</p>
+                                            <p className="text-xs mt-1 leading-relaxed">
+                                                Clés API refusées par Paxity (401). Régénérez vos clés dans le dashboard Paxity puis mettez-les à jour dans <code>backend/.env</code>.
+                                            </p>
+                                        </div>
+                                    )}
                                 </div>
                             )}
 
