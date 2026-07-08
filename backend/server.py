@@ -25,6 +25,18 @@ app = FastAPI(title="Shopping en Chine API")
 # Make db reachable from routers via request.app.state.db
 app.state.db = db
 
+# Global exception safety net — return JSON instead of crashing the worker
+# (prevents Cloudflare 520/521 in front of our origin)
+from fastapi.responses import JSONResponse
+
+@app.exception_handler(Exception)
+async def _unhandled_exception_handler(request, exc):
+    logging.getLogger(__name__).exception("Unhandled exception")
+    return JSONResponse(
+        status_code=500,
+        content={"detail": f"Erreur serveur : {type(exc).__name__}"},
+    )
+
 # Create a router with the /api prefix
 api_router = APIRouter(prefix="/api")
 

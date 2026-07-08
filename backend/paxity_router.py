@@ -101,7 +101,7 @@ class PaxityTransaction(BaseModel):
     description: str
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
-    raw_response: Optional[dict] = None
+    raw_response: Optional[dict | list] = None
 
 
 # --------------------------------------------------------------------------
@@ -140,6 +140,10 @@ async def get_config():
 async def create_payin(payload: PaxityPayinRequest, request: Request, bg: BackgroundTasks):
     """
     Initiate a Paxity PayIn (customer pays merchant).
+
+    IMPORTANT: This handler is wrapped in a global try/except so that any
+    unexpected failure returns a proper JSON error instead of crashing the
+    process and triggering a Cloudflare 520/521 in front of the app.
     """
     if not PAXITY_CONFIGURED:
         raise HTTPException(
@@ -169,17 +173,22 @@ async def create_payin(payload: PaxityPayinRequest, request: Request, bg: Backgr
     )
 
     # Persist the order first (source of truth even if Paxity is down)
-    await db.orders.insert_one({
-        "id": order_id,
-        "customer": payload.customer.model_dump(),
-        "items": [it.model_dump() for it in payload.items],
-        "amount": payload.amount,
-        "currency": "XOF",
-        "status": "pending",
-        "payment_method": payload.payment_method,
-        "transaction_id": tx.id,
-        "created_at": tx.created_at.isoformat(),
-    })
+    try:
+        await db.orders.insert_one({
+            "id": order_id,
+            "customer": payload.customer.model_dump(),
+            "items": [it.model_dump() for it in payload.items],
+            "amount": payload.amount,
+            "currency": "XOF",
+            "status": "pending",
+            "payment_method": payload.payment_method,
+            "transaction_id": tx.id,
+            "created_at": tx.created_at.isoformat(),
+        })
+    except Exception as e:
+        logger.exception("[Paxity] Mongo insert failed")
+        # Don't fail the payment because Mongo is transient — continue anyway
+        pass
 
     body = {
         "amount": int(payload.amount),
@@ -194,35 +203,83 @@ async def create_payin(payload: PaxityPayinRequest, request: Request, bg: Backgr
 
     logger.info(f"[Paxity] PayIn request order={order_id} amount={payload.amount} method={payload.payment_method}")
 
+    # ---- Robust Paxity call ----
+    # Timeout is short enough to stay well below Cloudflare's 100s limit and
+    # we always return a proper JSON response, even on the worst case.
+    resp = None
+    data: dict = {}
+    error_message: str | None = None
+
     try:
-        async with httpx.AsyncClient(timeout=30.0) as client:
+        async with httpx.AsyncClient(timeout=25.0) as client:
             resp = await client.post(
                 f"{PAXITY_BASE_URL}/payments/payin/",
                 headers=_headers(),
                 json=body,
             )
-            data = resp.json() if resp.content else {}
+    except httpx.TimeoutException:
+        error_message = "Le serveur Paxity a mis trop de temps à répondre. Réessayez."
+        logger.exception("[Paxity] Timeout")
     except httpx.RequestError as e:
+        error_message = f"Erreur réseau vers Paxity : {e}"
         logger.exception("[Paxity] Network error")
-        tx.status = "failed"
-        tx.raw_response = {"error": str(e)}
-        await db.paxity_transactions.insert_one(tx.model_dump(mode="json"))
-        raise HTTPException(status_code=502, detail=f"Erreur réseau Paxity : {e}")
+    except Exception as e:  # noqa: BLE001
+        error_message = f"Erreur inattendue : {e}"
+        logger.exception("[Paxity] Unexpected transport error")
 
-    tx.raw_response = data
-    tx.paxity_transaction_id = data.get("transactionId") or data.get("id") or data.get("txId")
-    tx.paxity_reference = data.get("reference") or data.get("ref")
+    if resp is not None:
+        # Parse JSON safely — Paxity sometimes returns HTML on errors.
+        try:
+            data = resp.json() if resp.content else {}
+            if not isinstance(data, dict):
+                data = {"raw": data}
+        except Exception:
+            text_preview = (resp.text or "")[:500]
+            data = {"raw_text": text_preview}
+            logger.warning(f"[Paxity] Non-JSON response ({resp.status_code}): {text_preview!r}")
+
+    # Update transaction with whatever we have
+    try:
+        tx.raw_response = data
+        tx.paxity_transaction_id = (
+            data.get("transactionId") or data.get("id") or data.get("txId")
+            if isinstance(data, dict) else None
+        )
+        tx.paxity_reference = (
+            data.get("reference") or data.get("ref")
+            if isinstance(data, dict) else None
+        )
+    except Exception:
+        logger.exception("[Paxity] Failed to parse Paxity fields")
+
+    # Determine final status
+    if error_message or resp is None:
+        tx.status = "failed"
+        # Persist and return a proper error
+        try:
+            await db.paxity_transactions.insert_one(tx.model_dump(mode="json"))
+            await db.orders.update_one({"id": order_id}, {"$set": {"status": "failed"}})
+        except Exception:
+            logger.exception("[Paxity] Mongo write failed on error path")
+        raise HTTPException(status_code=502, detail=error_message or "Aucune réponse de Paxity")
 
     if resp.status_code >= 400:
         tx.status = "failed"
-        await db.paxity_transactions.insert_one(tx.model_dump(mode="json"))
-        await db.orders.update_one({"id": order_id}, {"$set": {"status": "failed"}})
-        message = data.get("message") or data.get("error") or f"Erreur Paxity {resp.status_code}"
-        logger.error(f"[Paxity] Failure {resp.status_code}: {data}")
-        raise HTTPException(status_code=resp.status_code, detail=message)
+        try:
+            await db.paxity_transactions.insert_one(tx.model_dump(mode="json"))
+            await db.orders.update_one({"id": order_id}, {"$set": {"status": "failed"}})
+        except Exception:
+            logger.exception("[Paxity] Mongo write failed on 4xx path")
+        message = (
+            data.get("message") if isinstance(data, dict) else None
+        ) or (
+            data.get("error") if isinstance(data, dict) else None
+        ) or f"Paxity a renvoyé une erreur ({resp.status_code})"
+        logger.error(f"[Paxity] {resp.status_code} — {data}")
+        raise HTTPException(status_code=resp.status_code, detail=str(message))
 
     # Best-effort status parsing
-    raw_status = str(data.get("status", "pending")).lower()
+    raw_status = str(data.get("status", "pending") if isinstance(data, dict) else "pending").lower()
     if raw_status in ("success", "completed", "paid", "successful"):
         tx.status = "success"
     elif raw_status in ("failed", "error", "cancelled"):
@@ -230,8 +287,11 @@ async def create_payin(payload: PaxityPayinRequest, request: Request, bg: Backgr
     else:
         tx.status = "pending"
 
-    await db.paxity_transactions.insert_one(tx.model_dump(mode="json"))
-    await db.orders.update_one({"id": order_id}, {"$set": {"status": tx.status}})
+    try:
+        await db.paxity_transactions.insert_one(tx.model_dump(mode="json"))
+        await db.orders.update_one({"id": order_id}, {"$set": {"status": tx.status}})
+    except Exception:
+        logger.exception("[Paxity] Mongo write failed on success path")
 
     return {
         "order_id": order_id,
@@ -240,7 +300,7 @@ async def create_payin(payload: PaxityPayinRequest, request: Request, bg: Backgr
         "amount": payload.amount,
         "currency": "XOF",
         "paxity_transaction_id": tx.paxity_transaction_id,
-        "message": data.get("message"),
+        "message": data.get("message") if isinstance(data, dict) else None,
     }
 
 
