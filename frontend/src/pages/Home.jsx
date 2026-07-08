@@ -1,15 +1,15 @@
 import { Link } from "react-router-dom";
-import { ArrowRight, Truck, RotateCcw, ShieldCheck, HeadphonesIcon, Star, Search } from "lucide-react";
+import { ArrowRight, Truck, RotateCcw, ShieldCheck, HeadphonesIcon, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { ProductCard } from "@/components/ProductCard";
-import { categories, products, testimonials } from "@/data/products";
+import { categories, products } from "@/data/products";
 import { useNavigate } from "react-router-dom";
 import { useState } from "react";
 
 const benefits = [
-    { icon: Truck, title: "Livraison rapide", desc: "En 2–5 jours partout" },
+    { icon: Truck, title: "Livraison Chine → Dakar", desc: "En 15–20 jours" },
     { icon: RotateCcw, title: "Retours 30 jours", desc: "Sans question, sans stress" },
     { icon: ShieldCheck, title: "Paiement sécurisé", desc: "Mobile Money, Carte, PayPal" },
     { icon: HeadphonesIcon, title: "Service client", desc: "7 jours / 7, en français" },
@@ -36,7 +36,7 @@ export default function Home() {
                                 <span className="block italic text-primary text-2xl sm:text-3xl md:text-4xl mt-1">Tout, plus simple.</span>
                             </h1>
                             <p className="mt-2 text-sm md:text-base text-muted-foreground">
-                                Livraison partout · Paiement Mobile Money · Retours 30 jours
+                                Livraison Chine → Dakar en 15–20 jours · Paiement Mobile Money
                             </p>
                         </div>
                         <form onSubmit={onSearch} className="relative w-full md:w-96 shrink-0">
@@ -101,7 +101,7 @@ export default function Home() {
                     </Badge>
                     <div className="flex-1 text-center md:text-left">
                         <h3 className="font-display text-2xl md:text-3xl leading-tight">
-                            −30% sur la Tech <span className="italic text-primary-glow">jusqu'à dimanche</span>
+                            −30% sur la Tech <span className="italic text-primary-glow">jusqu&apos;à dimanche</span>
                         </h3>
                         <p className="text-sm text-ink-foreground/70 mt-1">Casques, gadgets, accessoires connectés.</p>
                     </div>
@@ -164,7 +164,7 @@ export default function Home() {
             </section>
 
             {/* BENEFITS */}
-            <section className="bg-secondary/40 mt-10">
+            <section className="bg-secondary/40 mt-10 mb-4">
                 <div className="container mx-auto px-5 py-10">
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-5 md:gap-8">
                         {benefits.map((b) => (
@@ -179,40 +179,6 @@ export default function Home() {
                             </div>
                         ))}
                     </div>
-                </div>
-            </section>
-
-            {/* TESTIMONIALS — condensed */}
-            <section className="container mx-auto px-5 py-14">
-                <div className="text-center max-w-2xl mx-auto mb-8">
-                    <h2 className="font-display text-2xl sm:text-3xl font-medium tracking-tight">
-                        Ils shoppent, ils recommandent.
-                    </h2>
-                    <div className="flex items-center justify-center gap-1 mt-3">
-                        {[...Array(5)].map((_, i) => (
-                            <Star key={i} className="h-4 w-4 fill-primary stroke-primary" />
-                        ))}
-                        <span className="ml-2 text-sm font-medium">4.9/5 · 24 000+ clients</span>
-                    </div>
-                </div>
-                <div className="grid md:grid-cols-3 gap-4">
-                    {testimonials.map((t) => (
-                        <div key={t.name} className="bg-card rounded-2xl p-6 shadow-soft flex flex-col">
-                            <div className="flex gap-0.5 mb-3">
-                                {[...Array(t.rating)].map((_, i) => (
-                                    <Star key={i} className="h-3.5 w-3.5 fill-primary stroke-primary" />
-                                ))}
-                            </div>
-                            <p className="text-sm leading-relaxed text-foreground/90 flex-1">« {t.text} »</p>
-                            <div className="mt-4 flex items-center gap-3">
-                                <img src={t.avatar} alt={t.name} className="h-9 w-9 rounded-full object-cover" />
-                                <div>
-                                    <p className="font-medium text-sm leading-tight">{t.name}</p>
-                                    <p className="text-xs text-muted-foreground">{t.city}</p>
-                                </div>
-                            </div>
-                        </div>
-                    ))}
                 </div>
             </section>
         </div>

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
-import { ArrowLeft, Heart, ShoppingBag, Star, Truck, RotateCcw, ShieldCheck, Minus, Plus, Check } from "lucide-react";
+import { ArrowLeft, Heart, ShoppingBag, Truck, RotateCcw, ShieldCheck, Minus, Plus, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
@@ -83,15 +83,6 @@ export default function ProductDetail() {
                         <h1 className="font-display text-3xl sm:text-4xl lg:text-5xl font-medium leading-tight tracking-tight">
                             {product.name}
                         </h1>
-                        <div className="flex items-center gap-3 mt-3">
-                            <div className="flex gap-0.5">
-                                {[...Array(5)].map((_, i) => (
-                                    <Star key={i} className={`h-4 w-4 ${i < Math.round(product.rating) ? "fill-primary stroke-primary" : "stroke-muted-foreground"}`} />
-                                ))}
-                            </div>
-                            <span className="text-sm font-medium">{product.rating}</span>
-                            <span className="text-sm text-muted-foreground">· {product.reviews} avis</span>
-                        </div>
 
                         <div className="mt-6 flex items-baseline gap-3">
                             <span className="font-display text-4xl font-semibold">{formatPrice(product.price)}</span>
@@ -169,7 +160,7 @@ export default function ProductDetail() {
 
                         <div className="grid grid-cols-3 gap-4 text-center">
                             {[
-                                { icon: Truck, label: "Livré en 2–4 jours" },
+                                { icon: Truck, label: "Livré en 15–20 jours" },
                                 { icon: RotateCcw, label: "Retours 30 jours" },
                                 { icon: ShieldCheck, label: "Garantie 2 ans" },
                             ].map((f) => (
@@ -211,8 +202,7 @@ export default function ProductDetail() {
                             </dl>
                         </TabsContent>
                         <TabsContent value="ship" className="pt-6 text-muted-foreground leading-relaxed space-y-2">
-                            <p><span className="text-foreground font-medium">Livraison standard</span> en 2–4 jours ouvrés — offerte dès 49 €.</p>
-                            <p><span className="text-foreground font-medium">Livraison express</span> en 24–48h : 7,90 €.</p>
+                            <p><span className="text-foreground font-medium">Livraison Chine → Dakar</span> en 15–20 jours — offerte dès 30 000 F.</p>
                             <p><span className="text-foreground font-medium">Retours gratuits</span> sous 30 jours. Aucune question, remboursement rapide.</p>
                         </TabsContent>
                     </Tabs>

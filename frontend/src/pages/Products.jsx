@@ -43,8 +43,6 @@ export default function Products() {
                 list = [...list].sort((a, b) => a.price - b.price); break;
             case "prix-desc":
                 list = [...list].sort((a, b) => b.price - a.price); break;
-            case "note":
-                list = [...list].sort((a, b) => b.rating - a.rating); break;
             default: break;
         }
         return list;
@@ -87,23 +85,6 @@ export default function Products() {
                 <div className="flex justify-between text-sm text-muted-foreground">
                     <span>{new Intl.NumberFormat("fr-FR").format(priceRange[0])} F</span>
                     <span>{new Intl.NumberFormat("fr-FR").format(priceRange[1])} F</span>
-                </div>
-            </div>
-
-            <div>
-                <h4 className="font-display text-lg mb-4">Notes</h4>
-                <div className="space-y-3">
-                    {[4, 3, 2].map((r) => (
-                        <div key={r} className="flex items-center gap-3">
-                            <Checkbox id={`r-${r}`} />
-                            <Label htmlFor={`r-${r}`} className="flex items-center gap-1 font-normal cursor-pointer">
-                                {[...Array(5)].map((_, i) => (
-                                    <i key={i} className={`fa-solid fa-star text-xs ${i < r ? "text-primary" : "text-muted"}`} />
-                                ))}
-                                <span className="ml-1 text-xs text-muted-foreground">& plus</span>
-                            </Label>
-                        </div>
-                    ))}
                 </div>
             </div>
         </div>
@@ -153,7 +134,6 @@ export default function Products() {
                                 <SelectItem value="pertinence">Pertinence</SelectItem>
                                 <SelectItem value="prix-asc">Prix croissant</SelectItem>
                                 <SelectItem value="prix-desc">Prix décroissant</SelectItem>
-                                <SelectItem value="note">Meilleures notes</SelectItem>
                             </SelectContent>
                         </Select>
                     </div>
@@ -198,7 +178,7 @@ export default function Products() {
                         <div className="text-center py-24 border-2 border-dashed border-border rounded-2xl">
                             <div className="text-5xl mb-4 opacity-40">🌿</div>
                             <h3 className="font-display text-xl mb-2">Aucun produit trouvé</h3>
-                            <p className="text-muted-foreground text-sm mb-6">Essayez d'ajuster vos filtres.</p>
+                            <p className="text-muted-foreground text-sm mb-6">Essayez d&apos;ajuster vos filtres.</p>
                             <Button onClick={() => { setSelectedCats([]); setPriceRange([0, 200000]); }} variant="outline" className="rounded-full">
                                 Réinitialiser les filtres
                             </Button>

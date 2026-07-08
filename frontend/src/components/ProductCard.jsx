@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { Heart, ShoppingBag, Star } from "lucide-react";
+import { Heart, ShoppingBag } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useCart } from "@/context/CartContext";
 import { toast } from "sonner";
@@ -56,11 +56,6 @@ export const ProductCard = ({ product, index = 0 }) => {
             </div>
 
             <div className="flex flex-col gap-1 flex-1">
-                <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                    <Star className="h-3 w-3 fill-primary stroke-primary" />
-                    <span className="font-medium text-foreground">{product.rating}</span>
-                    <span>· {product.reviews} avis</span>
-                </div>
                 <h3 className="font-medium text-sm sm:text-base text-foreground line-clamp-2 leading-snug">
                     {product.name}
                 </h3>

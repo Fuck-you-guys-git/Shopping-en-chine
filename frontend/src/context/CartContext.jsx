@@ -28,7 +28,6 @@ export const CartProvider = ({ children }) => {
             }
             return [...prev, { ...product, qty }];
         });
-        setDrawerOpen(true);
     };
 
     const removeItem = (id) => setItems((prev) => prev.filter((i) => i.id !== id));

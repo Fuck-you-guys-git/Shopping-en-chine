@@ -416,28 +416,10 @@ export default function Checkout() {
                                     <RadioGroupItem value="std" />
                                     <Truck className="h-5 w-5 text-primary" />
                                     <div className="flex-1">
-                                        <p className="font-medium">Livraison standard</p>
-                                        <p className="text-xs text-muted-foreground">2–4 jours ouvrés</p>
+                                        <p className="font-medium">Livraison standard · Chine → Dakar</p>
+                                        <p className="text-xs text-muted-foreground">15–20 jours</p>
                                     </div>
                                     <span className="font-medium text-success">Offerte</span>
-                                </label>
-                                <label className="flex items-center gap-4 p-4 border rounded-xl cursor-pointer hover:border-primary transition-colors">
-                                    <RadioGroupItem value="exp" />
-                                    <i className="fa-solid fa-bolt text-primary" />
-                                    <div className="flex-1">
-                                        <p className="font-medium">Livraison express</p>
-                                        <p className="text-xs text-muted-foreground">24–48h chrono</p>
-                                    </div>
-                                    <span className="font-medium">5 000 F</span>
-                                </label>
-                                <label className="flex items-center gap-4 p-4 border rounded-xl cursor-pointer hover:border-primary transition-colors">
-                                    <RadioGroupItem value="pickup" />
-                                    <i className="fa-solid fa-store text-primary" />
-                                    <div className="flex-1">
-                                        <p className="font-medium">Point relais</p>
-                                        <p className="text-xs text-muted-foreground">3–5 jours · 500+ points</p>
-                                    </div>
-                                    <span className="font-medium">2 000 F</span>
                                 </label>
                             </RadioGroup>
                             <div className="flex gap-2 pt-2">
