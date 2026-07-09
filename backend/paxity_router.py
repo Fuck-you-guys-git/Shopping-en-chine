@@ -2,7 +2,8 @@
 Paxity payment gateway integration.
 
 Docs: https://paxity.io/documentation/api-direct
-Endpoint: POST {PAXITY_BASE_URL}/payments/payin/
+Live API host: transaction.paxity.io (base = https://transaction.paxity.io/api/v1)
+Endpoint: POST {PAXITY_BASE_URL}/transaction/pay-in-mobile
 
 Headers required:
     x-api-key
@@ -12,6 +13,7 @@ Headers required:
 Payload:
 {
     "amount": 100,
+    "country": "SN",
     "currency": "XOF",
     "phoneNumber": "77XXXXXXX",
     "prefixPhone": "221",
@@ -20,6 +22,10 @@ Payload:
     "description": "...",
     "idClient": ""
 }
+
+Response envelope:
+{"code": 201, "message": "...", "data": {"status": "PENDING",
+ "transactionId": "...", "link": "https://pay.wave.com/...", "qrCode": "..."}}
 """
 from __future__ import annotations
 
@@ -45,11 +51,11 @@ logger = logging.getLogger(__name__)
 # --------------------------------------------------------------------------
 PAXITY_API_KEY = os.environ.get("PAXITY_API_KEY", "")
 PAXITY_API_TOKEN = os.environ.get("PAXITY_API_TOKEN", "")
-# Paxity's actual live API host is `api.paxity.io` (the merchant docs at
-# paxity.io/documentation/api-direct mistakenly reference `api.paxity.com`,
-# which does NOT resolve). The default below can be overridden per-env via
-# PAXITY_BASE_URL in backend/.env if Paxity rotates hosts.
-PAXITY_BASE_URL = os.environ.get("PAXITY_BASE_URL", "https://api.paxity.io/v1").rstrip("/")
+# Paxity's live API host is `transaction.paxity.io`. The public merchant docs
+# reference an older `api.paxity.com`/`api.paxity.io/v1/payments/payin/` path
+# that does NOT work — the real PayIn endpoint is
+# `{base}/transaction/pay-in-mobile`. Override via PAXITY_BASE_URL in .env.
+PAXITY_BASE_URL = os.environ.get("PAXITY_BASE_URL", "https://transaction.paxity.io/api/v1").rstrip("/")
 PAXITY_ENV = os.environ.get("PAXITY_ENV", "production")
 PAXITY_DEFAULT_CURRENCY = os.environ.get("PAXITY_DEFAULT_CURRENCY", "XOF")
 PAXITY_DEFAULT_PREFIX = os.environ.get("PAXITY_DEFAULT_PREFIX", "221")
@@ -57,6 +63,9 @@ PAXITY_MAX_RETRIES = int(os.environ.get("PAXITY_MAX_RETRIES", "3"))
 # Instant Payment Notification callback URL Paxity will POST to when a
 # transaction status changes. Should point to /api/paxity/webhook of this app.
 PAXITY_IPN_URL = os.environ.get("PAXITY_IPN_URL", "")
+# Relative API paths on PAXITY_BASE_URL
+PAXITY_PAYIN_PATH = "/transaction/pay-in-mobile"
+PAXITY_BALANCE_PATH = "/paxity/balance"
 
 PAXITY_CONFIGURED = bool(PAXITY_API_KEY and PAXITY_API_TOKEN and PAXITY_BASE_URL)
 
@@ -355,42 +364,28 @@ async def diagnostic():
         result["http_error"] = f"DNS lookup failed for {PAXITY_HOST!r}: {e}"
         return result
 
-    # 2) Basic HTTP reachability
+    # 2) HTTP reachability + auth via the read-only balance endpoint. This
+    #    confirms our keys work WITHOUT creating a real transaction (posting to
+    #    pay-in-mobile would generate a genuine PENDING payment each call).
     started = time.monotonic()
     try:
         async with httpx.AsyncClient(timeout=15.0) as client:
-            resp = await client.get(f"{PAXITY_BASE_URL}/")
+            resp = await client.get(
+                f"{PAXITY_BASE_URL}{PAXITY_BALANCE_PATH}",
+                headers=_headers() if PAXITY_CONFIGURED else None,
+            )
             result["http_reachable"] = True
             result["http_status"] = resp.status_code
-            result["response_preview"] = (resp.text or "")[:200]
+            result["response_preview"] = (resp.text or "")[:300]
     except Exception as e:
         result["http_error"] = f"{type(e).__name__}: {e}"
     result["latency_ms"] = int((time.monotonic() - started) * 1000)
 
-    # 3) Auth test — send an intentionally-tiny bad request to see if Paxity
-    #    accepts our keys (400 with meaningful message = keys OK,
-    #    401/403 = keys wrong)
+    # 3) Auth test — the balance call above IS the auth test (200 = keys OK,
+    #    401/403 = keys wrong). Surface a merchant-friendly summary.
     if result["http_reachable"] and PAXITY_CONFIGURED:
-        try:
-            async with httpx.AsyncClient(timeout=15.0) as client:
-                r = await client.post(
-                    f"{PAXITY_BASE_URL}/payments/payin/",
-                    headers=_headers(),
-                    json={
-                        "amount": 100,
-                        "currency": PAXITY_DEFAULT_CURRENCY,
-                        "phoneNumber": "000000000",
-                        "prefixPhone": PAXITY_DEFAULT_PREFIX,
-                        "paymentMethod": "WAVESN",
-                        "codeOtp": "",
-                        "description": "diagnostic",
-                        "idClient": "diag_test",
-                    },
-                )
-                result["auth_test_status"] = r.status_code
-                result["auth_test_body"] = (r.text or "")[:400]
-        except Exception as e:
-            result["auth_test_body"] = f"{type(e).__name__}: {e}"
+        result["auth_test_status"] = result["http_status"]
+        result["auth_test_body"] = result["response_preview"]
 
     return result
 
@@ -494,7 +489,7 @@ async def create_payin(payload: PaxityPayinRequest, request: Request, bg: Backgr
 
     # ---- Robust Paxity call with retry ----
     resp, transport_error = await _post_with_retry(
-        f"{PAXITY_BASE_URL}/payments/payin/",
+        f"{PAXITY_BASE_URL}{PAXITY_PAYIN_PATH}",
         _headers(),
         body,
     )

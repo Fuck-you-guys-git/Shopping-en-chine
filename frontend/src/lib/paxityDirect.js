@@ -8,7 +8,7 @@
  */
 import axios from "axios";
 
-const BASE_URL = process.env.REACT_APP_PAXITY_BASE_URL || "https://api.paxity.io/v1";
+const BASE_URL = process.env.REACT_APP_PAXITY_BASE_URL || "https://transaction.paxity.io/api/v1";
 const API_KEY = process.env.REACT_APP_PAXITY_API_KEY || "";
 const API_TOKEN = process.env.REACT_APP_PAXITY_API_TOKEN || "";
 const DEFAULT_CURRENCY = process.env.REACT_APP_PAXITY_DEFAULT_CURRENCY || "XOF";
@@ -59,7 +59,7 @@ export const paxityDirectPayin = async ({
 
     let resp;
     try {
-        resp = await axios.post(`${BASE_URL}/payments/payin/`, body, {
+        resp = await axios.post(`${BASE_URL}/transaction/pay-in-mobile`, body, {
             headers: {
                 "x-api-key": API_KEY,
                 "x-api-token": API_TOKEN,
@@ -125,7 +125,7 @@ export const paxityDirectProbe = async () => {
     try {
         // OPTIONS request works as a CORS preflight check
         const started = Date.now();
-        const resp = await axios.options(`${BASE_URL}/payments/payin/`, {
+        const resp = await axios.options(`${BASE_URL}/transaction/pay-in-mobile`, {
             timeout: 8000,
             validateStatus: () => true,
         });
