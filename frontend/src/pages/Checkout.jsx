@@ -426,7 +426,7 @@ export default function Checkout() {
                             )}
 
                             {paxityError && (
-                                <div className="flex gap-3 p-4 rounded-xl bg-destructive/10 border border-destructive/20 text-destructive text-sm">
+                                <div data-testid="paxity-error-banner" className="flex gap-3 p-4 rounded-xl bg-destructive/10 border border-destructive/20 text-destructive text-sm">
                                     <XCircle className="h-5 w-5 shrink-0 mt-0.5" />
                                     <div className="flex-1">{paxityError}</div>
                                 </div>
