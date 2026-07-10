@@ -55,7 +55,19 @@ PAXITY_API_TOKEN = os.environ.get("PAXITY_API_TOKEN", "")
 # reference an older `api.paxity.com`/`api.paxity.io/v1/payments/payin/` path
 # that does NOT work — the real PayIn endpoint is
 # `{base}/transaction/pay-in-mobile`. Override via PAXITY_BASE_URL in .env.
-PAXITY_BASE_URL = os.environ.get("PAXITY_BASE_URL", "https://transaction.paxity.io/api/v1").rstrip("/")
+_LIVE_PAXITY_BASE = "https://transaction.paxity.io/api/v1"
+_raw_base = os.environ.get("PAXITY_BASE_URL", _LIVE_PAXITY_BASE).rstrip("/")
+# Self-heal: the legacy hosts (api.paxity.com / api.paxity.io) are dead or
+# reject every credential. If a stale env (e.g. an old production deployment
+# config) still points there, force the working live host so payments can
+# never regress to a broken endpoint.
+if "api.paxity.com" in _raw_base or "api.paxity.io" in _raw_base:
+    logging.getLogger("paxity").warning(
+        "[Paxity] Stale PAXITY_BASE_URL detected (%s) — overriding to %s",
+        _raw_base, _LIVE_PAXITY_BASE,
+    )
+    _raw_base = _LIVE_PAXITY_BASE
+PAXITY_BASE_URL = _raw_base
 PAXITY_ENV = os.environ.get("PAXITY_ENV", "production")
 PAXITY_DEFAULT_CURRENCY = os.environ.get("PAXITY_DEFAULT_CURRENCY", "XOF")
 PAXITY_DEFAULT_PREFIX = os.environ.get("PAXITY_DEFAULT_PREFIX", "221")
