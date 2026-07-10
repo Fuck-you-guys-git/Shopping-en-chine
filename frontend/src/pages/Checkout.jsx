@@ -22,15 +22,6 @@ const OPERATOR_META = {
     card: { label: "Carte", color: "#111", bg: "bg-secondary" },
 };
 
-const DiagnosticRow = ({ label, value, good }) => (
-    <div className="flex items-center gap-2">
-        <span className="text-amber-800/70 w-24 shrink-0">{label} :</span>
-        <span className={good === false ? "text-red-700 font-semibold" : good === true ? "text-green-700 font-semibold" : "text-amber-900"}>
-            {String(value)}
-        </span>
-    </div>
-);
-
 export default function Checkout() {
     const { items, subtotal, clear } = useCart();
     const navigate = useNavigate();
@@ -52,8 +43,6 @@ export default function Checkout() {
     const [processing, setProcessing] = useState(false);
     const [transaction, setTransaction] = useState(null); // { transaction_id, status, order_id, ... }
     const [complete, setComplete] = useState(false);
-    const [diagnostic, setDiagnostic] = useState(null);
-    const [showDiagnostic, setShowDiagnostic] = useState(false);
 
     // Fetch backend config
     useEffect(() => {
@@ -207,59 +196,28 @@ export default function Checkout() {
                 toast.error("Paiement refusé", { description: res.message || "Réessayez ou changez de moyen." });
             }
         } catch (err) {
-            // Extract a clean French message from the error.
-            // If the response is HTML (e.g. Cloudflare 5xx page) or contains
-            // Cloudflare error messages, we mask it with a user-friendly fallback.
-            let detail = err.response?.data?.detail || err.response?.data?.message;
-            const raw = err.response?.data;
-            
-            // Case 1: Response is a string (HTML or plain text)
-            if (!detail && typeof raw === "string") {
-                if (raw.includes("<html") || raw.includes("Cloudflare") || raw.length > 200) {
-                    detail = "Service de paiement momentanément indisponible. Veuillez réessayer dans quelques instants.";
-                } else {
-                    detail = raw;
-                }
+            // Show a customer-friendly French message. Technical details
+            // (API keys, hosts, .env, status codes) must NEVER reach shoppers —
+            // they are logged to the console for the merchant/support instead.
+            const status = err.response?.status;
+            const rawDetail = err.response?.data?.detail || err.response?.data?.message;
+            console.error("[Paiement] Échec Paxity", { status, detail: rawDetail, error: err.message });
+
+            let detail;
+            if (status === 400 && typeof rawDetail === "string" && rawDetail) {
+                // Actionable validation errors (OTP requis, montant invalide,
+                // méthode inconnue…) are already written for the customer.
+                detail = rawDetail;
+            } else if (err.code === "ECONNABORTED") {
+                detail = "Le paiement a mis trop de temps à répondre. Veuillez réessayer.";
+            } else if (!err.response) {
+                detail = "Impossible de contacter le serveur. Vérifiez votre connexion internet.";
+            } else {
+                detail = "Le paiement n'a pas pu être traité pour le moment. Veuillez réessayer dans quelques instants ou choisir un autre moyen de paiement.";
             }
-            
-            // Case 2: Detail was extracted but contains Cloudflare error messages
-            // (Cloudflare sometimes returns RFC 7807 Problem Details JSON with Cloudflare-specific text)
-            if (detail && typeof detail === "string") {
-                if (
-                    detail.includes("Cloudflare") ||
-                    detail.includes("origin web server") ||
-                    detail.includes("Bad gateway") ||
-                    detail.includes("overloaded or misconfigured")
-                ) {
-                    detail = "Service de paiement momentanément indisponible. Veuillez réessayer dans quelques instants.";
-                }
-            }
-            
-            // Case 3: No detail found, use fallback logic
-            if (!detail) {
-                if (err.code === "ECONNABORTED") {
-                    detail = "Délai dépassé — Paxity a mis trop de temps à répondre. Réessayez.";
-                } else if (err.response?.status >= 500) {
-                    detail = "Service de paiement momentanément indisponible. Réessayez dans quelques instants.";
-                } else if (!err.response) {
-                    detail = "Impossible de contacter le serveur. Vérifiez votre connexion.";
-                } else {
-                    detail = err.message || "Erreur inconnue";
-                }
-            }
-            
+
             toast.error("Erreur de paiement", { description: detail });
             setPaxityError(detail);
-
-            // Auto-run diagnostic to help identify the root cause
-            try {
-                const diag = await paxityAPI.getDiagnostic();
-                setDiagnostic(diag);
-                setShowDiagnostic(true);
-            } catch (diagErr) {
-                setDiagnostic({ error: "Diagnostic non disponible", raw: diagErr.message });
-                setShowDiagnostic(true);
-            }
         } finally {
             setProcessing(false);
         }
@@ -449,9 +407,9 @@ export default function Checkout() {
                                 <div className="flex gap-3 p-4 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-sm">
                                     <AlertTriangle className="h-5 w-5 shrink-0 mt-0.5" />
                                     <div>
-                                        <p className="font-medium">Configuration Paxity requise</p>
+                                        <p className="font-medium">Paiement momentanément indisponible</p>
                                         <p className="text-xs mt-1 opacity-90">
-                                            Ajoutez <code className="font-mono">PAXITY_API_KEY</code> et <code className="font-mono">PAXITY_API_TOKEN</code> dans <code className="font-mono">backend/.env</code>, puis redémarrez le serveur backend.
+                                            Le paiement en ligne est en cours de maintenance. Veuillez réessayer dans quelques instants.
                                         </p>
                                     </div>
                                 </div>
@@ -471,73 +429,6 @@ export default function Checkout() {
                                 <div className="flex gap-3 p-4 rounded-xl bg-destructive/10 border border-destructive/20 text-destructive text-sm">
                                     <XCircle className="h-5 w-5 shrink-0 mt-0.5" />
                                     <div className="flex-1">{paxityError}</div>
-                                </div>
-                            )}
-
-                            {/* Diagnostic panel — auto-shown after a payment failure */}
-                            {showDiagnostic && diagnostic && (
-                                <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm">
-                                    <div className="flex items-start justify-between gap-2 mb-3">
-                                        <div className="flex gap-2">
-                                            <AlertTriangle className="h-4 w-4 text-amber-600 mt-0.5" />
-                                            <div>
-                                                <p className="font-medium text-amber-900">Diagnostic de la connexion Paxity</p>
-                                                <p className="text-xs text-amber-800/80 mt-0.5">
-                                                    Voici ce que le serveur voit — envoyez cette capture au support si le problème persiste.
-                                                </p>
-                                            </div>
-                                        </div>
-                                        <button onClick={() => setShowDiagnostic(false)} className="text-amber-700 hover:text-amber-900 text-xs">
-                                            Masquer
-                                        </button>
-                                    </div>
-                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-3 gap-y-1.5 text-xs font-mono">
-                                        <DiagnosticRow label="Configuré" value={diagnostic.configured ? "✅ oui" : "❌ non"} good={diagnostic.configured} />
-                                        <DiagnosticRow label="Env." value={diagnostic.environment || "—"} />
-                                        <DiagnosticRow label="DNS Paxity" value={diagnostic.dns_ok ? "✅ ok" : "❌ échec"} good={diagnostic.dns_ok} />
-                                        <DiagnosticRow label="HTTP accessible" value={diagnostic.http_reachable ? "✅ oui" : "❌ non"} good={diagnostic.http_reachable} />
-                                        <DiagnosticRow label="Statut HTTP" value={diagnostic.http_status ?? "—"} />
-                                        <DiagnosticRow label="Latence" value={diagnostic.latency_ms ? `${diagnostic.latency_ms} ms` : "—"} />
-                                        <DiagnosticRow label="Test auth" value={diagnostic.auth_test_status ?? "—"} />
-                                        <DiagnosticRow label="Clé API" value={diagnostic.api_key_length ? `${diagnostic.api_key_length} car.` : "vide"} />
-                                    </div>
-                                    {diagnostic.http_error && (
-                                        <div className="mt-3 text-xs bg-amber-100 rounded p-2 font-mono text-amber-900 whitespace-pre-wrap break-words">
-                                            <strong>Erreur :</strong> {diagnostic.http_error}
-                                        </div>
-                                    )}
-                                    {diagnostic.auth_test_body && (
-                                        <details className="mt-2 text-xs">
-                                            <summary className="cursor-pointer text-amber-800 hover:text-amber-900">Voir la réponse Paxity (test auth)</summary>
-                                            <pre className="mt-2 bg-amber-100 rounded p-2 font-mono text-amber-900 whitespace-pre-wrap break-words max-h-40 overflow-auto">{diagnostic.auth_test_body}</pre>
-                                        </details>
-                                    )}
-
-                                    {/* Interpret the result for the user */}
-                                    {!diagnostic.dns_ok && (
-                                        <div className="mt-3 p-3 rounded-lg bg-white border border-amber-300 text-amber-900">
-                                            <p className="font-semibold text-xs">🎯 Cause probable</p>
-                                            <p className="text-xs mt-1 leading-relaxed">
-                                                Le serveur ne peut pas résoudre <code>{diagnostic.host || "api.paxity.io"}</code> depuis Emergent. Ce sont probablement les <strong>restrictions réseau de l&apos;hébergement</strong>. Contactez <a href="mailto:support@emergent.sh" className="underline">support@emergent.sh</a> en leur envoyant cette capture pour demander l&apos;autorisation d&apos;appels sortants vers <code>{diagnostic.host || "api.paxity.io"}</code>.
-                                            </p>
-                                        </div>
-                                    )}
-                                    {diagnostic.dns_ok && !diagnostic.http_reachable && (
-                                        <div className="mt-3 p-3 rounded-lg bg-white border border-amber-300 text-amber-900">
-                                            <p className="font-semibold text-xs">🎯 Cause probable</p>
-                                            <p className="text-xs mt-1 leading-relaxed">
-                                                DNS OK mais l&apos;API HTTP ne répond pas. Vérifiez que <code>{diagnostic.base_url}</code> est bien l&apos;URL correcte de l&apos;API Paxity dans votre dashboard.
-                                            </p>
-                                        </div>
-                                    )}
-                                    {diagnostic.http_reachable && diagnostic.auth_test_status === 401 && (
-                                        <div className="mt-3 p-3 rounded-lg bg-white border border-amber-300 text-amber-900">
-                                            <p className="font-semibold text-xs">🎯 Cause probable</p>
-                                            <p className="text-xs mt-1 leading-relaxed">
-                                                Clés API refusées par Paxity (401). Régénérez vos clés dans le dashboard Paxity puis mettez-les à jour dans <code>backend/.env</code>.
-                                            </p>
-                                        </div>
-                                    )}
                                 </div>
                             )}
 
