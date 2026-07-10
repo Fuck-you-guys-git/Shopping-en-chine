@@ -59,14 +59,33 @@ class TestPaxityPayinValidation:
         assert r.status_code == 400
         assert "Montant invalide" in r.json()["detail"]
 
-    def test_omsn_without_otp_rejected(self):
+    def test_card_method_removed_returns_400(self):
+        # CARD is not supported by Paxity (403 ERR_FORBIDDEN upstream) and was
+        # removed from PAYMENT_METHODS — must now be rejected as unknown.
         r = requests.post(f"{API}/paxity/payin", json={
             "amount": 100, "phone_number": "770000000",
-            "prefix_phone": "221", "payment_method": "OMSN",
+            "prefix_phone": "221", "payment_method": "CARD",
             "customer": {"name": "Test"},
         }, timeout=30)
         assert r.status_code == 400
-        assert "code OTP" in r.json()["detail"].lower() or "OTP" in r.json()["detail"]
+        assert "Méthode de paiement inconnue" in r.json()["detail"]
+
+    def test_moovci_method_removed_returns_400(self):
+        r = requests.post(f"{API}/paxity/payin", json={
+            "amount": 100, "phone_number": "770000000",
+            "prefix_phone": "221", "payment_method": "MOOVCI",
+            "customer": {"name": "Test"},
+        }, timeout=30)
+        assert r.status_code == 400
+        assert "Méthode de paiement inconnue" in r.json()["detail"]
+
+    def test_config_has_5_methods_no_card_no_otp(self):
+        r = requests.get(f"{API}/paxity/config", timeout=15)
+        assert r.status_code == 200
+        methods = r.json()["methods"]
+        codes = {m["code"] for m in methods}
+        assert codes == {"OMSN", "OMCI", "WAVESN", "WAVECI", "MTNCI"}, codes
+        assert all(m["requires_otp"] is False for m in methods)
 
 
 class TestPaxityPayinLive:

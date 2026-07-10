@@ -463,8 +463,8 @@ export default function Checkout() {
                                 </div>
                             </div>
 
-                            {/* Phone form (hidden for card) */}
-                            {selectedMethod && selectedMethod.icon !== "card" && (
+                            {/* Phone form */}
+                            {selectedMethod && (
                                 <form onSubmit={handlePayment} className="space-y-4">
                                     <div className="grid grid-cols-[100px_1fr] gap-2">
                                         <div className="space-y-1.5">
@@ -494,20 +494,17 @@ export default function Checkout() {
                                     </div>
                                     <div className="space-y-1.5">
                                         <Label>
-                                            Code OTP {selectedMethod.requires_otp ? <span className="text-destructive">*</span> : <span className="text-muted-foreground text-xs">(si demandé)</span>}
+                                            Code OTP <span className="text-muted-foreground text-xs">(facultatif)</span>
                                         </Label>
                                         <Input
                                             data-testid="paxity-otp-input"
                                             value={otp}
                                             onChange={(e) => setOtp(e.target.value)}
-                                            placeholder={selectedMethod.requires_otp ? "Requis — composez sur votre téléphone" : "Laissez vide si non requis"}
+                                            placeholder="Laissez vide si non requis"
                                             className="font-mono tracking-wider"
-                                            required={!!selectedMethod.requires_otp}
                                         />
                                         <p className="text-[11px] text-muted-foreground">
-                                            {selectedMethod.requires_otp
-                                                ? `${selectedMethod.label} exige un code OTP. Composez le code sur votre téléphone puis saisissez-le ici.`
-                                                : "Certains opérateurs demandent un code (ex : Wave génère un OTP via l'app). Sinon, laissez vide."}
+                                            Après validation, vous recevrez un lien de paiement à confirmer. Si votre opérateur vous a déjà fourni un code, saisissez-le ici.
                                         </p>
                                     </div>
 
@@ -531,21 +528,6 @@ export default function Checkout() {
                                             ) : (
                                                 <>Payer {formatPrice(total)}</>
                                             )}
-                                        </Button>
-                                    </div>
-                                </form>
-                            )}
-
-                            {selectedMethod && selectedMethod.icon === "card" && (
-                                <form onSubmit={handlePayment} className="space-y-4">
-                                    <div className="p-4 rounded-xl bg-secondary/40 border text-xs text-muted-foreground">
-                                        <CreditCard className="h-4 w-4 inline mr-1 text-foreground" />
-                                        Le paiement par carte s&apos;effectue via Paxity. Vous serez redirigé selon la configuration marchand.
-                                    </div>
-                                    <div className="flex gap-2 pt-2">
-                                        <Button type="button" variant="outline" onClick={() => setStep(2)} className="rounded-full h-11 px-6">Retour</Button>
-                                        <Button type="submit" disabled={processing || !paxityConfig?.configured} className="bg-primary hover:bg-primary/90 text-primary-foreground rounded-full h-11 px-8 flex-1 shadow-warm">
-                                            {processing ? <><Loader2 className="h-4 w-4 animate-spin" /> Traitement…</> : <>Payer {formatPrice(total)}</>}
                                         </Button>
                                     </div>
                                 </form>

@@ -29,7 +29,7 @@ def test_config_endpoint():
     assert data.get("configured") is True
     assert data.get("currency") == "XOF"
     methods = data.get("methods") or data.get("payment_methods") or []
-    assert len(methods) == 7, f"expected 7 methods, got {len(methods)}: {methods}"
+    assert len(methods) == 5, f"expected 5 methods, got {len(methods)}: {methods}"
 
 
 CUSTOMER = {"name": "Test User", "first_name": "Test", "last_name": "User", "email": "test@example.com"}
@@ -49,8 +49,10 @@ def test_payin_amount_zero_returns_400():
     assert "invalide" in r.text.lower() or "invalid" in r.text.lower()
 
 
-def test_payin_omsn_missing_otp_returns_400():
-    payload = {"payment_method": "OMSN", "amount": 1000, "phone_number": "+22500000000", "customer": CUSTOMER}
+def test_payin_card_removed_returns_400():
+    # CARD is not supported by the Paxity merchant account (403 upstream) —
+    # removed from the app, must be rejected as unknown.
+    payload = {"payment_method": "CARD", "amount": 1000, "phone_number": "+22500000000", "customer": CUSTOMER}
     r = requests.post(f"{BASE_URL}/api/paxity/payin", json=payload, timeout=15)
     assert r.status_code == 400, r.text
-    assert "otp" in r.text.lower()
+    assert "inconnue" in r.text.lower()

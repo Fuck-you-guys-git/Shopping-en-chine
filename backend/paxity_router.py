@@ -92,17 +92,18 @@ def _extract_host(url: str) -> str:
 
 PAXITY_HOST = _extract_host(PAXITY_BASE_URL)
 
-# Payment method codes supported by Paxity. `requires_otp` tells the frontend
-# whether the operator forces an OTP validation before the payment can be
-# submitted (e.g. Wave, some Orange Money flows).
+# Payment method codes supported by Paxity (validated against the live
+# GET /payment-method endpoint — this merchant account only supports Mobile
+# Money; bank cards and MOOVCI are NOT allowed and return 403 ERR_FORBIDDEN).
+# Per the live API, OMSN/OMCI are CODE_QR flows: the customer pays via the
+# returned link/QR, so no OTP is required (codeOtp is still forwarded when
+# the customer provides one).
 PAYMENT_METHODS = {
-    "OMSN":   {"label": "Orange Money Sénégal",       "country": "SN", "prefix": "221", "icon": "orange-money", "requires_otp": True},
-    "OMCI":   {"label": "Orange Money Côte d'Ivoire", "country": "CI", "prefix": "225", "icon": "orange-money", "requires_otp": True},
+    "OMSN":   {"label": "Orange Money Sénégal",       "country": "SN", "prefix": "221", "icon": "orange-money", "requires_otp": False},
+    "OMCI":   {"label": "Orange Money Côte d'Ivoire", "country": "CI", "prefix": "225", "icon": "orange-money", "requires_otp": False},
     "WAVESN": {"label": "Wave Sénégal",               "country": "SN", "prefix": "221", "icon": "wave",         "requires_otp": False},
     "WAVECI": {"label": "Wave Côte d'Ivoire",         "country": "CI", "prefix": "225", "icon": "wave",         "requires_otp": False},
     "MTNCI":  {"label": "MTN Mobile Money",           "country": "CI", "prefix": "225", "icon": "mtn",          "requires_otp": False},
-    "MOOVCI": {"label": "Moov Money",                 "country": "CI", "prefix": "225", "icon": "moov",         "requires_otp": False},
-    "CARD":   {"label": "Carte bancaire",             "country": "*",  "prefix": "*",   "icon": "card",         "requires_otp": False},
 }
 
 # Comprehensive status mapping. Paxity (and mobile-money operators generally)
@@ -231,7 +232,7 @@ class PaxityPayinRequest(BaseModel):
     amount: float
     phone_number: str
     prefix_phone: str = PAXITY_DEFAULT_PREFIX
-    payment_method: str  # OMSN | WAVESN | OMCI | WAVECI | MTNCI | MOOVCI | CARD
+    payment_method: str  # OMSN | WAVESN | OMCI | WAVECI | MTNCI
     otp_code: Optional[str] = None
     description: str = "Commande Shopping en Chine"
     currency: Optional[str] = None  # override PAXITY_DEFAULT_CURRENCY if provided
