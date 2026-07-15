@@ -71,6 +71,20 @@ export const products = [
         description: "70% laine mérinos, 30% cachemire. Coupe droite, col rond. Tricoté au Portugal.",
         colors: ["#EFE6D6", "#7A6A54", "#1D1D1D"],
     },
+    {
+        id: "p9", name: "Écouteurs filaires métal", category: "tech", price: 2000, oldPrice: 3500,
+        rating: 4.6, reviews: 89, badge: "Petit prix",
+        image: "https://images.unsplash.com/photo-1484704849700-f032a568e944?w=800&q=80",
+        description: "Écouteurs filaires finition métal, son clair et basses présentes. Micro intégré pour vos appels.",
+        colors: ["#1D1D1D", "#B8B8B8"],
+    },
+    {
+        id: "p10", name: "Paire de chaussettes coton", category: "mode", price: 2000, oldPrice: 3000,
+        rating: 4.5, reviews: 154, badge: "Petit prix",
+        image: "https://images.unsplash.com/photo-1586350977771-b3b0abd50c82?w=800&q=80",
+        description: "Coton doux et respirant, coutures plates. Confort toute la journée.",
+        colors: ["#F5F1EA", "#2E2A26", "#C64C3A"],
+    },
 ];
 
 export const testimonials = [
