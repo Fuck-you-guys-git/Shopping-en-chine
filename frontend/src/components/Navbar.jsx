@@ -74,15 +74,19 @@ export const Navbar = () => {
                                         <Menu className="h-5 w-5" />
                                     </Button>
                                 </SheetTrigger>
-                                <SheetContent side="left" className="w-[300px] p-0">
+                                <SheetContent side="left" className="w-[300px] p-0 flex flex-col">
                                     <div className="p-6 border-b">
                                         <Logo />
                                     </div>
                                     <nav className="p-4 space-y-1">
-                                        {navLinks.map((l) => (
+                                        {[
+                                            { to: "/", label: "Accueil" },
+                                            { to: "/boutique", label: "Boutique" },
+                                        ].map((l) => (
                                             <NavLink
                                                 key={l.to}
                                                 to={l.to}
+                                                end={l.to === "/"}
                                                 className={({ isActive }) =>
                                                     `flex items-center justify-between px-4 py-3 rounded-lg text-sm font-medium transition-colors ${
                                                         isActive
@@ -96,9 +100,9 @@ export const Navbar = () => {
                                             </NavLink>
                                         ))}
                                     </nav>
-                                    <div className="p-4 border-t">
+                                    <div className="p-4 border-t flex-1 overflow-y-auto">
                                         <p className="text-xs uppercase tracking-widest text-muted-foreground mb-3">Catégories</p>
-                                        <div className="grid grid-cols-2 gap-2">
+                                        <div className="grid grid-cols-2 gap-2" data-testid="mobile-menu-categories">
                                             {categories.map((c) => (
                                                 <Link key={c.id} to={`/boutique/${c.id}`} className="flex items-center gap-2 px-3 py-2 rounded-md text-sm hover:bg-muted">
                                                     <i className={`fa-solid ${c.icon} text-primary text-xs`} />
@@ -106,6 +110,16 @@ export const Navbar = () => {
                                                 </Link>
                                             ))}
                                         </div>
+                                    </div>
+                                    <div className="p-4 border-t mt-auto">
+                                        <Link
+                                            to="/suivi"
+                                            data-testid="mobile-menu-tracking-link"
+                                            className="flex items-center justify-center gap-2 w-full h-11 rounded-full bg-ink text-ink-foreground text-sm font-medium hover:bg-ink/90 transition-colors"
+                                        >
+                                            <i className="fa-solid fa-truck-fast text-xs" />
+                                            Suivi de commande
+                                        </Link>
                                     </div>
                                 </SheetContent>
                             </Sheet>

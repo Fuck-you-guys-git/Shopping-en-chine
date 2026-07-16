@@ -596,11 +596,42 @@ async def create_payin(payload: PaxityPayinRequest, request: Request, bg: Backgr
 
 @router.get("/status/{transaction_id}")
 async def check_status(transaction_id: str, request: Request):
-    """Poll the payment status."""
+    """Poll the payment status (with a live refresh against Paxity while pending)."""
     db = _db(request)
     tx = await db.paxity_transactions.find_one({"id": transaction_id}, {"_id": 0})
     if not tx:
         raise HTTPException(status_code=404, detail="Transaction introuvable")
+
+    # Live refresh: while pending, query Paxity for the real status so a
+    # customer returning from Wave/Orange sees the confirmation immediately,
+    # without needing the merchant webhook to be configured.
+    if tx.get("status") == "pending" and tx.get("paxity_transaction_id") and PAXITY_CONFIGURED:
+        try:
+            async with httpx.AsyncClient(timeout=12.0) as client:
+                r = await client.get(
+                    f"{PAXITY_BASE_URL}{PAXITY_PAYIN_PATH}/{tx['paxity_transaction_id']}",
+                    headers=_headers(),
+                )
+            if r.status_code == 200:
+                root = _payload_root(r.json())
+                fresh = _map_status(root.get("status"))
+                if fresh != tx["status"]:
+                    now = datetime.now(timezone.utc).isoformat()
+                    await db.paxity_transactions.update_one(
+                        {"id": transaction_id},
+                        {"$set": {"status": fresh, "updated_at": now}},
+                    )
+                    await db.orders.update_one(
+                        {"id": tx["order_id"]}, {"$set": {"status": fresh}}
+                    )
+                    tx["status"] = fresh
+                    tx["updated_at"] = now
+                    logger.info(
+                        f"[Paxity] Status refreshed tx={transaction_id} -> {fresh}"
+                    )
+        except Exception:
+            logger.warning("[Paxity] Live status refresh failed", exc_info=True)
+
     return {
         "transaction_id": tx["id"],
         "order_id": tx["order_id"],

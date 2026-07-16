@@ -40,18 +40,12 @@ export const ProductCard = ({ product, index = 0 }) => {
                         {product.badge}
                     </span>
                 )}
-                <button
-                    type="button"
+                <div
                     onClick={(e) => { e.preventDefault(); toast("Ajouté aux favoris ♥"); }}
-                    className="absolute top-3 right-3 h-8 w-8 rounded-full bg-background/90 backdrop-blur flex items-center justify-center text-foreground/70 hover:text-primary transition-colors"
+                    className="absolute top-3 right-3 h-8 w-8 rounded-full bg-background/90 backdrop-blur flex items-center justify-center text-foreground/70 hover:text-primary transition-colors cursor-pointer"
                     aria-label="Ajouter aux favoris"
                 >
                     <Heart className="h-4 w-4" />
-                </button>
-                <div className="absolute inset-x-3 bottom-3 translate-y-2 opacity-0 group-hover:translate-y-0 group-hover:opacity-100 transition-all duration-300">
-                    <Button onClick={handleAdd} className="w-full bg-ink text-ink-foreground hover:bg-ink/90 rounded-full h-10">
-                        <ShoppingBag className="h-4 w-4" /> Ajouter
-                    </Button>
                 </div>
             </div>
 
@@ -69,6 +63,13 @@ export const ProductCard = ({ product, index = 0 }) => {
                         </span>
                     )}
                 </div>
+                <Button
+                    onClick={handleAdd}
+                    data-testid="product-card-add-btn"
+                    className="mt-3 w-full bg-ink text-ink-foreground hover:bg-ink/90 rounded-full h-10"
+                >
+                    <ShoppingBag className="h-4 w-4" /> Ajouter au panier
+                </Button>
             </div>
         </Link>
     );

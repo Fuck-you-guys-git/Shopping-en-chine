@@ -231,9 +231,9 @@ export default function Checkout() {
                     <div className="h-20 w-20 mx-auto rounded-full bg-success/10 text-success flex items-center justify-center mb-6">
                         <Check className="h-10 w-10" />
                     </div>
-                    <h1 className="font-display text-4xl sm:text-5xl mb-3">Merci !</h1>
+                    <h1 className="font-display text-4xl sm:text-5xl mb-3" data-testid="order-confirmed-title">Votre commande est confirmée 🎉</h1>
                     <p className="text-muted-foreground mb-2">
-                        Votre paiement de <span className="font-semibold text-foreground">{formatPrice(total)}</span> a été confirmé.
+                        Merci ! Votre paiement de <span className="font-semibold text-foreground">{formatPrice(transaction?.amount ?? total)}</span> a bien été reçu. Nous préparons votre commande pour l&apos;expédition depuis la Chine.
                     </p>
                     {transaction?.order_id && (
                         <p className="text-xs font-mono text-muted-foreground mb-8">Commande {transaction.order_id}</p>
@@ -345,7 +345,7 @@ export default function Checkout() {
             </div>
 
             <div className="grid lg:grid-cols-[1fr_380px] gap-10">
-                <div className="space-y-8">
+                <div className="space-y-8 order-2 lg:order-1">
                     {step === 1 && (
                         <div className="space-y-5 bg-card p-6 md:p-8 rounded-2xl shadow-card">
                             <h2 className="font-display text-2xl">Adresse de livraison</h2>
@@ -536,7 +536,7 @@ export default function Checkout() {
                     )}
                 </div>
 
-                <aside>
+                <aside className="order-1 lg:order-2">
                     <div className="sticky top-24 bg-secondary/40 rounded-2xl p-6 space-y-4">
                         <h3 className="font-display text-xl">Votre commande</h3>
                         <div className="space-y-3 max-h-[280px] overflow-y-auto">

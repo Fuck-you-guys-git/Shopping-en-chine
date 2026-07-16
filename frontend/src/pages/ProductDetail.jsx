@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
-import { ArrowLeft, Heart, ShoppingBag, Truck, RotateCcw, ShieldCheck, Minus, Plus, Check } from "lucide-react";
+import { ArrowLeft, Heart, ShoppingBag, Truck, ShieldCheck, Minus, Plus, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
@@ -158,10 +158,9 @@ export default function ProductDetail() {
 
                         <Separator className="my-8" />
 
-                        <div className="grid grid-cols-3 gap-4 text-center">
+                        <div className="grid grid-cols-2 gap-4 text-center">
                             {[
                                 { icon: Truck, label: "Livré en 15–20 jours" },
-                                { icon: RotateCcw, label: "Retours 30 jours" },
                                 { icon: ShieldCheck, label: "Garantie 2 ans" },
                             ].map((f) => (
                                 <div key={f.label} className="flex flex-col items-center gap-2">
@@ -203,7 +202,6 @@ export default function ProductDetail() {
                         </TabsContent>
                         <TabsContent value="ship" className="pt-6 text-muted-foreground leading-relaxed space-y-2">
                             <p><span className="text-foreground font-medium">Livraison Chine → Dakar</span> en 15–20 jours — offerte dès 30 000 F.</p>
-                            <p><span className="text-foreground font-medium">Retours gratuits</span> sous 30 jours. Aucune question, remboursement rapide.</p>
                         </TabsContent>
                     </Tabs>
                 </div>

@@ -58,7 +58,7 @@ export default function TrackOrder() {
 
     useEffect(() => {
         if (orderId) lookup(orderId);
-    }, [orderId]); // eslint-disable-line react-hooks/exhaustive-deps
+    }, [orderId]);
 
     const onSubmit = (e) => {
         e.preventDefault();
