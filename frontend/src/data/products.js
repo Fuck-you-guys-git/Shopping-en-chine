@@ -2,7 +2,7 @@
 export const categories = [
     { id: "mode", name: "Mode", en: "Fashion", icon: "fa-shirt", count: 1240,
       image: "https://images.unsplash.com/photo-1558769132-cb1aea458c5e?w=800&q=80" },
-    { id: "tech", name: "Tech & Gadgets", en: "Electronics", icon: "fa-headphones", count: 892,
+    { id: "tech", name: "Électrique", en: "Electronics", icon: "fa-plug", count: 892,
       image: "https://images.unsplash.com/photo-1636115305669-9096bffe87fd?w=800&q=80" },
     { id: "maison", name: "Maison", en: "Home", icon: "fa-couch", count: 2103,
       image: "https://images.unsplash.com/photo-1618220179428-22790b461013?w=800&q=80" },

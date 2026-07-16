@@ -12,7 +12,7 @@ const navLinks = [
     { to: "/", label: "Accueil" },
     { to: "/boutique", label: "Boutique" },
     { to: "/boutique/mode", label: "Mode" },
-    { to: "/boutique/tech", label: "Tech" },
+    { to: "/boutique/tech", label: "Électrique" },
     { to: "/boutique/maison", label: "Maison" },
     { to: "/suivi", label: "Suivi de colis" },
 ];
@@ -80,8 +80,8 @@ export const Navbar = () => {
                                     </div>
                                     <nav className="p-4 space-y-1 flex-1 overflow-y-auto" data-testid="mobile-menu-list">
                                         {[
-                                            { to: "/", label: "Accueil" },
-                                            { to: "/boutique", label: "Boutique" },
+                                            { to: "/", label: "Accueil", icon: "fa-house" },
+                                            { to: "/boutique", label: "Boutique", icon: "fa-store" },
                                             ...categories.map((c) => ({ to: `/boutique/${c.id}`, label: c.name, icon: c.icon })),
                                         ].map((l) => (
                                             <NavLink
@@ -97,8 +97,8 @@ export const Navbar = () => {
                                                 }
                                             >
                                                 <span className="flex items-center gap-3">
-                                                    {l.icon && <i className={`fa-solid ${l.icon} text-primary text-xs w-4`} />}
-                                                    {l.label}
+                                                    <i className={`fa-solid ${l.icon} text-primary text-xs w-4 text-center shrink-0`} />
+                                                    <span className="leading-none">{l.label}</span>
                                                 </span>
                                                 <i className="fa-solid fa-chevron-right text-xs opacity-40" />
                                             </NavLink>

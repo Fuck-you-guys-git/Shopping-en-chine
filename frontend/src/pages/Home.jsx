@@ -100,7 +100,7 @@ export default function Home() {
                     </Badge>
                     <div className="flex-1 text-center md:text-left">
                         <h3 className="font-display text-2xl md:text-3xl leading-tight">
-                            −30% sur la Tech <span className="italic text-primary-glow">jusqu&apos;à dimanche</span>
+                            −30% sur l&apos;Électrique <span className="italic text-primary-glow">jusqu&apos;à dimanche</span>
                         </h3>
                         <p className="text-sm text-ink-foreground/70 mt-1">Casques, gadgets, accessoires connectés.</p>
                     </div>
