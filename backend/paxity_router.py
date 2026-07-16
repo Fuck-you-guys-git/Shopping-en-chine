@@ -44,6 +44,8 @@ from fastapi import APIRouter, BackgroundTasks, HTTPException, Request
 from motor.motor_asyncio import AsyncIOMotorDatabase
 from pydantic import BaseModel, Field
 
+from email_service import maybe_send_order_confirmation
+
 logger = logging.getLogger(__name__)
 
 # --------------------------------------------------------------------------
@@ -571,6 +573,8 @@ async def create_payin(payload: PaxityPayinRequest, request: Request, bg: Backgr
     try:
         await db.paxity_transactions.insert_one(tx.model_dump(mode="json"))
         await db.orders.update_one({"id": order_id}, {"$set": {"status": tx.status}})
+        if tx.status == "success":
+            await maybe_send_order_confirmation(db, order_id)
     except Exception:
         logger.exception("[Paxity] Mongo write failed on success path")
 
@@ -629,6 +633,8 @@ async def check_status(transaction_id: str, request: Request):
                     logger.info(
                         f"[Paxity] Status refreshed tx={transaction_id} -> {fresh}"
                     )
+                    if fresh == "success":
+                        await maybe_send_order_confirmation(db, tx["order_id"])
         except Exception:
             logger.warning("[Paxity] Live status refresh failed", exc_info=True)
 
@@ -683,6 +689,8 @@ async def paxity_webhook(request: Request):
         result = await db.paxity_transactions.update_one(tx_query, {"$set": update})
         if result.matched_count and order_id:
             await db.orders.update_one({"id": order_id}, {"$set": {"status": normalized}})
+            if normalized == "success":
+                await maybe_send_order_confirmation(db, order_id)
 
     return {"received": True}
 
