@@ -78,10 +78,11 @@ export const Navbar = () => {
                                     <div className="p-6 border-b">
                                         <Logo />
                                     </div>
-                                    <nav className="p-4 space-y-1">
+                                    <nav className="p-4 space-y-1 flex-1 overflow-y-auto" data-testid="mobile-menu-list">
                                         {[
                                             { to: "/", label: "Accueil" },
                                             { to: "/boutique", label: "Boutique" },
+                                            ...categories.map((c) => ({ to: `/boutique/${c.id}`, label: c.name, icon: c.icon })),
                                         ].map((l) => (
                                             <NavLink
                                                 key={l.to}
@@ -95,22 +96,14 @@ export const Navbar = () => {
                                                     }`
                                                 }
                                             >
-                                                {l.label}
+                                                <span className="flex items-center gap-3">
+                                                    {l.icon && <i className={`fa-solid ${l.icon} text-primary text-xs w-4`} />}
+                                                    {l.label}
+                                                </span>
                                                 <i className="fa-solid fa-chevron-right text-xs opacity-40" />
                                             </NavLink>
                                         ))}
                                     </nav>
-                                    <div className="p-4 border-t flex-1 overflow-y-auto">
-                                        <p className="text-xs uppercase tracking-widest text-muted-foreground mb-3">Catégories</p>
-                                        <div className="grid grid-cols-2 gap-2" data-testid="mobile-menu-categories">
-                                            {categories.map((c) => (
-                                                <Link key={c.id} to={`/boutique/${c.id}`} className="flex items-center gap-2 px-3 py-2 rounded-md text-sm hover:bg-muted">
-                                                    <i className={`fa-solid ${c.icon} text-primary text-xs`} />
-                                                    {c.name}
-                                                </Link>
-                                            ))}
-                                        </div>
-                                    </div>
                                     <div className="p-4 border-t mt-auto">
                                         <Link
                                             to="/suivi"
