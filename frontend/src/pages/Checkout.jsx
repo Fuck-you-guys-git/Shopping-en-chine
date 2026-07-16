@@ -65,7 +65,9 @@ export default function Checkout() {
             try {
                 const res = await paxityAPI.getStatus(transaction.transaction_id);
                 if (res.status !== transaction.status) {
-                    setTransaction((prev) => ({ ...prev, status: res.status }));
+                    // Merge the full response so amount/order_id survive the
+                    // cart clear() and render correctly on the confirmation.
+                    setTransaction((prev) => ({ ...prev, ...res }));
                 }
                 if (res.status === "success") {
                     setComplete(true);
