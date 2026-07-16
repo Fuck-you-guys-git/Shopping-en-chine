@@ -3,7 +3,7 @@ import { Link, NavLink, useNavigate } from "react-router-dom";
 import { Search, ShoppingBag, User, Menu, Heart, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import { Sheet, SheetContent, SheetTrigger, SheetTitle } from "@/components/ui/sheet";
 import { Logo } from "@/components/Logo";
 import { useCart } from "@/context/CartContext";
 import { categories } from "@/data/products";
@@ -76,6 +76,7 @@ export const Navbar = () => {
                                     </Button>
                                 </SheetTrigger>
                                 <SheetContent side="left" className="w-[300px] p-0 flex flex-col">
+                                    <SheetTitle className="sr-only">Menu de navigation</SheetTitle>
                                     <div className="p-6 border-b">
                                         <Logo />
                                     </div>
