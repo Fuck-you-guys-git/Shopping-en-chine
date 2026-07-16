@@ -22,6 +22,7 @@ export const Navbar = () => {
     const [scrolled, setScrolled] = useState(false);
     const [query, setQuery] = useState("");
     const [searchOpen, setSearchOpen] = useState(false);
+    const [menuOpen, setMenuOpen] = useState(false);
     const navigate = useNavigate();
 
     useEffect(() => {
@@ -68,7 +69,7 @@ export const Navbar = () => {
                     <div className="flex h-16 items-center justify-between gap-4">
                         <div className="flex items-center gap-8">
                             {/* mobile menu */}
-                            <Sheet>
+                            <Sheet open={menuOpen} onOpenChange={setMenuOpen}>
                                 <SheetTrigger asChild>
                                     <Button variant="ghost" size="icon" className="lg:hidden -ml-2" data-testid="mobile-menu-trigger">
                                         <Menu className="h-5 w-5" />
@@ -88,8 +89,9 @@ export const Navbar = () => {
                                                 key={l.to}
                                                 to={l.to}
                                                 end={l.to === "/"}
+                                                onClick={() => setMenuOpen(false)}
                                                 className={({ isActive }) =>
-                                                    `flex items-center justify-between px-4 py-3 rounded-lg text-sm font-medium transition-colors ${
+                                                    `flex items-center justify-between pl-2 pr-3 py-3 rounded-lg text-sm font-medium transition-colors ${
                                                         isActive
                                                             ? "bg-primary/10 text-primary"
                                                             : "text-foreground hover:bg-muted"
@@ -108,6 +110,7 @@ export const Navbar = () => {
                                         <Link
                                             to="/suivi"
                                             data-testid="mobile-menu-tracking-link"
+                                            onClick={() => setMenuOpen(false)}
                                             className="flex items-center justify-center gap-2 w-full h-11 rounded-full bg-ink text-ink-foreground text-sm font-medium hover:bg-ink/90 transition-colors"
                                         >
                                             <i className="fa-solid fa-truck-fast text-xs" />
