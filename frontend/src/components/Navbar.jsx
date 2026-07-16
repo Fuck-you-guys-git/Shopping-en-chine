@@ -70,7 +70,7 @@ export const Navbar = () => {
                             {/* mobile menu */}
                             <Sheet>
                                 <SheetTrigger asChild>
-                                    <Button variant="ghost" size="icon" className="lg:hidden -ml-2">
+                                    <Button variant="ghost" size="icon" className="lg:hidden -ml-2" data-testid="mobile-menu-trigger">
                                         <Menu className="h-5 w-5" />
                                     </Button>
                                 </SheetTrigger>
