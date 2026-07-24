@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Sheet, SheetContent, SheetTrigger, SheetTitle, SheetHeader } from "@/components/ui/sheet";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ProductCard } from "@/components/ProductCard";
-import { products, categories } from "@/data/products";
+import { getAllProducts, categories } from "@/data/products";
 
 export default function Products() {
     const { categoryId } = useParams();
@@ -26,7 +26,7 @@ export default function Products() {
         setSelectedCats((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
 
     const filtered = useMemo(() => {
-        let list = products.filter(
+        let list = getAllProducts().filter(
             (p) => p.price >= priceRange[0] && p.price <= priceRange[1],
         );
         if (selectedCats.length) {

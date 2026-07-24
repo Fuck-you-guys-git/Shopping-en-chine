@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ProductCard, formatPrice } from "@/components/ProductCard";
-import { products, categories } from "@/data/products";
+import { getAllProducts, categories } from "@/data/products";
 import { useCart } from "@/context/CartContext";
 import { toast } from "sonner";
 
@@ -14,7 +14,7 @@ export default function ProductDetail() {
     const { id } = useParams();
     const navigate = useNavigate();
     const { addItem, setDrawerOpen } = useCart();
-    const product = products.find((p) => p.id === id);
+    const product = getAllProducts().find((p) => p.id === id);
     const [qty, setQty] = useState(1);
     const [color, setColor] = useState(product?.colors?.[0]);
     const [size, setSize] = useState("M");
@@ -29,9 +29,10 @@ export default function ProductDetail() {
     }
 
     const category = categories.find((c) => c.id === product.category);
-    const related = products.filter((p) => p.id !== product.id && p.category === product.category).slice(0, 4);
+    const allProducts = getAllProducts();
+    const related = allProducts.filter((p) => p.id !== product.id && p.category === product.category).slice(0, 4);
     if (related.length < 4) {
-        const fill = products.filter((p) => p.id !== product.id && p.category !== product.category);
+        const fill = allProducts.filter((p) => p.id !== product.id && p.category !== product.category);
         related.push(...fill.slice(0, 4 - related.length));
     }
 
@@ -65,7 +66,7 @@ export default function ProductDetail() {
                             <img src={product.image} alt={product.name} className="h-full w-full object-cover" />
                         </div>
                         <div className="grid grid-cols-4 gap-3">
-                            {[product.image, ...products.slice(0, 3).map((p) => p.image)].map((src, i) => (
+                            {[product.image, ...allProducts.slice(0, 3).map((p) => p.image)].map((src, i) => (
                                 <button key={i} className={`aspect-square rounded-xl overflow-hidden bg-muted border-2 ${i === 0 ? "border-primary" : "border-transparent"}`}>
                                     <img src={src} alt="" className="h-full w-full object-cover" />
                                 </button>

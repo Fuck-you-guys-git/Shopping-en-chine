@@ -87,6 +87,25 @@ export const products = [
     },
 ];
 
+// Products added by the seller (Espace vendeur) are persisted in
+// localStorage under this key by SellerContext. Merge them with the static
+// catalog so they also appear on the public shop and product pages.
+const SELLER_PRODUCTS_KEY = "sec_seller_products_v1";
+
+export const getAllProducts = () => {
+    try {
+        const raw = localStorage.getItem(SELLER_PRODUCTS_KEY);
+        if (!raw) return products;
+        const stored = JSON.parse(raw);
+        if (!Array.isArray(stored)) return products;
+        const seedIds = new Set(products.map((p) => p.id));
+        const custom = stored.filter((p) => p && p.id && p.name && !seedIds.has(p.id));
+        return [...custom, ...products];
+    } catch {
+        return products;
+    }
+};
+
 export const testimonials = [
     {
         name: "Aminata Diallo", city: "Dakar", rating: 5,
