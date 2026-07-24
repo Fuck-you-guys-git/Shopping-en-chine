@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { ArrowUpRight, ArrowRight, TrendingUp, TrendingDown, ShoppingBag, Package, DollarSign, Users } from "lucide-react";
+import { ArrowUpRight, ArrowRight, TrendingUp, TrendingDown, ShoppingBag, Package, DollarSign, Users, PlusCircle } from "lucide-react";
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from "recharts";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -35,6 +35,19 @@ export default function Dashboard() {
 
     return (
         <div className="space-y-6">
+            {/* Quick actions — always visible */}
+            <div className="flex flex-wrap gap-3">
+                <Button asChild size="lg" className="bg-primary hover:bg-primary/90 text-primary-foreground rounded-full h-12 px-6 shadow-warm flex-1 sm:flex-none" data-testid="dashboard-add-product-btn">
+                    <Link to="ajouter"><PlusCircle className="h-4 w-4" /> Ajouter un produit</Link>
+                </Button>
+                <Button asChild size="lg" variant="outline" className="rounded-full h-12 px-6 bg-card border-2 flex-1 sm:flex-none" data-testid="dashboard-view-orders-btn">
+                    <Link to="commandes"><ShoppingBag className="h-4 w-4" /> Commandes</Link>
+                </Button>
+                <Button asChild size="lg" variant="outline" className="rounded-full h-12 px-6 bg-card border-2 flex-1 sm:flex-none" data-testid="dashboard-view-products-btn">
+                    <Link to="produits"><Package className="h-4 w-4" /> Mes produits</Link>
+                </Button>
+            </div>
+
             {/* KPIs */}
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
                 <StatCard label="Revenu (30j)" value={formatPrice(metrics.revenue30)} trend="+12.4%" icon={DollarSign} />
@@ -48,7 +61,7 @@ export default function Dashboard() {
                 <div className="lg:col-span-2 bg-card rounded-2xl p-5 md:p-6 shadow-card border border-border/50">
                     <div className="flex items-start justify-between mb-4">
                         <div>
-                            <h3 className="font-display text-lg font-medium">Évolution du chiffre d'affaires</h3>
+                            <h3 className="font-display text-lg font-medium">Évolution du chiffre d&apos;affaires</h3>
                             <p className="text-xs text-muted-foreground mt-0.5">14 derniers jours</p>
                         </div>
                         <Badge className="bg-success/15 text-success hover:bg-success/15 border-0">
@@ -119,7 +132,7 @@ export default function Dashboard() {
                             <h3 className="font-display text-lg font-medium">Commandes récentes</h3>
                             <p className="text-xs text-muted-foreground mt-0.5">Mises à jour en temps réel</p>
                         </div>
-                        <Button asChild variant="ghost" size="sm">
+                        <Button asChild variant="outline" size="sm" className="rounded-full border-2 bg-card" data-testid="dashboard-see-all-orders-btn">
                             <Link to="commandes">Voir tout <ArrowRight className="ml-1 h-4 w-4" /></Link>
                         </Button>
                     </div>
@@ -144,7 +157,7 @@ export default function Dashboard() {
 
                 <div className="bg-card rounded-2xl p-5 md:p-6 shadow-card border border-border/50">
                     <h3 className="font-display text-lg font-medium mb-1">Top produits</h3>
-                    <p className="text-xs text-muted-foreground mb-4">Par chiffre d'affaires</p>
+                    <p className="text-xs text-muted-foreground mb-4">Par chiffre d&apos;affaires</p>
                     <div className="space-y-3">
                         {metrics.topProducts.length === 0 && (
                             <p className="text-sm text-muted-foreground py-4 text-center">Aucune vente</p>

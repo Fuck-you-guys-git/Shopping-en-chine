@@ -85,7 +85,7 @@ const SidebarContent = ({ onNavigate }) => {
                 </div>
                 <div className="space-y-2 max-h-40 overflow-y-auto no-scrollbar">
                     {liveEvents.length === 0 && (
-                        <p className="text-xs text-ink-foreground/40 italic">En attente d'activité…</p>
+                        <p className="text-xs text-ink-foreground/40 italic">En attente d&apos;activité…</p>
                     )}
                     {liveEvents.slice(0, 4).map((e, i) => (
                         <div key={i} className="text-xs text-ink-foreground/70 leading-snug">

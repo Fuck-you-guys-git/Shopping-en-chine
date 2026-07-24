@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { Upload, Package, Sparkles, X, ImagePlus } from "lucide-react";
+import { Upload, Package, Sparkles, ImagePlus, Camera } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -44,6 +44,42 @@ export default function AddProduct() {
 
     const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
     const toggleColor = (c) => set("colors", form.colors.includes(c) ? form.colors.filter((x) => x !== c) : [...form.colors, c]);
+
+    // --- Photo upload from phone (camera or gallery), resized client-side ---
+    const fileRef = useRef(null);
+    const [uploading, setUploading] = useState(false);
+
+    const onPhotoSelected = (e) => {
+        const file = e.target.files?.[0];
+        e.target.value = "";
+        if (!file) return;
+        if (!file.type.startsWith("image/")) {
+            toast.error("Fichier non valide", { description: "Choisissez une photo (JPG, PNG…)." });
+            return;
+        }
+        setUploading(true);
+        const reader = new FileReader();
+        reader.onerror = () => { setUploading(false); toast.error("Impossible de lire la photo"); };
+        reader.onload = () => {
+            const img = new Image();
+            img.onerror = () => { setUploading(false); toast.error("Photo illisible"); };
+            img.onload = () => {
+                // Resize to max 900px and compress to keep storage light
+                const MAX = 900;
+                const scale = Math.min(1, MAX / Math.max(img.width, img.height));
+                const canvas = document.createElement("canvas");
+                canvas.width = Math.round(img.width * scale);
+                canvas.height = Math.round(img.height * scale);
+                canvas.getContext("2d").drawImage(img, 0, 0, canvas.width, canvas.height);
+                const dataUrl = canvas.toDataURL("image/jpeg", 0.82);
+                set("image", dataUrl);
+                setUploading(false);
+                toast.success("Photo ajoutée ✦", { description: "Votre photo est visible dans l'aperçu." });
+            };
+            img.src = reader.result;
+        };
+        reader.readAsDataURL(file);
+    };
 
     const submit = (e) => {
         e.preventDefault();
@@ -147,8 +183,32 @@ export default function AddProduct() {
 
                 <div className="bg-card rounded-2xl p-5 md:p-6 shadow-card border border-border/50">
                     <h3 className="font-display text-lg font-medium mb-1">Image du produit</h3>
-                    <p className="text-xs text-muted-foreground mb-5">Choisissez une image depuis nos exemples ou collez une URL.</p>
+                    <p className="text-xs text-muted-foreground mb-5">Prenez une photo, choisissez un exemple ou collez une URL.</p>
                     <div className="space-y-4">
+                        <input
+                            ref={fileRef}
+                            type="file"
+                            accept="image/*"
+                            className="hidden"
+                            onChange={onPhotoSelected}
+                            data-testid="product-photo-input"
+                        />
+                        <Button
+                            type="button"
+                            size="lg"
+                            disabled={uploading}
+                            onClick={() => fileRef.current?.click()}
+                            className="w-full h-14 rounded-xl bg-ink text-ink-foreground hover:bg-ink/90 text-base"
+                            data-testid="upload-photo-btn"
+                        >
+                            <Camera className="h-5 w-5" />
+                            {uploading ? "Chargement de la photo…" : "Ajouter une photo depuis votre téléphone"}
+                        </Button>
+                        {form.image?.startsWith("data:") && (
+                            <p className="text-xs text-success flex items-center gap-1.5" data-testid="photo-uploaded-hint">
+                                <i className="fa-solid fa-circle-check" /> Photo personnelle chargée — visible dans l&apos;aperçu.
+                            </p>
+                        )}
                         <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
                             {SAMPLE_IMAGES.map((src) => (
                                 <button
@@ -165,7 +225,13 @@ export default function AddProduct() {
                             <Label htmlFor="image-url">Ou URL personnalisée</Label>
                             <div className="relative">
                                 <ImagePlus className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                                <Input id="image-url" value={form.image} onChange={(e) => set("image", e.target.value)} placeholder="https://…" className="pl-9" />
+                                <Input
+                                    id="image-url"
+                                    value={form.image?.startsWith("data:") ? "" : form.image}
+                                    onChange={(e) => set("image", e.target.value)}
+                                    placeholder={form.image?.startsWith("data:") ? "Photo personnelle chargée — collez une URL pour la remplacer" : "https://…"}
+                                    className="pl-9"
+                                />
                             </div>
                         </div>
                     </div>
@@ -191,7 +257,7 @@ export default function AddProduct() {
                 <div className="bg-card rounded-2xl p-5 md:p-6 shadow-card border border-border/50 flex items-center justify-between">
                     <div>
                         <p className="font-medium text-sm">Publier immédiatement</p>
-                        <p className="text-xs text-muted-foreground mt-0.5">Le produit sera visible sur la boutique dès l'enregistrement.</p>
+                        <p className="text-xs text-muted-foreground mt-0.5">Le produit sera visible sur la boutique dès l&apos;enregistrement.</p>
                     </div>
                     <Switch checked={form.active} onCheckedChange={(v) => set("active", v)} />
                 </div>
