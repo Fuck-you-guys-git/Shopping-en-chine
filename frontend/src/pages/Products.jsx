@@ -9,10 +9,12 @@ import { Label } from "@/components/ui/label";
 import { Sheet, SheetContent, SheetTrigger, SheetTitle, SheetHeader } from "@/components/ui/sheet";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ProductCard } from "@/components/ProductCard";
-import { getAllProducts, categories } from "@/data/products";
+import { categories } from "@/data/products";
+import { useCatalog } from "@/context/CatalogContext";
 
 export default function Products() {
     const { categoryId } = useParams();
+    const { products } = useCatalog();
     const [searchParams] = useSearchParams();
     const searchQuery = searchParams.get("q") || "";
 
@@ -26,7 +28,7 @@ export default function Products() {
         setSelectedCats((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
 
     const filtered = useMemo(() => {
-        let list = getAllProducts().filter(
+        let list = products.filter(
             (p) => p.price >= priceRange[0] && p.price <= priceRange[1],
         );
         if (selectedCats.length) {
@@ -46,7 +48,7 @@ export default function Products() {
             default: break;
         }
         return list;
-    }, [priceRange, selectedCats, categoryId, sortBy, searchQuery]);
+    }, [products, priceRange, selectedCats, categoryId, sortBy, searchQuery]);
 
     const FiltersPanel = () => (
         <div className="space-y-8">

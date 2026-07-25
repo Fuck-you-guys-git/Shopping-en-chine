@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom";
 import "@/App.css";
 import { Toaster } from "@/components/ui/sonner";
 import { CartProvider } from "@/context/CartContext";
+import { CatalogProvider } from "@/context/CatalogContext";
 import { SellerAuthProvider } from "@/context/SellerAuthContext";
 import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
@@ -39,6 +40,7 @@ function App() {
         <div className="App min-h-screen bg-background text-foreground">
             <BrowserRouter>
                 <SellerAuthProvider>
+                    <CatalogProvider>
                     <CartProvider>
                         <ScrollToTop />
                         <Shell>
@@ -90,6 +92,7 @@ function App() {
                         </Shell>
                         <Toaster position="bottom-right" />
                     </CartProvider>
+                    </CatalogProvider>
                 </SellerAuthProvider>
             </BrowserRouter>
         </div>

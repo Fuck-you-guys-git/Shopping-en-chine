@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { products as seedProducts, categories } from "@/data/products";
 import { productsAPI } from "@/lib/api";
+import { useCatalog } from "@/context/CatalogContext";
 
 const SellerContext = createContext(null);
 const ORDERS_KEY = "sec_seller_orders_v1";
@@ -148,20 +149,24 @@ export const SellerProvider = ({ children }) => {
     }, []);
 
     // ---- CRUD (persisted server-side, visible to all customers) ----
+    const { refresh: refreshCatalog } = useCatalog();
     const addProduct = async (data) => {
         const created = await productsAPI.create(data);
         setProducts((prev) => [created, ...prev]);
+        refreshCatalog();
         return created;
     };
     const updateProduct = async (id, patch) => {
         const current = products.find((p) => p.id === id) || {};
         const updated = await productsAPI.update(id, { ...current, ...patch });
         setProducts((prev) => prev.map((p) => (p.id === id ? { ...p, ...updated } : p)));
+        refreshCatalog();
         return updated;
     };
     const deleteProduct = async (id) => {
         await productsAPI.remove(id);
         setProducts((prev) => prev.filter((p) => p.id !== id));
+        refreshCatalog();
     };
 
     const updateOrderStatus = (id, status) =>

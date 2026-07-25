@@ -6,7 +6,8 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ProductCard, formatPrice } from "@/components/ProductCard";
-import { getAllProducts, categories } from "@/data/products";
+import { categories } from "@/data/products";
+import { useCatalog } from "@/context/CatalogContext";
 import { useCart } from "@/context/CartContext";
 import { toast } from "sonner";
 
@@ -14,12 +15,20 @@ export default function ProductDetail() {
     const { id } = useParams();
     const navigate = useNavigate();
     const { addItem, setDrawerOpen } = useCart();
-    const product = getAllProducts().find((p) => p.id === id);
+    const { products: allProducts, loaded } = useCatalog();
+    const product = allProducts.find((p) => p.id === id);
     const [qty, setQty] = useState(1);
     const [color, setColor] = useState(product?.colors?.[0]);
     const [size, setSize] = useState("M");
 
     if (!product) {
+        if (!loaded) {
+            return (
+                <div className="container mx-auto px-5 py-24 text-center" data-testid="product-loading">
+                    <p className="text-muted-foreground">Chargement du produit…</p>
+                </div>
+            );
+        }
         return (
             <div className="container mx-auto px-5 py-24 text-center">
                 <h2 className="font-display text-3xl mb-4">Produit introuvable</h2>
@@ -29,7 +38,6 @@ export default function ProductDetail() {
     }
 
     const category = categories.find((c) => c.id === product.category);
-    const allProducts = getAllProducts();
     const related = allProducts.filter((p) => p.id !== product.id && p.category === product.category).slice(0, 4);
     if (related.length < 4) {
         const fill = allProducts.filter((p) => p.id !== product.id && p.category !== product.category);

@@ -4,7 +4,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { ProductCard } from "@/components/ProductCard";
-import { categories, products } from "@/data/products";
+import { categories } from "@/data/products";
+import { useCatalog } from "@/context/CatalogContext";
 import { useNavigate } from "react-router-dom";
 import { useState } from "react";
 
@@ -16,6 +17,7 @@ const benefits = [
 
 export default function Home() {
     const navigate = useNavigate();
+    const { products } = useCatalog();
     const [query, setQuery] = useState("");
 
     const onSearch = (e) => {
