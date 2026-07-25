@@ -54,11 +54,20 @@ export const maisonSubcategories = [
     { id: "jardin-exterieur", name: "Jardin & Extérieur", icon: "fa-tree", keywords: ["jardin", "extérieur", "exterieur", "plante", "pot", "arrosoir", "barbecue", "hamac", "terrasse"] },
 ];
 
+// Sous-catégories de la catégorie Beauté
+export const beauteSubcategories = [
+    { id: "soins", name: "Soins", icon: "fa-hand-holding-droplet", keywords: ["soin", "crème", "creme", "sérum", "serum", "masque", "hydratant", "lotion", "gommage", "huile"] },
+    { id: "maquillage", name: "Maquillage", icon: "fa-paintbrush", keywords: ["maquillage", "rouge à lèvres", "levres", "mascara", "fond de teint", "palette", "eyeliner", "pinceau", "blush", "gloss"] },
+    { id: "parfums", name: "Parfums", icon: "fa-spray-can-sparkles", keywords: ["parfum", "eau de toilette", "fragrance", "cologne", "brume"] },
+    { id: "appareils-beaute", name: "Appareils de beauté", icon: "fa-wand-sparkles", keywords: ["lisseur", "sèche-cheveux", "seche-cheveux", "épilateur", "epilateur", "tondeuse", "brosse chauffante", "boucleur", "appareil"] },
+];
+
 // Regroupe les sous-catégories par catégorie (menu + filtre boutique + formulaire vendeur)
 export const subcategoriesByCategory = {
     mode: modeSubcategories,
     tech: techSubcategories,
     maison: maisonSubcategories,
+    beaute: beauteSubcategories,
 };
 
 export const products = [
