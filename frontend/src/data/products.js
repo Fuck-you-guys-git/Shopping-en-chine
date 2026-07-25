@@ -62,12 +62,23 @@ export const beauteSubcategories = [
     { id: "appareils-beaute", name: "Appareils de beauté", icon: "fa-wand-sparkles", keywords: ["lisseur", "sèche-cheveux", "seche-cheveux", "épilateur", "epilateur", "tondeuse", "brosse chauffante", "boucleur", "appareil"] },
 ];
 
+// Sous-catégories de la catégorie Enfants
+export const enfantsSubcategories = [
+    { id: "vetements-filles", name: "Vêtements pour filles", icon: "fa-child-dress", keywords: ["fille", "robe fille", "jupe fille"] },
+    { id: "vetements-garcons", name: "Vêtements pour garçons", icon: "fa-child", keywords: ["garçon", "garcon"] },
+    { id: "chaussures-enfants", name: "Chaussures", icon: "fa-shoe-prints", keywords: ["chaussure enfant", "basket enfant", "sandale enfant", "chausson"] },
+    { id: "jouets", name: "Jouets", icon: "fa-puzzle-piece", keywords: ["jouet", "peluche", "poupée", "poupee", "lego", "voiture miniature", "jeu enfant", "figurine"] },
+    { id: "accessoires-enfants", name: "Accessoires", icon: "fa-baby-carriage", keywords: ["biberon", "tétine", "tetine", "bavoir", "poussette", "sac à langer", "casquette enfant"] },
+    { id: "fournitures-scolaires", name: "Fournitures scolaires", icon: "fa-pen-ruler", keywords: ["cartable", "scolaire", "cahier", "stylo", "crayon", "trousse", "école", "ecole", "ardoise", "gomme"] },
+];
+
 // Regroupe les sous-catégories par catégorie (menu + filtre boutique + formulaire vendeur)
 export const subcategoriesByCategory = {
     mode: modeSubcategories,
     tech: techSubcategories,
     maison: maisonSubcategories,
     beaute: beauteSubcategories,
+    enfants: enfantsSubcategories,
 };
 
 export const products = [

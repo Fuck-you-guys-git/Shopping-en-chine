@@ -15,6 +15,7 @@ const navLinks = [
     { to: "/boutique/tech", label: "Électronique", subs: subcategoriesByCategory.tech },
     { to: "/boutique/maison", label: "Maison", subs: subcategoriesByCategory.maison },
     { to: "/boutique/beaute", label: "Beauté", subs: subcategoriesByCategory.beaute },
+    { to: "/boutique/enfants", label: "Enfants", subs: subcategoriesByCategory.enfants },
     { to: "/suivi", label: "Suivi de colis" },
 ];
 
