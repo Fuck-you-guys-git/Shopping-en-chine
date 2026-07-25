@@ -14,6 +14,18 @@ export const categories = [
       image: "https://images.unsplash.com/photo-1556909212-d5b604d0c90d?w=800&q=80" },
 ];
 
+// Sous-catégories de la catégorie Mode (menu + filtre boutique).
+// `keywords` sert de repli pour classer les produits existants sans champ subcategory.
+export const modeSubcategories = [
+    { id: "vetements", name: "Vêtements", icon: "fa-shirt", keywords: ["pull", "t-shirt", "tee-shirt", "robe", "chaussette", "veste", "pantalon", "jean", "chemise", "vêtement", "jupe", "short", "hoodie", "sweat"] },
+    { id: "chaussures", name: "Chaussures", icon: "fa-shoe-prints", keywords: ["sneaker", "chaussure", "basket", "sandale", "botte", "mocassin", "talon"] },
+    { id: "sacs", name: "Sacs", icon: "fa-bag-shopping", keywords: ["sac", "cartable", "valise", "pochette"] },
+    { id: "lunettes", name: "Lunettes", icon: "fa-glasses", keywords: ["lunette"] },
+    { id: "accessoires", name: "Accessoires", icon: "fa-star", keywords: ["ceinture", "casquette", "chapeau", "écharpe", "foulard", "portefeuille", "accessoire", "gant", "cravate"] },
+    { id: "bijoux", name: "Bijoux", icon: "fa-gem", keywords: ["bijou", "collier", "bracelet", "bague", "boucle", "pendentif", "chaîne"] },
+    { id: "montres", name: "Montres", icon: "fa-clock", keywords: ["montre", "chronographe", "chrono"] },
+];
+
 export const products = [
     {
         id: "p1", name: "Casque sans fil Aura Pro", category: "tech", price: 85000, oldPrice: 117000,

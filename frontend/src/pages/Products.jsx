@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Sheet, SheetContent, SheetTrigger, SheetTitle, SheetHeader } from "@/components/ui/sheet";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ProductCard } from "@/components/ProductCard";
-import { categories } from "@/data/products";
+import { categories, modeSubcategories } from "@/data/products";
 import { useCatalog } from "@/context/CatalogContext";
 
 export default function Products() {
@@ -17,6 +17,8 @@ export default function Products() {
     const { products } = useCatalog();
     const [searchParams] = useSearchParams();
     const searchQuery = searchParams.get("q") || "";
+    const subId = searchParams.get("sub") || "";
+    const activeSub = modeSubcategories.find((s) => s.id === subId);
 
     const [priceRange, setPriceRange] = useState([0, 200000]);
     const [selectedCats, setSelectedCats] = useState(categoryId ? [categoryId] : []);
@@ -36,6 +38,12 @@ export default function Products() {
         } else if (categoryId) {
             list = list.filter((p) => p.category === categoryId);
         }
+        if (activeSub) {
+            list = list.filter((p) =>
+                p.subcategory === activeSub.id ||
+                activeSub.keywords.some((k) => (p.name || "").toLowerCase().includes(k)),
+            );
+        }
         if (searchQuery) {
             const q = searchQuery.toLowerCase();
             list = list.filter((p) => p.name.toLowerCase().includes(q));
@@ -48,7 +56,7 @@ export default function Products() {
             default: break;
         }
         return list;
-    }, [products, priceRange, selectedCats, categoryId, sortBy, searchQuery]);
+    }, [products, priceRange, selectedCats, categoryId, sortBy, searchQuery, activeSub]);
 
     const FiltersPanel = () => (
         <div className="space-y-8">
@@ -110,7 +118,7 @@ export default function Products() {
                 <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
                     <div>
                         <h1 className="font-display text-4xl sm:text-5xl lg:text-6xl font-medium tracking-tight">
-                            {activeCategory ? activeCategory.name : searchQuery ? `« ${searchQuery} »` : "Toute la boutique"}
+                            {activeSub ? activeSub.name : activeCategory ? activeCategory.name : searchQuery ? `« ${searchQuery} »` : "Toute la boutique"}
                         </h1>
                         <p className="text-muted-foreground mt-2">
                             {filtered.length} produit{filtered.length > 1 ? "s" : ""} · trié{filtered.length > 1 ? "s" : ""} pour vous
@@ -140,6 +148,32 @@ export default function Products() {
                         </Select>
                     </div>
                 </div>
+
+                {/* Sous-catégories Mode */}
+                {categoryId === "mode" && (
+                    <div className="flex flex-wrap items-center gap-2 mt-5" data-testid="mode-subcategory-pills">
+                        <Link
+                            to="/boutique/mode"
+                            className={`px-3.5 py-1.5 rounded-full text-xs font-medium border transition-colors ${
+                                !activeSub ? "bg-primary text-primary-foreground border-primary" : "bg-card border-border text-foreground/70 hover:border-primary/40 hover:text-foreground"
+                            }`}
+                        >
+                            Tout
+                        </Link>
+                        {modeSubcategories.map((s) => (
+                            <Link
+                                key={s.id}
+                                to={`/boutique/mode?sub=${s.id}`}
+                                data-testid={`mode-sub-pill-${s.id}`}
+                                className={`px-3.5 py-1.5 rounded-full text-xs font-medium border transition-colors ${
+                                    activeSub?.id === s.id ? "bg-primary text-primary-foreground border-primary" : "bg-card border-border text-foreground/70 hover:border-primary/40 hover:text-foreground"
+                                }`}
+                            >
+                                {s.name}
+                            </Link>
+                        ))}
+                    </div>
+                )}
 
                 {(selectedCats.length > 0 || priceRange[0] > 0 || priceRange[1] < 200000) && (
                     <div className="flex flex-wrap items-center gap-2 mt-4">

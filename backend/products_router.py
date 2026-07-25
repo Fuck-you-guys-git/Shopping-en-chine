@@ -56,6 +56,7 @@ async def seed_products(db) -> None:
 class ProductPayload(BaseModel):
     name: str = Field(min_length=2, max_length=120)
     category: str
+    subcategory: Optional[str] = None
     price: float = Field(gt=0)
     oldPrice: Optional[float] = None
     badge: Optional[str] = None
