@@ -26,6 +26,25 @@ export const modeSubcategories = [
     { id: "montres", name: "Montres", icon: "fa-clock", keywords: ["montre", "chronographe", "chrono"] },
 ];
 
+// Sous-catégories de la catégorie Électronique
+export const techSubcategories = [
+    { id: "smartphones", name: "Smartphones", icon: "fa-mobile-screen", keywords: ["smartphone", "téléphone", "telephone", "iphone", "galaxy"] },
+    { id: "tablettes", name: "Tablettes", icon: "fa-tablet-screen-button", keywords: ["tablette", "ipad"] },
+    { id: "ordinateurs", name: "Ordinateurs", icon: "fa-laptop", keywords: ["ordinateur", "laptop", "macbook", "clavier", "souris"] },
+    { id: "cameras", name: "Caméras", icon: "fa-camera", keywords: ["caméra", "camera", "appareil photo", "webcam", "objectif"] },
+    { id: "montres-connectees", name: "Montres connectées", icon: "fa-stopwatch", keywords: ["montre connectée", "smartwatch", "montre intelligente", "bracelet connecté"] },
+    { id: "ecouteurs-casques", name: "Écouteurs & Casques", icon: "fa-headphones", keywords: ["écouteur", "ecouteur", "casque", "airpods", "earbuds", "headphone"] },
+    { id: "chargeurs-cables", name: "Chargeurs & Câbles", icon: "fa-bolt", keywords: ["chargeur", "câble", "cable", "batterie", "power bank", "powerbank", "adaptateur"] },
+    { id: "eclairage-led", name: "Éclairage LED", icon: "fa-lightbulb", keywords: ["led", "lampe", "éclairage", "ampoule", "ruban lumineux", "néon", "neon"] },
+    { id: "jeux-gaming", name: "Jeux & Gaming", icon: "fa-gamepad", keywords: ["gaming", "jeu", "manette", "console", "gamer", "playstation", "xbox"] },
+];
+
+// Regroupe les sous-catégories par catégorie (menu + filtre boutique + formulaire vendeur)
+export const subcategoriesByCategory = {
+    mode: modeSubcategories,
+    tech: techSubcategories,
+};
+
 export const products = [
     {
         id: "p1", name: "Casque sans fil Aura Pro", category: "tech", price: 85000, oldPrice: 117000,

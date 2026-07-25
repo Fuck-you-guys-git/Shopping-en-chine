@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Sheet, SheetContent, SheetTrigger, SheetTitle, SheetHeader } from "@/components/ui/sheet";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ProductCard } from "@/components/ProductCard";
-import { categories, modeSubcategories } from "@/data/products";
+import { categories, subcategoriesByCategory } from "@/data/products";
 import { useCatalog } from "@/context/CatalogContext";
 
 export default function Products() {
@@ -18,7 +18,8 @@ export default function Products() {
     const [searchParams] = useSearchParams();
     const searchQuery = searchParams.get("q") || "";
     const subId = searchParams.get("sub") || "";
-    const activeSub = modeSubcategories.find((s) => s.id === subId);
+    const categorySubs = subcategoriesByCategory[categoryId] || [];
+    const activeSub = categorySubs.find((s) => s.id === subId);
 
     const [priceRange, setPriceRange] = useState([0, 200000]);
     const [selectedCats, setSelectedCats] = useState(categoryId ? [categoryId] : []);
@@ -149,22 +150,22 @@ export default function Products() {
                     </div>
                 </div>
 
-                {/* Sous-catégories Mode */}
-                {categoryId === "mode" && (
-                    <div className="flex flex-wrap items-center gap-2 mt-5" data-testid="mode-subcategory-pills">
+                {/* Sous-catégories */}
+                {categorySubs.length > 0 && (
+                    <div className="flex flex-wrap items-center gap-2 mt-5" data-testid="subcategory-pills">
                         <Link
-                            to="/boutique/mode"
+                            to={`/boutique/${categoryId}`}
                             className={`px-3.5 py-1.5 rounded-full text-xs font-medium border transition-colors ${
                                 !activeSub ? "bg-primary text-primary-foreground border-primary" : "bg-card border-border text-foreground/70 hover:border-primary/40 hover:text-foreground"
                             }`}
                         >
                             Tout
                         </Link>
-                        {modeSubcategories.map((s) => (
+                        {categorySubs.map((s) => (
                             <Link
                                 key={s.id}
-                                to={`/boutique/mode?sub=${s.id}`}
-                                data-testid={`mode-sub-pill-${s.id}`}
+                                to={`/boutique/${categoryId}?sub=${s.id}`}
+                                data-testid={`sub-pill-${s.id}`}
                                 className={`px-3.5 py-1.5 rounded-full text-xs font-medium border transition-colors ${
                                     activeSub?.id === s.id ? "bg-primary text-primary-foreground border-primary" : "bg-card border-border text-foreground/70 hover:border-primary/40 hover:text-foreground"
                                 }`}

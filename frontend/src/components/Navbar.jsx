@@ -6,13 +6,13 @@ import { Input } from "@/components/ui/input";
 import { Sheet, SheetContent, SheetTrigger, SheetTitle } from "@/components/ui/sheet";
 import { Logo } from "@/components/Logo";
 import { useCart } from "@/context/CartContext";
-import { categories, modeSubcategories } from "@/data/products";
+import { categories, subcategoriesByCategory } from "@/data/products";
 
 const navLinks = [
     { to: "/", label: "Accueil" },
     { to: "/boutique", label: "Boutique" },
-    { to: "/boutique/mode", label: "Mode", subs: modeSubcategories },
-    { to: "/boutique/tech", label: "Électronique" },
+    { to: "/boutique/mode", label: "Mode", subs: subcategoriesByCategory.mode },
+    { to: "/boutique/tech", label: "Électronique", subs: subcategoriesByCategory.tech },
     { to: "/boutique/maison", label: "Maison" },
     { to: "/suivi", label: "Suivi de colis" },
 ];
@@ -105,13 +105,13 @@ export const Navbar = () => {
                                                     </span>
                                                     <i className="fa-solid fa-chevron-right text-xs opacity-40" />
                                                 </NavLink>
-                                                {l.to === "/boutique/mode" && (
-                                                    <div className="ml-7 border-l border-border pl-3 my-1 space-y-0.5" data-testid="mobile-mode-submenu">
-                                                        {modeSubcategories.map((s) => (
+                                                {subcategoriesByCategory[l.to.replace("/boutique/", "")] && (
+                                                    <div className="ml-7 border-l border-border pl-3 my-1 space-y-0.5" data-testid={`mobile-submenu-${l.to.replace("/boutique/", "")}`}>
+                                                        {subcategoriesByCategory[l.to.replace("/boutique/", "")].map((s) => (
                                                             <Link
                                                                 key={s.id}
-                                                                to={`/boutique/mode?sub=${s.id}`}
-                                                                data-testid={`mobile-mode-sub-${s.id}`}
+                                                                to={`${l.to}?sub=${s.id}`}
+                                                                data-testid={`mobile-sub-${s.id}`}
                                                                 onClick={() => setMenuOpen(false)}
                                                                 className="flex items-center gap-2.5 py-2 pl-1 pr-3 rounded-lg text-[13px] text-foreground/70 hover:bg-muted hover:text-foreground transition-colors"
                                                             >
@@ -167,13 +167,13 @@ export const Navbar = () => {
                                         )}
                                     </NavLink>
                                     {l.subs && (
-                                        <div className="absolute left-0 top-full pt-2 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-opacity z-50" data-testid="desktop-mode-submenu">
-                                            <div className="w-52 bg-background border border-border rounded-xl shadow-soft p-2">
+                                        <div className="absolute left-0 top-full pt-2 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-opacity z-50" data-testid={`desktop-submenu-${l.to.replace("/boutique/", "")}`}>
+                                            <div className="w-56 bg-background border border-border rounded-xl shadow-soft p-2">
                                                 {l.subs.map((s) => (
                                                     <Link
                                                         key={s.id}
                                                         to={`${l.to}?sub=${s.id}`}
-                                                        data-testid={`desktop-mode-sub-${s.id}`}
+                                                        data-testid={`desktop-sub-${s.id}`}
                                                         className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-foreground/80 hover:bg-muted hover:text-foreground transition-colors"
                                                     >
                                                         <i className={`fa-solid ${s.icon} text-primary text-xs w-4 text-center`} />

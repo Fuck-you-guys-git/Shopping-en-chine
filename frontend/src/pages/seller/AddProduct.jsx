@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { useSeller } from "@/context/SellerContext";
-import { categories, modeSubcategories } from "@/data/products";
+import { categories, subcategoriesByCategory } from "@/data/products";
 import { formatPrice } from "@/components/ProductCard";
 import { toast } from "sonner";
 
@@ -91,7 +91,7 @@ export default function AddProduct() {
         const product = {
             name: form.name,
             category: form.category,
-            subcategory: form.category === "mode" && form.subcategory ? form.subcategory : undefined,
+            subcategory: form.subcategory && subcategoriesByCategory[form.category] ? form.subcategory : undefined,
             price: Number(form.price),
             oldPrice: form.oldPrice ? Number(form.oldPrice) : undefined,
             description: form.description || "Description à compléter.",
@@ -121,7 +121,7 @@ export default function AddProduct() {
                         <div className="grid sm:grid-cols-2 gap-4">
                             <div className="space-y-1.5">
                                 <Label>Catégorie *</Label>
-                                <Select value={form.category} onValueChange={(v) => { set("category", v); if (v !== "mode") set("subcategory", ""); }}>
+                                <Select value={form.category} onValueChange={(v) => { set("category", v); set("subcategory", ""); }}>
                                     <SelectTrigger><SelectValue placeholder="Choisir une catégorie" /></SelectTrigger>
                                     <SelectContent>
                                         {categories.map((c) => (
@@ -149,14 +149,14 @@ export default function AddProduct() {
                                 </Select>
                             </div>
                         </div>
-                        {form.category === "mode" && (
+                        {subcategoriesByCategory[form.category] && (
                             <div className="space-y-1.5">
-                                <Label>Sous-catégorie Mode (optionnel)</Label>
+                                <Label>Sous-catégorie (optionnel)</Label>
                                 <Select value={form.subcategory} onValueChange={(v) => set("subcategory", v === "none" ? "" : v)}>
                                     <SelectTrigger data-testid="product-subcategory-select"><SelectValue placeholder="Choisir une sous-catégorie" /></SelectTrigger>
                                     <SelectContent>
                                         <SelectItem value="none">Aucune</SelectItem>
-                                        {modeSubcategories.map((s) => (
+                                        {subcategoriesByCategory[form.category].map((s) => (
                                             <SelectItem key={s.id} value={s.id}>
                                                 <span className="flex items-center gap-2">
                                                     <i className={`fa-solid ${s.icon} text-primary text-xs`} />
