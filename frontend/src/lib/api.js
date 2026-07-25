@@ -1,6 +1,10 @@
 import axios from "axios";
 
 const BASE = process.env.REACT_APP_BACKEND_URL || "";
+const TOKEN_KEY = "seller_token";
+
+export const getSellerToken = () => localStorage.getItem(TOKEN_KEY);
+export const setSellerToken = (t) => t ? localStorage.setItem(TOKEN_KEY, t) : localStorage.removeItem(TOKEN_KEY);
 
 export const api = axios.create({
     baseURL: `${BASE}/api`,
@@ -8,6 +12,13 @@ export const api = axios.create({
     // Never throw on 4xx/5xx — we handle status codes manually so we can
     // parse both JSON errors and raw text/HTML (e.g. Cloudflare 520 pages).
     validateStatus: () => true,
+});
+
+// Attach the seller JWT (if any) to every request
+api.interceptors.request.use((config) => {
+    const t = getSellerToken();
+    if (t) config.headers.Authorization = `Bearer ${t}`;
+    return config;
 });
 
 // Response interceptor: raise for non-2xx so our try/catch works normally,
@@ -33,4 +44,19 @@ export const paxityAPI = {
 export const trackingAPI = {
     track: (orderId) => api.get(`/tracking/${encodeURIComponent(orderId)}`).then((r) => r.data),
     updateStep: (orderId, step) => api.put(`/tracking/${encodeURIComponent(orderId)}`, { step }).then((r) => r.data),
+};
+
+// --------- Auth vendeur ---------
+export const authAPI = {
+    login: (email, password) => api.post("/auth/login", { email, password }).then((r) => r.data),
+    me: () => api.get("/auth/me").then((r) => r.data),
+    logout: () => api.post("/auth/logout").then((r) => r.data),
+};
+
+// --------- Catalogue produits ---------
+export const productsAPI = {
+    list: () => api.get("/products").then((r) => r.data.products),
+    create: (p) => api.post("/products", p).then((r) => r.data),
+    update: (id, p) => api.put(`/products/${id}`, p).then((r) => r.data),
+    remove: (id) => api.delete(`/products/${id}`).then((r) => r.data),
 };

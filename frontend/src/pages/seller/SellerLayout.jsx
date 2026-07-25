@@ -48,25 +48,26 @@ const SidebarContent = ({ onNavigate }) => {
                     </div>
                 </Link>
             </div>
-            <nav className="flex-1 p-3 space-y-1">
+            <nav className="flex-1 p-3 space-y-2">
                 {nav.map((item) => (
                     <NavLink
                         key={item.to}
                         to={item.to}
                         end={item.end}
                         onClick={onNavigate}
+                        data-testid={`seller-nav-${item.label.toLowerCase().replace(/[^a-z]+/g, "-")}`}
                         className={({ isActive }) =>
-                            `flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium transition-colors ${
+                            `flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition-colors ${
                                 isActive
-                                    ? "bg-primary/15 text-primary"
-                                    : "text-ink-foreground/70 hover:bg-ink-foreground/5 hover:text-ink-foreground"
+                                    ? "bg-red-600 text-white shadow-warm"
+                                    : "bg-red-600/85 text-white hover:bg-red-600"
                             }`
                         }
                     >
                         <item.icon className="h-4 w-4" />
                         <span className="flex-1">{item.label}</span>
                         {item.badge && activeCount > 0 && (
-                            <span className="min-w-5 h-5 px-1.5 rounded-full bg-primary text-primary-foreground text-[10px] font-semibold flex items-center justify-center">
+                            <span className="min-w-5 h-5 px-1.5 rounded-full bg-white text-red-600 text-[10px] font-bold flex items-center justify-center">
                                 {activeCount}
                             </span>
                         )}
@@ -111,7 +112,8 @@ const SidebarContent = ({ onNavigate }) => {
                 <button
                     type="button"
                     onClick={handleLogout}
-                    className="flex items-center gap-2 text-xs text-ink-foreground/60 hover:text-primary w-full"
+                    data-testid="seller-logout-btn"
+                    className="flex items-center gap-2 text-xs font-semibold text-red-400 hover:text-red-300 w-full"
                 >
                     <LogOut className="h-3.5 w-3.5" />
                     Se déconnecter

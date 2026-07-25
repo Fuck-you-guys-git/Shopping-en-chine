@@ -1,65 +1,61 @@
 import { createContext, useContext, useEffect, useState } from "react";
-
-const AuthContext = createContext(null);
-const AUTH_KEY = "sec_seller_auth_v1";
+import { authAPI, setSellerToken, getSellerToken } from "@/lib/api";
 
 /*
- * SELLER CREDENTIALS
- * ------------------------------------------------------------------
- * This is a frontend-only prototype. In real production, credentials
- * MUST live server-side with hashed passwords (bcrypt).
- *
- * ⚠️  To change the login credentials, edit the CREDENTIALS list
- *     below and redeploy the app.
- *
- * Only accounts listed here can access /admin and /vendeur.
- * No public signup is exposed anywhere in the app.
+ * Seller authentication — now backed by the server (JWT + bcrypt).
+ * Credentials are verified by POST /api/auth/login; the token is attached
+ * to every API call (see lib/api.js) to protect product management routes.
  */
-const CREDENTIALS = [
-    {
-        email: "Modou.ba.568@gmail.com",
-        password: "40881215.Com",
-        name: "Modou Ba",
-        role: "Propriétaire",
-    },
-];
+const AuthContext = createContext(null);
+const USER_KEY = "sec_seller_user_v2";
 
 export const SellerAuthProvider = ({ children }) => {
     const [user, setUser] = useState(() => {
         try {
-            const raw = localStorage.getItem(AUTH_KEY);
-            return raw ? JSON.parse(raw) : null;
+            const raw = localStorage.getItem(USER_KEY);
+            return raw && getSellerToken() ? JSON.parse(raw) : null;
         } catch {
             return null;
         }
     });
 
+    // Validate the stored session against the server on mount
     useEffect(() => {
-        if (user) localStorage.setItem(AUTH_KEY, JSON.stringify(user));
-        else localStorage.removeItem(AUTH_KEY);
+        if (!getSellerToken()) return;
+        authAPI.me()
+            .then((u) => {
+                setUser((prev) => ({ ...prev, ...u }));
+            })
+            .catch(() => {
+                setSellerToken(null);
+                localStorage.removeItem(USER_KEY);
+                setUser(null);
+            });
+    }, []);
+
+    useEffect(() => {
+        if (user) localStorage.setItem(USER_KEY, JSON.stringify(user));
+        else localStorage.removeItem(USER_KEY);
     }, [user]);
 
     const login = async (email, password) => {
-        // Simulate a network round-trip
-        await new Promise((r) => setTimeout(r, 600));
-        const normalizedEmail = (email || "").toLowerCase().trim();
-        const match = CREDENTIALS.find(
-            (c) => c.email.toLowerCase() === normalizedEmail && c.password === password,
-        );
-        if (!match) {
-            throw new Error("Email ou mot de passe incorrect");
+        try {
+            const res = await authAPI.login(email, password);
+            setSellerToken(res.token);
+            const session = { ...res.user, loggedAt: Date.now() };
+            setUser(session);
+            return session;
+        } catch (err) {
+            const msg = err.response?.data?.detail || "Email ou mot de passe incorrect";
+            throw new Error(msg);
         }
-        const session = {
-            email: match.email,
-            name: match.name,
-            role: match.role || "Vendeur",
-            loggedAt: Date.now(),
-        };
-        setUser(session);
-        return session;
     };
 
-    const logout = () => setUser(null);
+    const logout = () => {
+        setSellerToken(null);
+        setUser(null);
+        authAPI.logout().catch(() => {});
+    };
 
     return (
         <AuthContext.Provider value={{ user, login, logout, isAuthenticated: !!user }}>

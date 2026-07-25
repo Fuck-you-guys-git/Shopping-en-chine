@@ -1,8 +1,8 @@
 import { createContext, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { products as seedProducts, categories } from "@/data/products";
+import { productsAPI } from "@/lib/api";
 
 const SellerContext = createContext(null);
-const PRODUCTS_KEY = "sec_seller_products_v1";
 const ORDERS_KEY = "sec_seller_orders_v1";
 
 const STATUSES = ["nouvelle", "confirmée", "préparation", "expédiée", "livrée"];
@@ -50,14 +50,15 @@ const generateSeedOrders = (availableProducts) => {
 };
 
 export const SellerProvider = ({ children }) => {
-    const [products, setProducts] = useState(() => {
-        try {
-            const raw = localStorage.getItem(PRODUCTS_KEY);
-            return raw ? JSON.parse(raw) : seedProducts;
-        } catch {
-            return seedProducts;
-        }
-    });
+    // Products now live in MongoDB (via /api/products) so they're visible to
+    // every customer. Static seed is only an instant fallback while loading.
+    const [products, setProducts] = useState(seedProducts);
+
+    useEffect(() => {
+        productsAPI.list()
+            .then((list) => { if (Array.isArray(list) && list.length) setProducts(list); })
+            .catch(() => {});
+    }, []);
 
     const [orders, setOrders] = useState(() => {
         try {
@@ -69,10 +70,6 @@ export const SellerProvider = ({ children }) => {
 
     const [liveEvents, setLiveEvents] = useState([]);
     const tickRef = useRef(0);
-
-    useEffect(() => {
-        localStorage.setItem(PRODUCTS_KEY, JSON.stringify(products));
-    }, [products]);
 
     useEffect(() => {
         localStorage.setItem(ORDERS_KEY, JSON.stringify(orders));
@@ -150,19 +147,22 @@ export const SellerProvider = ({ children }) => {
         return () => clearInterval(t);
     }, []);
 
-    // ---- CRUD ----
-    const addProduct = (data) => {
-        const newProduct = {
-            id: `p${Date.now()}`,
-            rating: 0,
-            reviews: 0,
-            ...data,
-        };
-        setProducts((prev) => [newProduct, ...prev]);
-        return newProduct;
+    // ---- CRUD (persisted server-side, visible to all customers) ----
+    const addProduct = async (data) => {
+        const created = await productsAPI.create(data);
+        setProducts((prev) => [created, ...prev]);
+        return created;
     };
-    const updateProduct = (id, patch) => setProducts((prev) => prev.map((p) => (p.id === id ? { ...p, ...patch } : p)));
-    const deleteProduct = (id) => setProducts((prev) => prev.filter((p) => p.id !== id));
+    const updateProduct = async (id, patch) => {
+        const current = products.find((p) => p.id === id) || {};
+        const updated = await productsAPI.update(id, { ...current, ...patch });
+        setProducts((prev) => prev.map((p) => (p.id === id ? { ...p, ...updated } : p)));
+        return updated;
+    };
+    const deleteProduct = async (id) => {
+        await productsAPI.remove(id);
+        setProducts((prev) => prev.filter((p) => p.id !== id));
+    };
 
     const updateOrderStatus = (id, status) =>
         setOrders((prev) => prev.map((o) => (o.id === id ? { ...o, status } : o)));

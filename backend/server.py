@@ -83,6 +83,12 @@ api_router.include_router(paxity_router)
 from tracking_router import router as tracking_router
 api_router.include_router(tracking_router)
 
+# ---- Seller auth + product catalog ---------------------------------------
+from auth_router import router as auth_router, seed_seller
+from products_router import router as products_router, seed_products
+api_router.include_router(auth_router)
+api_router.include_router(products_router)
+
 # Include the api router in the main app
 app.include_router(api_router)
 
@@ -100,6 +106,15 @@ logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 )
 logger = logging.getLogger(__name__)
+
+
+@app.on_event("startup")
+async def startup_seed():
+    await db.users.create_index("email", unique=True)
+    await db.login_attempts.create_index("identifier")
+    await db.products.create_index("id", unique=True)
+    await seed_seller(db)
+    await seed_products(db)
 
 
 @app.on_event("shutdown")
