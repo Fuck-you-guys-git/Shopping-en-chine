@@ -69,8 +69,8 @@ export default function Dashboard() {
                             +12.4%
                         </Badge>
                     </div>
-                    <div className="h-64">
-                        <ResponsiveContainer width="100%" height="100%">
+                    <div className="h-64 min-h-[256px]">
+                        <ResponsiveContainer width="100%" height="100%" minHeight={256}>
                             <AreaChart data={metrics.daily} margin={{ top: 5, right: 5, left: -10, bottom: 0 }}>
                                 <defs>
                                     <linearGradient id="rev" x1="0" y1="0" x2="0" y2="1">
@@ -96,8 +96,8 @@ export default function Dashboard() {
                     <p className="text-xs text-muted-foreground mb-4">Répartition du CA</p>
                     {metrics.catDist.length > 0 ? (
                         <>
-                            <div className="h-40">
-                                <ResponsiveContainer width="100%" height="100%">
+                            <div className="h-40 min-h-[160px]">
+                                <ResponsiveContainer width="100%" height="100%" minHeight={160}>
                                     <PieChart>
                                         <Pie data={metrics.catDist} innerRadius={45} outerRadius={70} dataKey="value" stroke="none">
                                             {metrics.catDist.map((_, i) => (
