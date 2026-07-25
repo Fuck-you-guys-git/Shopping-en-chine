@@ -25,7 +25,7 @@ export const Footer = () => {
                             <Logo />
                         </div>
                         <p className="mt-6 text-sm text-ink-foreground/70 max-w-md leading-relaxed">
-                            Livraison Chine → Dakar en 15–20 jours · Paiement Mobile Money (Wave, Orange Money, MTN). Tout ce dont vous avez besoin, simple à trouver.
+                            Livraison Chine → Dakar en 10–20 jours · Paiement Mobile Money (Wave, Orange Money, MTN). Tout ce dont vous avez besoin, simple à trouver.
                         </p>
                         <form onSubmit={onNewsletter} className="mt-8 flex gap-2 max-w-md">
                             <Input

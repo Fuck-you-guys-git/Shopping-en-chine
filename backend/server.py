@@ -83,6 +83,10 @@ api_router.include_router(paxity_router)
 from tracking_router import router as tracking_router
 api_router.include_router(tracking_router)
 
+# ---- Seller orders (real customer orders) ---------------------------------
+from orders_router import router as orders_router
+api_router.include_router(orders_router)
+
 # ---- Seller auth + product catalog ---------------------------------------
 from auth_router import router as auth_router, seed_seller
 from products_router import router as products_router, seed_products

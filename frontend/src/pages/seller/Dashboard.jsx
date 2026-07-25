@@ -50,9 +50,9 @@ export default function Dashboard() {
 
             {/* KPIs */}
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                <StatCard label="Revenu (30j)" value={formatPrice(metrics.revenue30)} trend="+12.4%" icon={DollarSign} />
-                <StatCard label="Commandes (30j)" value={metrics.orders30} trend="+8.2%" icon={ShoppingBag} />
-                <StatCard label="Panier moyen" value={formatPrice(metrics.avgBasket)} trend="+3.1%" icon={Package} />
+                <StatCard label="Revenu (30j)" value={formatPrice(metrics.revenue30)} icon={DollarSign} />
+                <StatCard label="Commandes (30j)" value={metrics.orders30} icon={ShoppingBag} />
+                <StatCard label="Panier moyen" value={formatPrice(metrics.avgBasket)} icon={Package} />
                 <StatCard label="Actives" value={metrics.active} trend={`${metrics.delivered} livrées`} icon={Users} positive />
             </div>
 
@@ -64,10 +64,6 @@ export default function Dashboard() {
                             <h3 className="font-display text-lg font-medium">Évolution du chiffre d&apos;affaires</h3>
                             <p className="text-xs text-muted-foreground mt-0.5">14 derniers jours</p>
                         </div>
-                        <Badge className="bg-success/15 text-success hover:bg-success/15 border-0">
-                            <TrendingUp className="h-3 w-3 mr-1" />
-                            +12.4%
-                        </Badge>
                     </div>
                     <div className="h-64 min-h-[256px]">
                         <ResponsiveContainer width="100%" height="100%" minHeight={256}>
@@ -137,6 +133,9 @@ export default function Dashboard() {
                         </Button>
                     </div>
                     <div className="divide-y divide-border">
+                        {recent.length === 0 && (
+                            <p className="px-5 md:px-6 py-8 text-sm text-muted-foreground text-center">Aucune commande pour le moment</p>
+                        )}
                         {recent.map((o) => (
                             <div key={o.id} className="flex items-center gap-4 px-5 md:px-6 py-3">
                                 <div className="h-10 w-10 rounded-full bg-secondary flex items-center justify-center text-xs font-semibold shrink-0">

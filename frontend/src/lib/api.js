@@ -60,3 +60,10 @@ export const productsAPI = {
     update: (id, p) => api.put(`/products/${id}`, p).then((r) => r.data),
     remove: (id) => api.delete(`/products/${id}`).then((r) => r.data),
 };
+
+// --------- Commandes vendeur (réelles) ---------
+export const ordersAPI = {
+    list: () => api.get("/orders").then((r) => r.data.orders),
+    bulkTracking: (orderIds, step) =>
+        api.put("/orders/bulk-tracking", { order_ids: orderIds, step }).then((r) => r.data),
+};

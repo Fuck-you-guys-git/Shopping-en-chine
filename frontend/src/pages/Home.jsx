@@ -10,7 +10,7 @@ import { useNavigate } from "react-router-dom";
 import { useState } from "react";
 
 const benefits = [
-    { icon: Truck, title: "Livraison Chine → Dakar", desc: "En 15–20 jours" },
+    { icon: Truck, title: "Livraison Chine → Dakar", desc: "En 10–20 jours" },
     { icon: ShieldCheck, title: "Paiement sécurisé", desc: "Mobile Money (Wave, Orange, MTN)" },
     { icon: HeadphonesIcon, title: "Service client", desc: "7 jours / 7, en français" },
 ];
@@ -37,7 +37,7 @@ export default function Home() {
                                 <span className="block italic text-primary text-2xl sm:text-3xl md:text-4xl mt-1">Tout, plus simple.</span>
                             </h1>
                             <p className="mt-2 text-sm md:text-base text-muted-foreground">
-                                Livraison Chine → Dakar en 15–20 jours · Paiement Mobile Money
+                                Livraison Chine → Dakar en 10–20 jours · Paiement Mobile Money
                             </p>
                         </div>
                         <form onSubmit={onSearch} className="relative w-full md:w-96 shrink-0">
@@ -102,7 +102,7 @@ export default function Home() {
                     </Badge>
                     <div className="flex-1 text-center md:text-left">
                         <h3 className="font-display text-2xl md:text-3xl leading-tight">
-                            −30% sur l&apos;Électrique <span className="italic text-primary-glow">jusqu&apos;à dimanche</span>
+                            −30% sur l&apos;Électronique <span className="italic text-primary-glow">jusqu&apos;à dimanche</span>
                         </h3>
                         <p className="text-sm text-ink-foreground/70 mt-1">Casques, gadgets, accessoires connectés.</p>
                     </div>

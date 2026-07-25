@@ -382,7 +382,7 @@ export default function Checkout() {
                                     <Truck className="h-5 w-5 text-primary" />
                                     <div className="flex-1">
                                         <p className="font-medium">Livraison standard · Chine → Dakar</p>
-                                        <p className="text-xs text-muted-foreground">15–20 jours</p>
+                                        <p className="text-xs text-muted-foreground">10–20 jours</p>
                                     </div>
                                     <span className="font-medium text-success">Offerte</span>
                                 </label>

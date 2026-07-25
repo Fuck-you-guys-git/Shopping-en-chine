@@ -27,7 +27,7 @@ const SidebarContent = ({ onNavigate }) => {
     const navigate = useNavigate();
     const base = useBase();
     const nav = useMemo(() => buildNav(base), [base]);
-    const activeCount = orders.filter((o) => o.status !== "livrée").length;
+    const activeCount = orders.filter((o) => o.status !== "delivered").length;
 
     const handleLogout = () => {
         logout();

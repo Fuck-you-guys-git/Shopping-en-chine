@@ -1,8 +1,8 @@
-import { useEffect, useRef, useState } from "react";
-import { RadioTower, Search, Filter, MapPin, Clock } from "lucide-react";
+import { useEffect, useState } from "react";
+import { Search, MapPin, Clock, CheckSquare } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -19,33 +19,23 @@ const timeAgo = (ts) => {
 };
 
 export default function Orders() {
-    const { orders, updateOrderStatus, STATUS_LABELS, STATUSES } = useSeller();
+    const {
+        orders, ordersLoaded, updateOrderStatus, bulkUpdateOrderStatus,
+        STATUS_LABELS, STATUSES, PAYMENT_LABELS,
+    } = useSeller();
     const [tab, setTab] = useState("toutes");
     const [query, setQuery] = useState("");
     const [selected, setSelected] = useState(null);
-    const [tick, setTick] = useState(0);
+    const [checkedIds, setCheckedIds] = useState(new Set());
+    const [bulkStep, setBulkStep] = useState("");
+    const [bulkBusy, setBulkBusy] = useState(false);
+    const [, setTick] = useState(0);
 
-    // Force re-render every 30s to update "il y a Xmin" labels
+    // Re-render every 30s to refresh "il y a Xmin" labels
     useEffect(() => {
         const t = setInterval(() => setTick((x) => x + 1), 30000);
         return () => clearInterval(t);
     }, []);
-
-    const prevOrderIds = useRef(new Set(orders.map((o) => o.id)));
-    useEffect(() => {
-        const currentIds = new Set(orders.map((o) => o.id));
-        for (const id of currentIds) {
-            if (!prevOrderIds.current.has(id)) {
-                const o = orders.find((x) => x.id === id);
-                if (o) {
-                    toast.success("Nouvelle commande ✦", {
-                        description: `${o.customer} · ${o.city} · ${formatPrice(o.total)}`,
-                    });
-                }
-            }
-        }
-        prevOrderIds.current = currentIds;
-    }, [orders]);
 
     const filtered = orders.filter((o) => {
         if (tab !== "toutes" && o.status !== tab) return false;
@@ -53,47 +43,65 @@ export default function Orders() {
         return true;
     });
 
-    const counts = {
-        toutes: orders.length,
-        nouvelle: orders.filter((o) => o.status === "nouvelle").length,
-        confirmée: orders.filter((o) => o.status === "confirmée").length,
-        préparation: orders.filter((o) => o.status === "préparation").length,
-        expédiée: orders.filter((o) => o.status === "expédiée").length,
-        livrée: orders.filter((o) => o.status === "livrée").length,
+    const counts = { toutes: orders.length };
+    STATUSES.forEach((s) => { counts[s] = orders.filter((o) => o.status === s).length; });
+
+    const allChecked = filtered.length > 0 && filtered.every((o) => checkedIds.has(o.id));
+    const toggleAll = () => {
+        setCheckedIds((prev) => {
+            if (allChecked) {
+                const next = new Set(prev);
+                filtered.forEach((o) => next.delete(o.id));
+                return next;
+            }
+            return new Set([...prev, ...filtered.map((o) => o.id)]);
+        });
+    };
+    const toggleOne = (id) => {
+        setCheckedIds((prev) => {
+            const next = new Set(prev);
+            if (next.has(id)) next.delete(id); else next.add(id);
+            return next;
+        });
+    };
+
+    const applyBulk = async () => {
+        if (!bulkStep || checkedIds.size === 0) return;
+        setBulkBusy(true);
+        try {
+            const res = await bulkUpdateOrderStatus([...checkedIds], bulkStep);
+            toast.success(`${res.updated ?? checkedIds.size} commande(s) → ${STATUS_LABELS[bulkStep].label}`);
+            setCheckedIds(new Set());
+            setBulkStep("");
+        } catch {
+            toast.error("Impossible de mettre à jour les commandes. Réessayez.");
+        } finally {
+            setBulkBusy(false);
+        }
     };
 
     return (
         <div className="space-y-5">
             {/* Live indicator + search */}
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
-                <div className="flex items-center gap-2">
-                    <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-success/15 text-success text-xs font-medium">
-                        <span className="relative flex h-2 w-2">
-                            <span className="absolute inline-flex h-full w-full rounded-full bg-success opacity-75 animate-ping" />
-                            <span className="relative inline-flex h-2 w-2 rounded-full bg-success" />
-                        </span>
-                        Suivi en temps réel actif
-                    </div>
-                    <span className="text-xs text-muted-foreground hidden sm:inline">Mise à jour toutes les 6s</span>
+                <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-success/15 text-success text-xs font-medium w-fit">
+                    <span className="relative flex h-2 w-2">
+                        <span className="absolute inline-flex h-full w-full rounded-full bg-success opacity-75 animate-ping" />
+                        <span className="relative inline-flex h-2 w-2 rounded-full bg-success" />
+                    </span>
+                    Commandes réelles · actualisation auto
                 </div>
                 <div className="relative w-full md:w-72">
                     <Search className="h-4 w-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-                    <Input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Client, ville, N° de commande…" className="pl-9" />
+                    <Input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Client, ville, N° de commande…" className="pl-9" data-testid="orders-search-input" />
                 </div>
             </div>
 
             {/* Status tabs */}
             <Tabs value={tab} onValueChange={setTab}>
                 <TabsList className="bg-muted/50 h-auto flex-wrap justify-start p-1">
-                    {[
-                        { k: "toutes", l: "Toutes" },
-                        { k: "nouvelle", l: "Nouvelles" },
-                        { k: "confirmée", l: "Confirmées" },
-                        { k: "préparation", l: "En préparation" },
-                        { k: "expédiée", l: "Expédiées" },
-                        { k: "livrée", l: "Livrées" },
-                    ].map((s) => (
-                        <TabsTrigger key={s.k} value={s.k} className="data-[state=active]:bg-background data-[state=active]:shadow-soft gap-2">
+                    {[{ k: "toutes", l: "Toutes" }, ...STATUSES.map((s) => ({ k: s, l: STATUS_LABELS[s].label }))].map((s) => (
+                        <TabsTrigger key={s.k} value={s.k} className="data-[state=active]:bg-background data-[state=active]:shadow-soft gap-2" data-testid={`orders-tab-${s.k}`}>
                             {s.l}
                             <span className={`text-[10px] px-1.5 rounded-full ${tab === s.k ? "bg-primary text-primary-foreground" : "bg-background text-muted-foreground"}`}>
                                 {counts[s.k]}
@@ -103,66 +111,86 @@ export default function Orders() {
                 </TabsList>
             </Tabs>
 
+            {/* Bulk action bar */}
+            {checkedIds.size > 0 && (
+                <div className="flex flex-col sm:flex-row sm:items-center gap-3 p-3 rounded-xl bg-primary/5 border border-primary/20" data-testid="orders-bulk-bar">
+                    <span className="inline-flex items-center gap-2 text-sm font-medium text-primary">
+                        <CheckSquare className="h-4 w-4" />
+                        {checkedIds.size} commande(s) sélectionnée(s)
+                    </span>
+                    <div className="flex items-center gap-2 sm:ml-auto">
+                        <Select value={bulkStep} onValueChange={setBulkStep}>
+                            <SelectTrigger className="w-52 bg-card" data-testid="orders-bulk-status-select">
+                                <SelectValue placeholder="Nouveau statut…" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {STATUSES.map((s) => (
+                                    <SelectItem key={s} value={s}>{STATUS_LABELS[s].label}</SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                        <Button onClick={applyBulk} disabled={!bulkStep || bulkBusy} className="bg-primary text-primary-foreground hover:bg-primary/90" data-testid="orders-bulk-apply-btn">
+                            {bulkBusy ? "Mise à jour…" : "Appliquer"}
+                        </Button>
+                    </div>
+                </div>
+            )}
+
             {/* Orders list */}
             <div className="bg-card rounded-2xl shadow-card border border-border/50 overflow-hidden">
-                <div className="grid grid-cols-12 gap-4 px-4 md:px-6 py-3 bg-muted/30 border-b border-border text-xs uppercase tracking-widest text-muted-foreground font-medium">
+                <div className="grid grid-cols-12 gap-3 px-4 md:px-6 py-3 bg-muted/30 border-b border-border text-xs uppercase tracking-widest text-muted-foreground font-medium items-center">
+                    <div className="col-span-1 flex items-center">
+                        <Checkbox checked={allChecked} onCheckedChange={toggleAll} aria-label="Tout sélectionner" data-testid="orders-select-all-checkbox" />
+                    </div>
                     <div className="col-span-4 md:col-span-3">Client</div>
                     <div className="col-span-2 hidden md:block">Commande</div>
-                    <div className="col-span-3 md:col-span-2">Articles</div>
-                    <div className="col-span-3 md:col-span-2">Statut</div>
-                    <div className="hidden md:block col-span-1">Écoulé</div>
+                    <div className="col-span-2 hidden md:block">Paiement</div>
+                    <div className="col-span-4 md:col-span-2">Statut</div>
                     <div className="col-span-2 text-right">Total</div>
                 </div>
                 <div className="divide-y divide-border max-h-[70vh] overflow-y-auto">
                     {filtered.length === 0 && (
-                        <div className="px-6 py-16 text-center text-sm text-muted-foreground">
-                            Aucune commande dans cet onglet
+                        <div className="px-6 py-16 text-center text-sm text-muted-foreground" data-testid="orders-empty-state">
+                            {ordersLoaded ? "Aucune commande dans cet onglet" : "Chargement des commandes…"}
                         </div>
                     )}
                     {filtered.map((o) => (
-                        <button
-                            key={o.id}
-                            onClick={() => setSelected(o)}
-                            className={`w-full grid grid-cols-12 gap-4 px-4 md:px-6 py-4 items-center text-left hover:bg-muted/30 transition-colors ${o.fresh ? "bg-primary/5" : ""}`}
-                        >
-                            <div className="col-span-4 md:col-span-3 flex items-center gap-3 min-w-0">
+                        <div key={o.id} className="grid grid-cols-12 gap-3 px-4 md:px-6 py-4 items-center hover:bg-muted/30 transition-colors" data-testid={`order-row-${o.id}`}>
+                            <div className="col-span-1 flex items-center">
+                                <Checkbox
+                                    checked={checkedIds.has(o.id)}
+                                    onCheckedChange={() => toggleOne(o.id)}
+                                    aria-label={`Sélectionner ${o.id}`}
+                                    data-testid={`order-checkbox-${o.id}`}
+                                />
+                            </div>
+                            <button onClick={() => setSelected(o)} className="col-span-4 md:col-span-3 flex items-center gap-3 min-w-0 text-left">
                                 <div className="h-9 w-9 rounded-full bg-secondary flex items-center justify-center text-xs font-semibold shrink-0">
                                     {o.customer.split(" ").map((n) => n[0]).join("").slice(0, 2)}
                                 </div>
                                 <div className="min-w-0">
-                                    <p className="text-sm font-medium truncate flex items-center gap-2">
-                                        {o.customer}
-                                        {o.fresh && <span className="text-[9px] uppercase tracking-widest bg-primary text-primary-foreground px-1.5 py-0.5 rounded">Nouveau</span>}
-                                    </p>
+                                    <p className="text-sm font-medium truncate">{o.customer}</p>
                                     <p className="text-xs text-muted-foreground truncate flex items-center gap-1">
-                                        <MapPin className="h-3 w-3" /> {o.city}
+                                        <MapPin className="h-3 w-3" /> {o.city} · <Clock className="h-3 w-3" /> {timeAgo(o.createdAt)}
                                     </p>
                                 </div>
+                            </button>
+                            <div className="col-span-2 hidden md:block text-xs font-mono text-muted-foreground truncate">{o.id}</div>
+                            <div className="col-span-2 hidden md:block">
+                                <span className={`inline-flex text-xs font-medium px-2 py-0.5 rounded-full ${PAYMENT_LABELS[o.payment].color}`}>
+                                    {PAYMENT_LABELS[o.payment].label}
+                                </span>
                             </div>
-                            <div className="col-span-2 hidden md:block text-sm font-mono text-muted-foreground">{o.id}</div>
-                            <div className="col-span-3 md:col-span-2 flex -space-x-2">
-                                {o.items.slice(0, 3).map((it, i) => (
-                                    <div key={i} className="h-8 w-8 rounded-full border-2 border-card bg-muted overflow-hidden">
-                                        <img src={it.image} alt="" className="h-full w-full object-cover" />
-                                    </div>
-                                ))}
-                                {o.items.length > 3 && <span className="text-xs text-muted-foreground ml-3 self-center">+{o.items.length - 3}</span>}
-                            </div>
-                            <div className="col-span-3 md:col-span-2">
+                            <div className="col-span-4 md:col-span-2">
                                 <span className={`inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full ${STATUS_LABELS[o.status].color}`}>
                                     <span className={`h-1.5 w-1.5 rounded-full ${STATUS_LABELS[o.status].dot}`} />
                                     {STATUS_LABELS[o.status].label}
                                 </span>
                             </div>
-                            <div className="hidden md:block col-span-1 text-xs text-muted-foreground">
-                                <span className="inline-flex items-center gap-1">
-                                    <Clock className="h-3 w-3" /> {timeAgo(o.createdAt)}
-                                </span>
-                            </div>
-                            <div className="col-span-2 text-right font-display font-semibold text-sm whitespace-nowrap">
+                            <button onClick={() => setSelected(o)} className="col-span-2 text-right font-display font-semibold text-sm whitespace-nowrap">
                                 {formatPrice(o.total)}
-                            </div>
-                        </button>
+                            </button>
+                        </div>
                     ))}
                 </div>
             </div>
@@ -182,12 +210,16 @@ export default function Orders() {
                                     <div className="h-11 w-11 rounded-full bg-gradient-accent text-primary-foreground flex items-center justify-center font-semibold">
                                         {selected.customer.split(" ").map((n) => n[0]).join("").slice(0, 2)}
                                     </div>
-                                    <div className="flex-1">
+                                    <div className="flex-1 min-w-0">
                                         <p className="font-medium">{selected.customer}</p>
                                         <p className="text-xs text-muted-foreground flex items-center gap-1">
                                             <MapPin className="h-3 w-3" /> {selected.city} · {timeAgo(selected.createdAt)}
                                         </p>
+                                        {selected.email && <p className="text-xs text-muted-foreground truncate">{selected.email}</p>}
                                     </div>
+                                    <span className={`text-xs font-medium px-2.5 py-1 rounded-full shrink-0 ${PAYMENT_LABELS[selected.payment].color}`}>
+                                        {PAYMENT_LABELS[selected.payment].label}
+                                    </span>
                                 </div>
 
                                 {/* Progress */}
@@ -215,8 +247,10 @@ export default function Orders() {
                                     <div className="space-y-2 max-h-52 overflow-y-auto">
                                         {selected.items.map((it, i) => (
                                             <div key={i} className="flex items-center gap-3 p-2 rounded-lg hover:bg-muted/30">
-                                                <div className="h-12 w-12 rounded-lg bg-muted overflow-hidden shrink-0">
-                                                    <img src={it.image} alt="" className="h-full w-full object-cover" />
+                                                <div className="h-12 w-12 rounded-lg bg-muted overflow-hidden shrink-0 flex items-center justify-center">
+                                                    {it.image
+                                                        ? <img src={it.image} alt="" className="h-full w-full object-cover" />
+                                                        : <i className="fa-solid fa-box text-muted-foreground" />}
                                                 </div>
                                                 <div className="flex-1 min-w-0">
                                                     <p className="text-sm font-medium truncate">{it.name}</p>
@@ -237,13 +271,17 @@ export default function Orders() {
                                 <div className="flex flex-col sm:flex-row gap-2">
                                     <Select
                                         value={selected.status}
-                                        onValueChange={(v) => {
-                                            updateOrderStatus(selected.id, v);
-                                            setSelected({ ...selected, status: v });
-                                            toast.success(`Statut mis à jour → ${STATUS_LABELS[v].label}`);
+                                        onValueChange={async (v) => {
+                                            try {
+                                                await updateOrderStatus(selected.id, v);
+                                                setSelected({ ...selected, status: v });
+                                                toast.success(`Statut mis à jour → ${STATUS_LABELS[v].label}`);
+                                            } catch {
+                                                toast.error("Mise à jour impossible. Réessayez.");
+                                            }
                                         }}
                                     >
-                                        <SelectTrigger className="flex-1">
+                                        <SelectTrigger className="flex-1" data-testid="order-status-select">
                                             <SelectValue />
                                         </SelectTrigger>
                                         <SelectContent>
@@ -252,7 +290,6 @@ export default function Orders() {
                                             ))}
                                         </SelectContent>
                                     </Select>
-                                    <Button className="bg-ink text-ink-foreground hover:bg-ink/90">Contacter le client</Button>
                                 </div>
                             </div>
                         </>

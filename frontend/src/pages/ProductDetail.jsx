@@ -169,7 +169,7 @@ export default function ProductDetail() {
 
                         <div className="grid grid-cols-2 gap-4 text-center">
                             {[
-                                { icon: Truck, label: "Livré en 15–20 jours" },
+                                { icon: Truck, label: "Livré en 10–20 jours" },
                                 { icon: ShieldCheck, label: "Garantie 2 ans" },
                             ].map((f) => (
                                 <div key={f.label} className="flex flex-col items-center gap-2">
@@ -210,7 +210,7 @@ export default function ProductDetail() {
                             </dl>
                         </TabsContent>
                         <TabsContent value="ship" className="pt-6 text-muted-foreground leading-relaxed space-y-2">
-                            <p><span className="text-foreground font-medium">Livraison Chine → Dakar</span> en 15–20 jours — offerte dès 30 000 F.</p>
+                            <p><span className="text-foreground font-medium">Livraison Chine → Dakar</span> en 10–20 jours — offerte dès 30 000 F.</p>
                         </TabsContent>
                     </Tabs>
                 </div>

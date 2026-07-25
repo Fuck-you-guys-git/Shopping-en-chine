@@ -30,7 +30,7 @@ STEP_LABELS = {
 }
 
 # Delivery window in days (China -> Dakar)
-ETA_MIN_DAYS = 15
+ETA_MIN_DAYS = 10
 ETA_MAX_DAYS = 20
 
 router = APIRouter(prefix="/tracking", tags=["tracking"])
