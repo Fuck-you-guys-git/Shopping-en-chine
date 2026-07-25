@@ -13,7 +13,7 @@ const navLinks = [
     { to: "/boutique", label: "Boutique" },
     { to: "/boutique/mode", label: "Mode", subs: subcategoriesByCategory.mode },
     { to: "/boutique/tech", label: "Électronique", subs: subcategoriesByCategory.tech },
-    { to: "/boutique/maison", label: "Maison" },
+    { to: "/boutique/maison", label: "Maison", subs: subcategoriesByCategory.maison },
     { to: "/suivi", label: "Suivi de colis" },
 ];
 

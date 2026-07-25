@@ -39,10 +39,26 @@ export const techSubcategories = [
     { id: "jeux-gaming", name: "Jeux & Gaming", icon: "fa-gamepad", keywords: ["gaming", "jeu", "manette", "console", "gamer", "playstation", "xbox"] },
 ];
 
+// Sous-catégories de la catégorie Maison
+export const maisonSubcategories = [
+    { id: "chambre", name: "Chambre à coucher", icon: "fa-bed", keywords: ["lit", "matelas", "oreiller", "couette", "drap", "chambre", "chevet"] },
+    { id: "salon", name: "Salon", icon: "fa-couch", keywords: ["canapé", "canape", "fauteuil", "salon", "table basse", "coussin"] },
+    { id: "cuisine-maison", name: "Cuisine", icon: "fa-kitchen-set", keywords: ["cuisine", "casserole", "poêle", "mug", "tasse", "assiette", "couteau", "ustensile", "mixeur", "bouilloire"] },
+    { id: "salle-de-bain", name: "Salle de bain", icon: "fa-bath", keywords: ["salle de bain", "serviette", "douche", "savon", "porte-savon", "miroir de bain"] },
+    { id: "decoration", name: "Décoration", icon: "fa-wand-magic-sparkles", keywords: ["déco", "decoration", "décoration", "vase", "cadre", "bougie", "statue", "affiche", "poster"] },
+    { id: "meubles", name: "Meubles", icon: "fa-chair", keywords: ["meuble", "chaise", "table", "bureau", "étagère", "etagere", "armoire", "commode"] },
+    { id: "tapis", name: "Tapis", icon: "fa-rug", keywords: ["tapis", "moquette", "paillasson"] },
+    { id: "rideaux", name: "Rideaux", icon: "fa-person-booth", keywords: ["rideau", "voilage", "store"] },
+    { id: "eclairage-maison", name: "Éclairage", icon: "fa-lightbulb", keywords: ["lampe", "lumière", "lumiere", "ampoule", "lampadaire", "applique", "suspension", "led"] },
+    { id: "rangement", name: "Rangement & Organisation", icon: "fa-box-open", keywords: ["rangement", "boîte", "boite", "panier", "organisateur", "organisation", "cintre", "tiroir"] },
+    { id: "jardin-exterieur", name: "Jardin & Extérieur", icon: "fa-tree", keywords: ["jardin", "extérieur", "exterieur", "plante", "pot", "arrosoir", "barbecue", "hamac", "terrasse"] },
+];
+
 // Regroupe les sous-catégories par catégorie (menu + filtre boutique + formulaire vendeur)
 export const subcategoriesByCategory = {
     mode: modeSubcategories,
     tech: techSubcategories,
+    maison: maisonSubcategories,
 };
 
 export const products = [
