@@ -8,6 +8,7 @@ import { categories } from "@/data/products";
 import { useCatalog } from "@/context/CatalogContext";
 import { useNavigate } from "react-router-dom";
 import { useState } from "react";
+import { usePageTitle } from "@/hooks/usePageTitle";
 
 const benefits = [
     { icon: Truck, title: "Livraison Chine → Dakar", desc: "En 10–20 jours" },
@@ -18,6 +19,7 @@ const benefits = [
 export default function Home() {
     const navigate = useNavigate();
     const { products } = useCatalog();
+    usePageTitle(null, "Commandez vos produits directement de Chine, livrés à Dakar en 10 à 20 jours. Paiement Mobile Money et carte bancaire.");
     const [query, setQuery] = useState("");
 
     const onSearch = (e) => {

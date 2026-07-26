@@ -83,6 +83,10 @@ api_router.include_router(paxity_router)
 from tracking_router import router as tracking_router
 api_router.include_router(tracking_router)
 
+# ---- Stripe card payments -------------------------------------------------
+from stripe_router import router as stripe_router
+api_router.include_router(stripe_router)
+
 # ---- Seller orders (real customer orders) ---------------------------------
 from orders_router import router as orders_router
 api_router.include_router(orders_router)
@@ -119,6 +123,39 @@ async def startup_seed():
     await db.products.create_index("id", unique=True)
     await seed_seller(db)
     await seed_products(db)
+    # Cart-abandonment recovery loop (checks every 30 min)
+    import asyncio
+    asyncio.create_task(_recovery_loop())
+
+
+async def _recovery_loop():
+    """Email customers whose payment stayed pending/failed (1h–7d old), once."""
+    import asyncio
+    from datetime import timedelta
+    from email_service import send_recovery_email
+    while True:
+        try:
+            now = datetime.now(timezone.utc)
+            low = (now - timedelta(days=7)).isoformat()
+            high = (now - timedelta(hours=1)).isoformat()
+            candidates = await db.orders.find({
+                "status": {"$in": ["pending", "failed"]},
+                "recovery_email_sent": {"$ne": True},
+                "customer.email": {"$nin": [None, ""]},
+                "created_at": {"$gte": low, "$lte": high},
+            }, {"_id": 0}).to_list(20)
+            for order in candidates:
+                # Atomic claim so restarts/replicas never double-send
+                claimed = await db.orders.find_one_and_update(
+                    {"id": order["id"], "recovery_email_sent": {"$ne": True}},
+                    {"$set": {"recovery_email_sent": True,
+                              "recovery_email_at": now.isoformat()}},
+                )
+                if claimed:
+                    await send_recovery_email(db, order)
+        except Exception:
+            logger.exception("[Recovery] loop iteration failed")
+        await asyncio.sleep(1800)
 
 
 @app.on_event("shutdown")

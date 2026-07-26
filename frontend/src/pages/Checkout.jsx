@@ -11,7 +11,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { useCart } from "@/context/CartContext";
 import { formatPrice } from "@/components/ProductCard";
 import { toast } from "sonner";
-import { paxityAPI } from "@/lib/api";
+import { paxityAPI, stripeAPI } from "@/lib/api";
 import { paxityDirectPayin, paxityDirectAvailable } from "@/lib/paxityDirect";
 
 const OPERATOR_META = {
@@ -90,6 +90,30 @@ export default function Checkout() {
 
     const selectedMethod = paxityConfig?.methods?.find((m) => m.code === paymentMethod);
     const operatorIconMeta = selectedMethod ? (OPERATOR_META[selectedMethod.icon] || OPERATOR_META.card) : OPERATOR_META.card;
+
+    const handleStripeCheckout = async () => {
+        setProcessing(true);
+        try {
+            const res = await stripeAPI.checkout({
+                origin_url: window.location.origin,
+                customer: {
+                    name: `${buyer.firstName} ${buyer.lastName}`,
+                    email: buyer.email,
+                    city: buyer.city,
+                },
+                items: items.map((it) => ({ product_id: it.id, qty: it.qty })),
+            });
+            if (res.checkout_url) {
+                window.location.href = res.checkout_url;
+                return;
+            }
+            throw new Error("no url");
+        } catch (err) {
+            console.error("[Stripe] checkout error", err);
+            toast.error("Paiement carte indisponible", { description: "Réessayez ou utilisez Mobile Money." });
+            setProcessing(false);
+        }
+    };
 
     const handlePayment = async (e) => {
         e.preventDefault();
@@ -397,7 +421,7 @@ export default function Checkout() {
                     {step === 3 && (
                         <div className="space-y-5 bg-card p-6 md:p-8 rounded-2xl shadow-card">
                             <div className="flex items-center justify-between">
-                                <h2 className="font-display text-2xl">Paiement Mobile Money</h2>
+                                <h2 className="font-display text-2xl">Paiement</h2>
                                 {paxityConfig && (
                                     <span className={`inline-flex items-center gap-1.5 text-[10px] uppercase tracking-widest font-semibold px-2 py-1 rounded-full ${paxityConfig.configured ? "bg-success/15 text-success" : "bg-amber-100 text-amber-700"}`}>
                                         <ShieldCheck className="h-3 w-3" /> Paxity {paxityConfig.environment}
@@ -462,8 +486,52 @@ export default function Checkout() {
                                             </button>
                                         );
                                     })}
+                                    <button
+                                        type="button"
+                                        data-testid="stripe-card-method-btn"
+                                        onClick={() => setPaymentMethod("CARD")}
+                                        className={`flex flex-col items-center gap-1.5 p-3 rounded-xl border-2 transition-all ${paymentMethod === "CARD" ? "border-primary bg-primary/5" : "border-border hover:border-foreground/30"}`}
+                                    >
+                                        <span className="h-10 w-10 rounded-full flex items-center justify-center bg-indigo-500/10">
+                                            <CreditCard className="h-4 w-4 text-indigo-600" />
+                                        </span>
+                                        <span className="text-xs font-medium text-center leading-tight">Carte bancaire</span>
+                                    </button>
                                 </div>
                             </div>
+
+                            {/* Card payment (Stripe) */}
+                            {paymentMethod === "CARD" && (
+                                <div className="space-y-4" data-testid="stripe-card-panel">
+                                    <div className="flex gap-3 p-4 rounded-xl bg-indigo-50 border border-indigo-200 text-sm text-indigo-900">
+                                        <CreditCard className="h-5 w-5 shrink-0 mt-0.5" />
+                                        <div>
+                                            <p className="font-medium">Paiement par carte sécurisé (Visa, Mastercard)</p>
+                                            <p className="text-xs mt-1 opacity-80">Vous serez redirigé vers une page de paiement sécurisée Stripe.</p>
+                                        </div>
+                                    </div>
+                                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                                        <ShieldCheck className="h-4 w-4 text-success" />
+                                        Paiement sécurisé via Stripe · Chiffrement bout-en-bout
+                                    </div>
+                                    <div className="flex gap-2 pt-2">
+                                        <Button type="button" variant="outline" onClick={() => setStep(2)} className="rounded-full h-11 px-6">Retour</Button>
+                                        <Button
+                                            type="button"
+                                            data-testid="stripe-pay-btn"
+                                            onClick={handleStripeCheckout}
+                                            disabled={processing}
+                                            className="bg-primary hover:bg-primary/90 text-primary-foreground rounded-full h-11 px-8 flex-1 sm:flex-none shadow-warm"
+                                        >
+                                            {processing ? (
+                                                <><Loader2 className="h-4 w-4 animate-spin" /> Redirection…</>
+                                            ) : (
+                                                <>Payer par carte {formatPrice(total)}</>
+                                            )}
+                                        </Button>
+                                    </div>
+                                </div>
+                            )}
 
                             {/* Phone form */}
                             {selectedMethod && (

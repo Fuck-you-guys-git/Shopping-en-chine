@@ -14,6 +14,11 @@ import ProductDetail from "@/pages/ProductDetail";
 import Cart from "@/pages/Cart";
 import Checkout from "@/pages/Checkout";
 import TrackOrder from "@/pages/TrackOrder";
+import PaymentSuccess from "@/pages/PaymentSuccess";
+import PaymentCancel from "@/pages/PaymentCancel";
+import RetryOrder from "@/pages/RetryOrder";
+import About from "@/pages/About";
+import { WhatsAppButton } from "@/components/WhatsAppButton";
 import ScrollToTop from "@/components/ScrollToTop";
 import SellerLayout from "@/pages/seller/SellerLayout";
 import Dashboard from "@/pages/seller/Dashboard";
@@ -31,6 +36,7 @@ function Shell({ children }) {
             <main>{children}</main>
             {!isSeller && <Footer />}
             {!isSeller && <CartDrawer />}
+            {!isSeller && <WhatsAppButton />}
         </>
     );
 }
@@ -53,6 +59,10 @@ function App() {
                                 <Route path="/commande" element={<Checkout />} />
                                 <Route path="/suivi" element={<TrackOrder />} />
                                 <Route path="/suivi/:orderId" element={<TrackOrder />} />
+                                <Route path="/payment/success" element={<PaymentSuccess />} />
+                                <Route path="/payment/cancel" element={<PaymentCancel />} />
+                                <Route path="/reprise/:orderId" element={<RetryOrder />} />
+                                <Route path="/a-propos" element={<About />} />
 
                                 {/* Seller login (public) */}
                                 <Route path="/vendeur/login" element={<SellerLogin />} />

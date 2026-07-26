@@ -130,6 +130,19 @@ export const SellerProvider = ({ children }) => {
         const revenue7 = last7.reduce((s, o) => s + o.total, 0);
         const revenueToday = today.reduce((s, o) => s + o.total, 0);
 
+        // Previous 30-day window (days 31–60) for REAL month-over-month trends
+        const prev30 = paid.filter((o) => {
+            const age = now - o.createdAt;
+            return age > 30 * 86400000 && age <= 60 * 86400000;
+        });
+        const revenuePrev30 = prev30.reduce((s, o) => s + o.total, 0);
+        const pct = (cur, prev) => (prev > 0 ? ((cur - prev) / prev) * 100 : null);
+        const trendRevenue = pct(revenue30, revenuePrev30);
+        const trendOrders = pct(last30.length, prev30.length);
+        const avgPrev = prev30.length ? revenuePrev30 / prev30.length : 0;
+        const avgCur = last30.length ? revenue30 / last30.length : 0;
+        const trendBasket = pct(avgCur, avgPrev);
+
         const active = paid.filter((o) => o.status !== "delivered").length;
         const delivered = paid.filter((o) => o.status === "delivered").length;
 
@@ -176,6 +189,7 @@ export const SellerProvider = ({ children }) => {
             ordersToday: today.length, orders7: last7.length, orders30: last30.length,
             active, delivered,
             avgBasket: last30.length ? revenue30 / last30.length : 0,
+            trendRevenue, trendOrders, trendBasket,
             daily, topProducts, catDist,
         };
     }, [orders, productsById]);

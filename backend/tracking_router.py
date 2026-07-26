@@ -118,7 +118,7 @@ async def update_tracking(order_id: str, payload: TrackingUpdate, request: Reque
         )
     db = _db(request)
     oid = _normalize_order_id(order_id)
-    order = await db.orders.find_one({"id": oid}, {"_id": 0, "id": 1, "tracking_history": 1})
+    order = await db.orders.find_one({"id": oid}, {"_id": 0, "id": 1, "tracking_history": 1, "customer": 1})
     if not order:
         raise HTTPException(status_code=404, detail="Commande introuvable.")
 
@@ -130,6 +130,10 @@ async def update_tracking(order_id: str, payload: TrackingUpdate, request: Reque
         {"id": oid},
         {"$set": {"tracking_step": payload.step, "tracking_history": history, "tracking_updated_at": now}},
     )
+    # Notify the customer (fire and forget)
+    import asyncio
+    from email_service import send_tracking_update
+    asyncio.create_task(send_tracking_update(order, STEP_LABELS[payload.step]))
     return {
         "order_id": oid,
         "tracking_step": payload.step,

@@ -54,6 +54,14 @@ async def bulk_update_tracking(payload: BulkTrackingUpdate, request: Request):
             "$push": {"tracking_history": {"step": payload.step, "at": now}},
         },
     )
+    # Notify customers (fire and forget, max 50)
+    import asyncio
+    from email_service import send_tracking_update
+    orders = await db.orders.find(
+        {"id": {"$in": payload.order_ids[:50]}}, {"_id": 0, "id": 1, "customer": 1}
+    ).to_list(50)
+    for o in orders:
+        asyncio.create_task(send_tracking_update(o, STEP_LABELS[payload.step]))
     return {
         "updated": result.modified_count,
         "matched": result.matched_count,

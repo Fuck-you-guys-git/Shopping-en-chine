@@ -32,6 +32,7 @@ const StatCard = ({ label, value, trend, icon: Icon, positive = true, suffix }) 
 export default function Dashboard() {
     const { metrics, orders, STATUS_LABELS } = useSeller();
     const recent = orders.slice(0, 6);
+    const fmtTrend = (t) => (t === null || t === undefined ? undefined : `${t >= 0 ? "+" : ""}${t.toFixed(1)}%`);
 
     return (
         <div className="space-y-6">
@@ -50,9 +51,9 @@ export default function Dashboard() {
 
             {/* KPIs */}
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                <StatCard label="Revenu (30j)" value={formatPrice(metrics.revenue30)} icon={DollarSign} />
-                <StatCard label="Commandes (30j)" value={metrics.orders30} icon={ShoppingBag} />
-                <StatCard label="Panier moyen" value={formatPrice(metrics.avgBasket)} icon={Package} />
+                <StatCard label="Revenu (30j)" value={formatPrice(metrics.revenue30)} trend={fmtTrend(metrics.trendRevenue)} positive={(metrics.trendRevenue ?? 0) >= 0} icon={DollarSign} />
+                <StatCard label="Commandes (30j)" value={metrics.orders30} trend={fmtTrend(metrics.trendOrders)} positive={(metrics.trendOrders ?? 0) >= 0} icon={ShoppingBag} />
+                <StatCard label="Panier moyen" value={formatPrice(metrics.avgBasket)} trend={fmtTrend(metrics.trendBasket)} positive={(metrics.trendBasket ?? 0) >= 0} icon={Package} />
                 <StatCard label="Actives" value={metrics.active} trend={`${metrics.delivered} livrées`} icon={Users} positive />
             </div>
 

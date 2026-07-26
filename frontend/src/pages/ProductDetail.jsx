@@ -10,6 +10,7 @@ import { categories } from "@/data/products";
 import { useCatalog } from "@/context/CatalogContext";
 import { useCart } from "@/context/CartContext";
 import { toast } from "sonner";
+import { usePageTitle } from "@/hooks/usePageTitle";
 
 export default function ProductDetail() {
     const { id } = useParams();
@@ -17,6 +18,7 @@ export default function ProductDetail() {
     const { addItem, setDrawerOpen } = useCart();
     const { products: allProducts, loaded } = useCatalog();
     const product = allProducts.find((p) => p.id === id);
+    usePageTitle(product?.name || "Produit", product?.description);
     const [qty, setQty] = useState(1);
     const [color, setColor] = useState(product?.colors?.[0]);
     const [size, setSize] = useState("M");

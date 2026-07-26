@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { ProductCard } from "@/components/ProductCard";
 import { categories, subcategoriesByCategory } from "@/data/products";
 import { useCatalog } from "@/context/CatalogContext";
+import { usePageTitle } from "@/hooks/usePageTitle";
 
 export default function Products() {
     const { categoryId } = useParams();
@@ -26,6 +27,10 @@ export default function Products() {
     const [sortBy, setSortBy] = useState("pertinence");
 
     const activeCategory = categories.find((c) => c.id === categoryId);
+    usePageTitle(
+        activeSub ? activeSub.name : activeCategory ? activeCategory.name : "Boutique",
+        "Livraison Chine → Dakar en 10 à 20 jours. Paiement Mobile Money et carte bancaire.",
+    );
 
     const toggleCat = (id) =>
         setSelectedCats((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));

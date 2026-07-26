@@ -61,6 +61,12 @@ export const productsAPI = {
     remove: (id) => api.delete(`/products/${id}`).then((r) => r.data),
 };
 
+// --------- Stripe (paiement carte) ---------
+export const stripeAPI = {
+    checkout: (payload) => api.post("/payments/stripe/checkout", payload).then((r) => r.data),
+    status: (sessionId) => api.get(`/payments/stripe/status/${sessionId}`).then((r) => r.data),
+};
+
 // --------- Commandes vendeur (réelles) ---------
 export const ordersAPI = {
     list: () => api.get("/orders").then((r) => r.data.orders),
