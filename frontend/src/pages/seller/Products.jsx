@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { Search, Edit3, Trash2, PlusCircle, Package, Star } from "lucide-react";
+import { Search, Edit3, Trash2, PlusCircle, Package, Star, Eye } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -98,8 +98,11 @@ export default function Products() {
                                     )}
                                 </div>
                                 <div className="col-span-3 md:col-span-2 flex items-center justify-end gap-1">
-                                    <Button asChild variant="ghost" size="icon" className="h-8 w-8">
-                                        <Link to={`/produit/${p.id}`} target="_blank"><Edit3 className="h-4 w-4" /></Link>
+                                    <Button asChild variant="ghost" size="icon" className="h-8 w-8" title="Modifier">
+                                        <Link to={`../modifier/${p.id}`} data-testid={`edit-product-${p.id}`}><Edit3 className="h-4 w-4" /></Link>
+                                    </Button>
+                                    <Button asChild variant="ghost" size="icon" className="h-8 w-8 hidden md:inline-flex" title="Voir sur le site">
+                                        <a href={`/produit/${p.id}`} target="_blank" rel="noreferrer" data-testid={`view-product-${p.id}`}><Eye className="h-4 w-4" /></a>
                                     </Button>
                                     <AlertDialog>
                                         <AlertDialogTrigger asChild>

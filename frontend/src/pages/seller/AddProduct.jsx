@@ -1,5 +1,5 @@
-import { useState, useRef } from "react";
-import { useNavigate, useLocation } from "react-router-dom";
+import { useEffect, useRef, useState } from "react";
+import { useNavigate, useLocation, useParams } from "react-router-dom";
 import { Upload, Package, Sparkles, ImagePlus, Camera } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,6 +11,7 @@ import { Switch } from "@/components/ui/switch";
 import { useSeller } from "@/context/SellerContext";
 import { categories, subcategoriesByCategory } from "@/data/products";
 import { formatPrice } from "@/components/ProductCard";
+import { COLOR_PALETTE } from "@/lib/colors";
 import { toast } from "sonner";
 
 const SAMPLE_IMAGES = [
@@ -22,13 +23,14 @@ const SAMPLE_IMAGES = [
     "https://images.unsplash.com/photo-1526170375885-4d8ecf77b99f?w=600&q=80",
 ];
 
-const PALETTE = ["#111111", "#F5F1EA", "#C64C3A", "#8A5A44", "#C9A26A", "#7A6A54", "#2E7D5A", "#3B5BDB"];
 
 export default function AddProduct() {
-    const { addProduct } = useSeller();
+    const { addProduct, updateProduct, products } = useSeller();
     const navigate = useNavigate();
     const { pathname } = useLocation();
+    const { editId } = useParams();
     const base = pathname.startsWith("/admin") ? "/admin" : "/vendeur";
+    const isEdit = Boolean(editId);
 
     const [form, setForm] = useState({
         name: "",
@@ -42,6 +44,29 @@ export default function AddProduct() {
         active: true,
     });
     const [urlInput, setUrlInput] = useState("");
+
+    // --- Mode édition : pré-remplir avec le produit existant ---
+    const [ready, setReady] = useState(!isEdit);
+    const prefilled = useRef(false);
+    useEffect(() => {
+        if (!isEdit || prefilled.current) return;
+        const p = products.find((x) => x.id === editId);
+        if (!p) return;
+        prefilled.current = true;
+        setForm({
+            name: p.name || "",
+            category: p.category || "",
+            subcategory: p.subcategory || "",
+            price: String(p.price ?? ""),
+            oldPrice: p.oldPrice ? String(p.oldPrice) : "",
+            description: p.description === "Description à compléter." ? "" : (p.description || ""),
+            badge: p.badge || "",
+            colors: p.colors || [],
+            active: p.active !== false,
+        });
+        setPhotos((p.images?.length ? p.images : [p.image]).filter(Boolean).slice(0, 5));
+        setReady(true);
+    }, [isEdit, editId, products]);
 
     const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
     const toggleColor = (c) => set("colors", form.colors.includes(c) ? form.colors.filter((x) => x !== c) : [...form.colors, c]);
@@ -108,7 +133,7 @@ export default function AddProduct() {
             : prev.length < MAX_PHOTOS ? [...prev, src] : prev));
     const mainImage = photos[0] || SAMPLE_IMAGES[0];
 
-    const submit = (e) => {
+    const submit = async (e) => {
         e.preventDefault();
         if (!form.name || !form.category || !form.price) {
             toast.error("Champs requis manquants", { description: "Nom, catégorie et prix sont obligatoires." });
@@ -126,12 +151,29 @@ export default function AddProduct() {
             badge: form.badge || undefined,
             colors: form.colors.length ? form.colors : undefined,
         };
-        addProduct(product);
-        toast.success("Produit ajouté ✦", { description: form.name });
-        navigate(`${base}/produits`);
+        try {
+            if (isEdit) {
+                await updateProduct(editId, product);
+                toast.success("Produit mis à jour ✦", { description: form.name });
+            } else {
+                await addProduct(product);
+                toast.success("Produit ajouté ✦", { description: form.name });
+            }
+            navigate(`${base}/produits`);
+        } catch {
+            toast.error("Enregistrement impossible", { description: "Vérifiez votre connexion et réessayez." });
+        }
     };
 
     const catObj = categories.find((c) => c.id === form.category);
+
+    if (!ready) {
+        return (
+            <div className="py-24 text-center text-sm text-muted-foreground" data-testid="edit-product-loading">
+                Chargement du produit…
+            </div>
+        );
+    }
 
     return (
         <form onSubmit={submit} className="grid lg:grid-cols-[1fr_360px] gap-5">
@@ -334,16 +376,19 @@ export default function AddProduct() {
                 <div className="bg-card rounded-2xl p-5 md:p-6 shadow-card border border-border/50">
                     <h3 className="font-display text-lg font-medium mb-1">Variantes (optionnel)</h3>
                     <p className="text-xs text-muted-foreground mb-4">Sélectionnez les couleurs disponibles.</p>
-                    <div className="flex flex-wrap gap-2">
-                        {PALETTE.map((c) => (
-                            <button
-                                key={c}
-                                type="button"
-                                onClick={() => toggleColor(c)}
-                                className={`h-10 w-10 rounded-full border-2 transition-all ${form.colors.includes(c) ? "border-primary scale-110" : "border-border"}`}
-                                style={{ background: c }}
-                                aria-label={c}
-                            />
+                    <div className="flex flex-wrap gap-3">
+                        {COLOR_PALETTE.map((c) => (
+                            <div key={c.hex} className="flex flex-col items-center gap-1 w-12">
+                                <button
+                                    type="button"
+                                    onClick={() => toggleColor(c.hex)}
+                                    title={c.name}
+                                    className={`h-10 w-10 rounded-full border-2 transition-all ${form.colors.includes(c.hex) ? "border-primary scale-110 ring-2 ring-primary/30" : "border-border"}`}
+                                    style={{ background: c.hex }}
+                                    aria-label={c.name}
+                                />
+                                <span className={`text-[9px] leading-none text-center ${form.colors.includes(c.hex) ? "text-primary font-semibold" : "text-muted-foreground"}`}>{c.name}</span>
+                            </div>
                         ))}
                     </div>
                 </div>
@@ -409,8 +454,8 @@ export default function AddProduct() {
                     </div>
 
                     <div className="flex flex-col gap-2">
-                        <Button type="submit" size="lg" className="bg-primary hover:bg-primary/90 text-primary-foreground shadow-warm rounded-full h-12">
-                            <Upload className="h-4 w-4" /> Publier le produit
+                        <Button type="submit" size="lg" className="bg-primary hover:bg-primary/90 text-primary-foreground shadow-warm rounded-full h-12" data-testid="submit-product-btn">
+                            <Upload className="h-4 w-4" /> {isEdit ? "Mettre à jour le produit" : "Publier le produit"}
                         </Button>
                         <Button type="button" variant="outline" size="lg" onClick={() => navigate(`${base}/produits`)} className="rounded-full">
                             Annuler

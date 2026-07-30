@@ -81,6 +81,7 @@ function App() {
                                     <Route path="commandes" element={<Orders />} />
                                     <Route path="produits" element={<SellerProducts />} />
                                     <Route path="ajouter" element={<AddProduct />} />
+                                    <Route path="modifier/:editId" element={<AddProduct />} />
                                 </Route>
                                 <Route
                                     path="/admin"
@@ -94,6 +95,7 @@ function App() {
                                     <Route path="commandes" element={<Orders />} />
                                     <Route path="produits" element={<SellerProducts />} />
                                     <Route path="ajouter" element={<AddProduct />} />
+                                    <Route path="modifier/:editId" element={<AddProduct />} />
                                     <Route path="orders" element={<Orders />} />
                                     <Route path="products" element={<SellerProducts />} />
                                     <Route path="add" element={<AddProduct />} />

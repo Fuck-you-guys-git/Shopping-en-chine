@@ -11,6 +11,7 @@ import { useCatalog } from "@/context/CatalogContext";
 import { useCart } from "@/context/CartContext";
 import { toast } from "sonner";
 import { usePageTitle } from "@/hooks/usePageTitle";
+import { colorName } from "@/lib/colors";
 
 export default function ProductDetail() {
     const { id } = useParams();
@@ -132,7 +133,7 @@ export default function ProductDetail() {
                         {/* Colors */}
                         {product.colors && (
                             <div className="mt-8">
-                                <p className="text-sm font-medium mb-3">Couleur : <span className="text-muted-foreground font-normal">Sélectionnée</span></p>
+                                <p className="text-sm font-medium mb-3">Couleur : <span className="text-muted-foreground font-normal">{colorName(color) || "Sélectionnée"}</span></p>
                                 <div className="flex gap-2">
                                     {product.colors.map((c) => (
                                         <button
@@ -149,7 +150,8 @@ export default function ProductDetail() {
                             </div>
                         )}
 
-                        {/* Size */}
+                        {/* Size — uniquement pour les vêtements (Mode / Enfants) */}
+                        {["mode", "enfants"].includes(product.category) && (
                         <div className="mt-6">
                             <p className="text-sm font-medium mb-3">Taille</p>
                             <div className="flex gap-2">
@@ -164,6 +166,7 @@ export default function ProductDetail() {
                                 ))}
                             </div>
                         </div>
+                        )}
 
                         {/* Qty + CTA */}
                         <div className="mt-8 flex flex-col sm:flex-row gap-3">
@@ -176,8 +179,8 @@ export default function ProductDetail() {
                                     <Plus className="h-4 w-4" />
                                 </button>
                             </div>
-                            <Button onClick={handleAdd} size="lg" className="flex-1 bg-ink hover:bg-ink/90 text-ink-foreground rounded-full h-12">
-                                <ShoppingBag className="h-4 w-4" /> Ajouter au panier
+                            <Button onClick={handleAdd} size="lg" data-testid="add-to-cart-btn" className="sm:flex-1 h-14 bg-ink hover:bg-ink/90 text-ink-foreground rounded-full text-base font-semibold shadow-warm">
+                                <ShoppingBag className="!h-5 !w-5" /> Ajouter au panier
                             </Button>
                             <Button onClick={handleBuyNow} size="lg" variant="outline" className="rounded-full h-12 border-primary text-primary hover:bg-primary hover:text-primary-foreground">
                                 <Heart className="h-4 w-4" />

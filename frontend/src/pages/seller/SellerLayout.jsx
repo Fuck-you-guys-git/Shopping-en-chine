@@ -142,7 +142,8 @@ const LayoutInner = () => {
         [`${base}/products`]: "Mes produits",
         [`${base}/add`]: "Ajouter un produit",
     };
-    const pageTitle = titles[location.pathname] || "Espace vendeur";
+    let pageTitle = titles[location.pathname] || "Espace vendeur";
+    if (location.pathname.includes("/modifier/")) pageTitle = "Modifier le produit";
 
     return (
         <div className="min-h-screen flex bg-secondary/30">
