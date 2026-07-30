@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { ArrowLeft, Heart, ShoppingBag, Truck, ShieldCheck, Minus, Plus, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -20,6 +20,8 @@ export default function ProductDetail() {
     const product = allProducts.find((p) => p.id === id);
     usePageTitle(product?.name || "Produit", product?.description);
     const [qty, setQty] = useState(1);
+    const [imgIdx, setImgIdx] = useState(0);
+    useEffect(() => { setImgIdx(0); }, [id]);
     const [color, setColor] = useState(product?.colors?.[0]);
     const [size, setSize] = useState("M");
 
@@ -67,21 +69,37 @@ export default function ProductDetail() {
                 <div className="grid lg:grid-cols-2 gap-10 lg:gap-16">
                     {/* Gallery */}
                     <div className="space-y-3">
-                        <div className="aspect-square overflow-hidden rounded-3xl bg-muted relative">
-                            {product.badge && (
-                                <Badge className="absolute top-5 left-5 z-10 bg-background text-foreground rounded-full px-3 py-1 hover:bg-background">
-                                    {product.badge}
-                                </Badge>
-                            )}
-                            <img src={product.image} alt={product.name} className="h-full w-full object-cover" />
-                        </div>
-                        <div className="grid grid-cols-4 gap-3">
-                            {[product.image, ...allProducts.slice(0, 3).map((p) => p.image)].map((src, i) => (
-                                <button key={i} className={`aspect-square rounded-xl overflow-hidden bg-muted border-2 ${i === 0 ? "border-primary" : "border-transparent"}`}>
-                                    <img src={src} alt="" className="h-full w-full object-cover" />
-                                </button>
-                            ))}
-                        </div>
+                        {(() => {
+                            const gallery = (product.images?.length ? product.images : [product.image]).filter(Boolean);
+                            const current = gallery[imgIdx] || gallery[0];
+                            return (
+                                <>
+                                    <div className="aspect-square overflow-hidden rounded-3xl bg-muted relative">
+                                        {product.badge && (
+                                            <Badge className="absolute top-5 left-5 z-10 bg-background text-foreground rounded-full px-3 py-1 hover:bg-background">
+                                                {product.badge}
+                                            </Badge>
+                                        )}
+                                        <img src={current} alt={product.name} className="h-full w-full object-cover" data-testid="product-main-image" />
+                                    </div>
+                                    {gallery.length > 1 && (
+                                        <div className="grid grid-cols-5 gap-3" data-testid="product-gallery-thumbnails">
+                                            {gallery.map((src, i) => (
+                                                <button
+                                                    key={i}
+                                                    type="button"
+                                                    onClick={() => setImgIdx(i)}
+                                                    data-testid={`product-thumb-${i}`}
+                                                    className={`aspect-square rounded-xl overflow-hidden bg-muted border-2 transition-all ${i === imgIdx ? "border-primary" : "border-transparent hover:border-border"}`}
+                                                >
+                                                    <img src={src} alt="" className="h-full w-full object-cover" />
+                                                </button>
+                                            ))}
+                                        </div>
+                                    )}
+                                </>
+                            );
+                        })()}
                     </div>
 
                     {/* Info */}
