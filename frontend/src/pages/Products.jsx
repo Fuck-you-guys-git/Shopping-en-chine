@@ -123,7 +123,7 @@ export default function Products() {
                 </nav>
                 <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
                     <div>
-                        <h1 className="font-display text-4xl sm:text-5xl lg:text-6xl font-medium tracking-tight">
+                        <h1 className="font-display text-2xl sm:text-3xl lg:text-4xl font-medium tracking-tight">
                             {activeSub ? activeSub.name : activeCategory ? activeCategory.name : searchQuery ? `« ${searchQuery} »` : "Toute la boutique"}
                         </h1>
                         <p className="text-muted-foreground mt-2">

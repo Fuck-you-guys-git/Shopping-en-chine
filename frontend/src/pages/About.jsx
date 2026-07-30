@@ -17,7 +17,7 @@ export default function About() {
             <section className="bg-gradient-hero border-b border-border">
                 <div className="container mx-auto px-5 py-16 md:py-20 max-w-3xl">
                     <p className="text-xs uppercase tracking-[0.25em] text-primary font-semibold mb-4">Qui sommes-nous</p>
-                    <h1 className="font-display text-4xl sm:text-5xl lg:text-6xl font-medium tracking-tight mb-6">
+                    <h1 className="font-display text-2xl sm:text-3xl lg:text-4xl font-medium tracking-tight mb-6">
                         La Chine à portée de main, <span className="text-primary italic">depuis Dakar</span>
                     </h1>
                     <p className="text-muted-foreground text-base leading-relaxed">

@@ -110,12 +110,12 @@ export default function ProductDetail() {
                             <span className="mx-2">/</span>
                             <Link to={`/boutique/${category?.id}`} className="hover:text-foreground">{category?.name}</Link>
                         </nav>
-                        <h1 className="font-display text-2xl sm:text-3xl lg:text-4xl font-medium leading-tight tracking-tight">
+                        <h1 className="font-display text-xl sm:text-2xl lg:text-3xl font-medium leading-tight tracking-tight">
                             {product.name}
                         </h1>
 
                         <div className="mt-4 flex items-baseline gap-3 flex-wrap">
-                            <span className="font-display text-2xl sm:text-3xl font-semibold">{formatPrice(product.price)}</span>
+                            <span className="font-display text-xl sm:text-2xl font-semibold">{formatPrice(product.price)}</span>
                             {product.oldPrice && (
                                 <>
                                     <span className="text-base text-muted-foreground line-through">{formatPrice(product.oldPrice)}</span>
@@ -242,7 +242,7 @@ export default function ProductDetail() {
 
                 {/* Related */}
                 <div className="mt-20 md:mt-28">
-                    <h2 className="font-display text-3xl sm:text-4xl font-medium mb-10">Vous aimerez aussi</h2>
+                    <h2 className="font-display text-2xl sm:text-3xl font-medium mb-10">Vous aimerez aussi</h2>
                     <div className="grid grid-cols-2 lg:grid-cols-4 gap-x-4 gap-y-10 md:gap-x-6">
                         {related.map((p, i) => (
                             <ProductCard key={p.id} product={p} index={i} />

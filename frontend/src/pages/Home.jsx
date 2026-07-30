@@ -34,9 +34,9 @@ export default function Home() {
                 <div className="container mx-auto px-5 pt-8 pb-6 md:pt-10 md:pb-8">
                     <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-5">
                         <div className="max-w-2xl">
-                            <h1 className="font-display text-3xl sm:text-4xl md:text-5xl font-medium leading-tight tracking-tight">
+                            <h1 className="font-display text-2xl sm:text-3xl md:text-4xl font-medium leading-tight tracking-tight">
                                 Shopping en Chine
-                                <span className="block italic text-primary text-2xl sm:text-3xl md:text-4xl mt-1">Tout, plus simple.</span>
+                                <span className="block italic text-primary text-xl sm:text-2xl md:text-3xl mt-1">Tout, plus simple.</span>
                             </h1>
                             <p className="mt-2 text-sm md:text-base text-muted-foreground">
                                 Livraison Chine → Dakar en 10–20 jours · Paiement Mobile Money
