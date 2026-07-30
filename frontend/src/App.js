@@ -33,7 +33,7 @@ function Shell({ children }) {
     return (
         <>
             {!isSeller && <Navbar />}
-            <main>{children}</main>
+            <main key={pathname} className="page-fade">{children}</main>
             {!isSeller && <Footer />}
             {!isSeller && <CartDrawer />}
             {!isSeller && <WhatsAppButton />}

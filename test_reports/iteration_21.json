@@ -1,0 +1,27 @@
+{
+  "summary": "Iteration 21 — full regression on 'Shopping en Chine' e-commerce (mobile 390 + desktop 1920). Verified: home/boutique/category pills (7 pills on /boutique/mode)/product detail (Casque p1, add-to-cart-btn = 56px h-14 as spec'd)/cart drawer/panier/checkout 3 steps with Stripe Carte bancaire tile + 5 mobile money methods (Orange SN/CI, Wave SN/CI, MTN) + stripe-card-panel + 'Payer par carte 85 000 F' button; /suivi/ord_demo12345678 shows 'douane' timeline step; /a-propos loads; mobile menu contains Beauté + Enfants; no horizontal overflow at 390px. Seller flow: login OK, Dashboard KPIs with REAL trends (-100.0% shown, no hardcoded +12.4%), 6 order tabs / 48 rows / bulk-bar appears on selection, Products list 10 items. Edit /vendeur/modifier/p10: form prefilled with 'Paire de chaussettes coton', edit saved (verified via API), then REVERTED to original. Add new TEST_QA_Chapeau with 2 URL photos + Mode category + 1 color → appears on /boutique with gallery of 2 thumbs on /produit/{id} — then DELETED via seller API (verified 200 + tombstone). Backend pytest 43/43 pass after fixing 1 stale ETA assertion (10→20 days). No console/page errors on any tested route. No Paxity POST/pay-in-mobile called, no real Stripe redirect submitted.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {"ui_bugs": [], "integration_issues": [], "design_issues": []},
+  "test_report_links": [
+    "/app/backend/tests/test_tracking.py",
+    "/app/backend/tests/test_stripe_iter20.py",
+    "/app/backend/tests/test_orders_bulk.py",
+    "/app/test_reports/pytest/iter21.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "AddProduct.jsx L370 'add-url-photo-btn' is disabled based on !urlInput.trim() — correct guard against empty submits.",
+    "orders_router.py exposes /api/orders with 48 orders in single payload — still no pagination (noted in iter20). Fine for current scale but consider limit/skip.",
+    "products_router.py DELETE /{id} correctly writes tombstone into db.deleted_seed_products so seeded products stay removed after re-seed — good pattern.",
+    "test_tracking.py L73 was asserting eta_start='2026-02-16' (created + 15d) but ETA_MIN_DAYS was tightened to 10 → updated assertion to '2026-02-11'. In-scope test-code fix, not a product bug.",
+    "Checkout step 3 shows 6 payment tiles (5 mobile money + Carte bancaire). 3-column grid on desktop uses 2 rows cleanly; on mobile it collapses to 2 cols — verified fits in 390px viewport."
+  ],
+  "updated_files": ["/app/backend/tests/test_tracking.py"],
+  "success_rate": {"backend": "100%", "frontend": "100%"},
+  "test_credentials": "Seller: Modou.ba.568@gmail.com / 40881215.Com (from /app/memory/test_credentials.md). ord_demo12345678 preserved (customs step).",
+  "seed_data_creation": "Created & deleted product TEST_QA_Chapeau (id p_63e05e8a58, 2 photos, category=mode). Cleaned up stale ord_d5da34d23526 (leftover pending Stripe order from iter20, TEST_QA / test@example.com) + its payment_transaction. p10 edited to '... EDIT' then reverted to 'Paire de chaussettes coton'.",
+  "should_call_test_agent_after_fix": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Iteration 21 all-green. All spec items verified: (1) add-to-cart-btn h=56px on both mobile & desktop (flex-1 issue resolved with sm:flex-1); (2) 5-photo max via URL input#image-url + data-testid=add-url-photo-btn — verified working with add + display in gallery; (3) COLOR_PALETTE picker present on AddProduct; (4) /vendeur/modifier/:editId prefills via useSeller().products lookup with edit-product-loading gate — prefill confirmed for p10; (5) subcategory pills selector is [data-testid^='sub-pill-'] (not 'subcategory-pill-') — 7 pills on /boutique/mode; (6) Checkout testids: stripe-card-method-btn + stripe-card-panel + stripe-pay-btn (no data-testid on 'Continuer' step buttons — used get_by_role); (7) 'Continuer' buttons match twice per page (paxity discount and step btn) — use .last or scope to form; (8) Placeholders 'Marie'/'10000' collide with email/city placeholders — use exact=True when filling checkout form; (9) DELETE /api/products/{id} works via Bearer token; there is NO order delete endpoint — must clean via direct mongo. (10) Order 48 count reflects real production orders; do not delete real orders. Only ord_TEST_* prefixed or clearly qa@test.com pending stripe orders.",
+  "rca_of_the_issue": "N/A — no product defects found. The single backend test failure (test_track_found ETA assertion) was a stale assertion after ETA_MIN_DAYS was tightened from 15→10 days; fixed the test."
+}

@@ -69,8 +69,8 @@ class TestTrackOrder:
             assert data["amount"] == 85000
             assert data["city"] == "Dakar"
             assert len(data["steps"]) == 5
-            # ETA = created + 15 / + 20 days
-            assert data["eta_start"].startswith("2026-02-16")
+            # ETA = created + 10 / + 20 days
+            assert data["eta_start"].startswith("2026-02-11")
             assert data["eta_end"].startswith("2026-02-21")
         finally:
             _cleanup(db, order_id)

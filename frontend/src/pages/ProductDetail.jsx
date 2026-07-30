@@ -110,15 +110,15 @@ export default function ProductDetail() {
                             <span className="mx-2">/</span>
                             <Link to={`/boutique/${category?.id}`} className="hover:text-foreground">{category?.name}</Link>
                         </nav>
-                        <h1 className="font-display text-3xl sm:text-4xl lg:text-5xl font-medium leading-tight tracking-tight">
+                        <h1 className="font-display text-2xl sm:text-3xl lg:text-4xl font-medium leading-tight tracking-tight">
                             {product.name}
                         </h1>
 
-                        <div className="mt-6 flex items-baseline gap-3">
-                            <span className="font-display text-4xl font-semibold">{formatPrice(product.price)}</span>
+                        <div className="mt-4 flex items-baseline gap-3 flex-wrap">
+                            <span className="font-display text-2xl sm:text-3xl font-semibold">{formatPrice(product.price)}</span>
                             {product.oldPrice && (
                                 <>
-                                    <span className="text-lg text-muted-foreground line-through">{formatPrice(product.oldPrice)}</span>
+                                    <span className="text-base text-muted-foreground line-through">{formatPrice(product.oldPrice)}</span>
                                     <Badge className="bg-primary/10 text-primary hover:bg-primary/10 rounded-full">
                                         −{Math.round((1 - product.price / product.oldPrice) * 100)}%
                                     </Badge>
