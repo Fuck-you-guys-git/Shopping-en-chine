@@ -125,7 +125,9 @@ export default function ProductDetail() {
                             )}
                         </div>
 
-                        <p className="mt-6 text-muted-foreground leading-relaxed">{product.description}</p>
+                        {product.description && product.description !== "Description à compléter." && (
+                            <p className="mt-6 text-muted-foreground leading-relaxed">{product.description}</p>
+                        )}
 
                         {/* Colors */}
                         {product.colors && (
@@ -210,7 +212,7 @@ export default function ProductDetail() {
                             <TabsTrigger value="ship" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none px-0 pb-3">Livraison</TabsTrigger>
                         </TabsList>
                         <TabsContent value="desc" className="pt-6 text-muted-foreground leading-relaxed">
-                            <p>{product.description} Conçu pour durer et vivre avec vous, ce produit combine matériaux nobles et savoir-faire moderne. Chaque détail a été pensé pour une expérience quotidienne agréable et sans friction.</p>
+                            <p>{product.description && product.description !== "Description à compléter." ? `${product.description} ` : ""}Conçu pour durer et vivre avec vous, ce produit combine matériaux nobles et savoir-faire moderne. Chaque détail a été pensé pour une expérience quotidienne agréable et sans friction.</p>
                         </TabsContent>
                         <TabsContent value="specs" className="pt-6">
                             <dl className="grid grid-cols-1 sm:grid-cols-2 gap-4">

@@ -120,7 +120,7 @@ export default function AddProduct() {
             subcategory: form.subcategory && subcategoriesByCategory[form.category] ? form.subcategory : undefined,
             price: Number(form.price),
             oldPrice: form.oldPrice ? Number(form.oldPrice) : undefined,
-            description: form.description || "Description à compléter.",
+            description: form.description || "",
             image: mainImage,
             images: photos.length ? photos : [mainImage],
             badge: form.badge || undefined,
