@@ -6,12 +6,25 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ProductCard, formatPrice } from "@/components/ProductCard";
-import { categories } from "@/data/products";
+import { categories, subcategoriesByCategory } from "@/data/products";
 import { useCatalog } from "@/context/CatalogContext";
 import { useCart } from "@/context/CartContext";
 import { toast } from "sonner";
 import { usePageTitle } from "@/hooks/usePageTitle";
 import { colorName } from "@/lib/colors";
+
+// Tailles S–XL : uniquement vêtements & chaussures (pas lunettes, sacs, bijoux, montres, jouets…)
+const NON_APPAREL_SUBS = new Set([
+    "lunettes", "sacs", "bijoux", "montres", "accessoires",
+    "jouets", "accessoires-enfants", "fournitures-scolaires",
+]);
+const hasSizes = (p) => {
+    if (!["mode", "enfants"].includes(p.category)) return false;
+    if (p.subcategory) return !NON_APPAREL_SUBS.has(p.subcategory);
+    const name = (p.name || "").toLowerCase();
+    const subs = subcategoriesByCategory[p.category] || [];
+    return !subs.some((s) => NON_APPAREL_SUBS.has(s.id) && s.keywords.some((k) => name.includes(k)));
+};
 
 export default function ProductDetail() {
     const { id } = useParams();
@@ -150,8 +163,8 @@ export default function ProductDetail() {
                             </div>
                         )}
 
-                        {/* Size — uniquement pour les vêtements (Mode / Enfants) */}
-                        {["mode", "enfants"].includes(product.category) && (
+                        {/* Size — uniquement vêtements & chaussures */}
+                        {hasSizes(product) && (
                         <div className="mt-6">
                             <p className="text-sm font-medium mb-3">Taille</p>
                             <div className="flex gap-2">
