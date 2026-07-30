@@ -8,7 +8,7 @@ import { formatPrice } from "@/components/ProductCard";
 
 export const CartDrawer = () => {
     const { items, drawerOpen, setDrawerOpen, updateQty, removeItem, subtotal, count } = useCart();
-    const shipping = subtotal > 30000 || subtotal === 0 ? 0 : 3000;
+    const shipping = 0;
     const total = subtotal + shipping;
 
     return (
@@ -69,8 +69,8 @@ export const CartDrawer = () => {
                                 <span>{formatPrice(subtotal)}</span>
                             </div>
                             <div className="flex justify-between text-sm text-muted-foreground">
-                                <span>Livraison</span>
-                                <span>{shipping === 0 ? <span className="text-success">Offerte</span> : formatPrice(shipping)}</span>
+                                <span>Livraison Chine → Dakar</span>
+                                <span>10–20 jours</span>
                             </div>
                             <Separator />
                             <div className="flex justify-between items-baseline">

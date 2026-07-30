@@ -26,7 +26,7 @@ export default function Checkout() {
     const { items, subtotal, clear } = useCart();
     const navigate = useNavigate();
     const [step, setStep] = useState(1);
-    const shipping = subtotal > 30000 || subtotal === 0 ? 0 : 3000;
+    const shipping = 0;
     const total = subtotal + shipping;
 
     const [buyer, setBuyer] = useState({
@@ -408,7 +408,6 @@ export default function Checkout() {
                                         <p className="font-medium">Livraison standard · Chine → Dakar</p>
                                         <p className="text-xs text-muted-foreground">10–20 jours</p>
                                     </div>
-                                    <span className="font-medium text-success">Offerte</span>
                                 </label>
                             </RadioGroup>
                             <div className="flex gap-2 pt-2">
@@ -627,7 +626,7 @@ export default function Checkout() {
                         <Separator />
                         <div className="space-y-2 text-sm">
                             <div className="flex justify-between"><span className="text-muted-foreground">Sous-total</span><span>{formatPrice(subtotal)}</span></div>
-                            <div className="flex justify-between"><span className="text-muted-foreground">Livraison</span><span>{shipping === 0 ? <span className="text-success">Offerte</span> : formatPrice(shipping)}</span></div>
+                            <div className="flex justify-between"><span className="text-muted-foreground">Livraison Chine → Dakar</span><span className="text-muted-foreground">10–20 jours</span></div>
                         </div>
                         <Separator />
                         <div className="flex justify-between items-baseline">

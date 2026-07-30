@@ -12,7 +12,7 @@ export default function Cart() {
     const { items, updateQty, removeItem, subtotal, clear } = useCart();
     const [promo, setPromo] = useState("");
     const [discount, setDiscount] = useState(0);
-    const shipping = subtotal > 30000 || subtotal === 0 ? 0 : 3000;
+    const shipping = 0;
     const total = Math.max(0, subtotal + shipping - discount);
 
     const applyPromo = (e) => {
@@ -111,8 +111,8 @@ export default function Cart() {
                                 </div>
                             )}
                             <div className="flex justify-between">
-                                <span className="text-muted-foreground">Livraison</span>
-                                <span>{shipping === 0 ? <span className="text-success font-medium">Offerte</span> : formatPrice(shipping)}</span>
+                                <span className="text-muted-foreground">Livraison Chine → Dakar</span>
+                                <span className="text-muted-foreground">10–20 jours</span>
                             </div>
                         </div>
                         <Separator />

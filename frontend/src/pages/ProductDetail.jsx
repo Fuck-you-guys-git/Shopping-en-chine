@@ -235,7 +235,7 @@ export default function ProductDetail() {
                             </dl>
                         </TabsContent>
                         <TabsContent value="ship" className="pt-6 text-muted-foreground leading-relaxed space-y-2">
-                            <p><span className="text-foreground font-medium">Livraison Chine → Dakar</span> en 10–20 jours — offerte dès 30 000 F.</p>
+                            <p><span className="text-foreground font-medium">Livraison Chine → Dakar</span> en 10–20 jours.</p>
                         </TabsContent>
                     </Tabs>
                 </div>

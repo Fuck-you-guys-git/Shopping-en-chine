@@ -12,6 +12,7 @@ import { ProductCard } from "@/components/ProductCard";
 import { categories, subcategoriesByCategory } from "@/data/products";
 import { useCatalog } from "@/context/CatalogContext";
 import { usePageTitle } from "@/hooks/usePageTitle";
+import { productMatchesQuery } from "@/lib/search";
 
 export default function Products() {
     const { categoryId } = useParams();
@@ -51,8 +52,7 @@ export default function Products() {
             );
         }
         if (searchQuery) {
-            const q = searchQuery.toLowerCase();
-            list = list.filter((p) => p.name.toLowerCase().includes(q));
+            list = list.filter((p) => productMatchesQuery(p, searchQuery));
         }
         switch (sortBy) {
             case "prix-asc":
