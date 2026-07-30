@@ -200,6 +200,12 @@ Payments were failing with a **DNS error** because `backend/paxity_router.py` ha
 - Testé Playwright : édition p1 pré-remplie (Électronique/Nouveauté) → sauvegarde OK ; tech sans tailles ; mode avec tailles + couleur nommée ; bouton 56px mobile+desktop. Produit test E2E résiduel supprimé.
 - NOTE : hot reload frontend parfois obsolète — restart frontend si un changement ne semble pas appliqué.
 
+## Update — Feb 2026 (polish typographie + fluidité + régression complète)
+- Fiche produit : titre réduit (text-2xl→4xl responsive) et prix (text-2xl/3xl) — demande utilisateur « font too big ».
+- Fluidité : transition douce entre pages (main.page-fade, fondu + translation 0.35s, key=pathname).
+- RÉGRESSION COMPLÈTE iteration_21 : 42/42 PASS (parcours client mobile+desktop, Stripe, suivi, reprise panier, parcours vendeur complet avec édition/ajout/suppression produit, bulk commandes, responsive 390px, aucune erreur console). Aucun bug produit. L'agent de test a corrigé une assertion pytest obsolète (ETA 15→10j) et nettoyé un ordre Stripe test résiduel.
+- Amélioration future notée : pagination /api/orders (48 commandes en un payload, OK à cette échelle).
+
 ## Next Action Items
 - **Stripe (demandé par l'utilisateur)** : en attente de ses choix (s'ajouter à Paxity ou remplacer ; devise ; email de confirmation). Clé de test dispo dans l'environnement — ne jamais demander de clé.
 - Redéploiement production (shopenchine.com) pour propager : menu rouge Dashboard + catalogue DB.
