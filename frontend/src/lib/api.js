@@ -25,6 +25,11 @@ api.interceptors.request.use((config) => {
 // but only after the response body has been captured.
 api.interceptors.response.use((response) => {
     if (response.status >= 200 && response.status < 300) return response;
+    // Session vendeur expirée / invalide → déconnexion propre + redirection login
+    const url = String(response.config?.url || "");
+    if (response.status === 401 && getSellerToken() && !url.startsWith("/auth/login")) {
+        window.dispatchEvent(new CustomEvent("seller-session-expired"));
+    }
     const err = new Error(`Request failed with status ${response.status}`);
     err.response = response;
     err.code = response.status >= 500 ? "SERVER_ERROR" : "CLIENT_ERROR";
@@ -54,10 +59,11 @@ export const authAPI = {
 };
 
 // --------- Catalogue produits ---------
+// Timeout étendu pour l'envoi des produits (photos en base64 sur mobile lent)
 export const productsAPI = {
     list: () => api.get("/products").then((r) => r.data.products),
-    create: (p) => api.post("/products", p).then((r) => r.data),
-    update: (id, p) => api.put(`/products/${id}`, p).then((r) => r.data),
+    create: (p) => api.post("/products", p, { timeout: 90000 }).then((r) => r.data),
+    update: (id, p) => api.put(`/products/${id}`, p, { timeout: 90000 }).then((r) => r.data),
     remove: (id) => api.delete(`/products/${id}`).then((r) => r.data),
 };
 

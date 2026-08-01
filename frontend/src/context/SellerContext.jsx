@@ -1,5 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
-import { products as seedProducts, categories } from "@/data/products";
+import { categories } from "@/data/products";
 import { productsAPI, ordersAPI, trackingAPI } from "@/lib/api";
 import { useCatalog } from "@/context/CatalogContext";
 
@@ -40,14 +40,13 @@ const mapOrder = (o, productsById) => ({
 });
 
 export const SellerProvider = ({ children }) => {
-    // Products live in MongoDB (via /api/products). Static seed is only an
-    // instant fallback while loading.
-    const [products, setProducts] = useState(seedProducts);
+    // Products live in MongoDB (via /api/products) — seule source de vérité.
+    const [products, setProducts] = useState([]);
     const { refresh: refreshCatalog } = useCatalog();
 
     useEffect(() => {
         productsAPI.list()
-            .then((list) => { if (Array.isArray(list) && list.length) setProducts(list); })
+            .then((list) => { if (Array.isArray(list)) setProducts(list); })
             .catch(() => {});
     }, []);
 

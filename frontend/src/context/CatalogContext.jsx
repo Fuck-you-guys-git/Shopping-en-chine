@@ -1,26 +1,24 @@
 import { createContext, useContext, useEffect, useState } from "react";
-import { products as seedProducts } from "@/data/products";
 import { productsAPI } from "@/lib/api";
 
 /*
  * Global product catalog for the PUBLIC shop.
- * Products live in MongoDB (managed from the Espace vendeur) so items added
- * by the seller are visible to every customer on every device.
- * The static seed list is used as an instant fallback while loading.
+ * Products live in MongoDB (managed from the Espace vendeur) — la base de
+ * données est la SEULE source de vérité (plus de produits de démo statiques).
  */
 const CatalogContext = createContext(null);
 
 export const CatalogProvider = ({ children }) => {
-    const [products, setProducts] = useState(seedProducts);
+    const [products, setProducts] = useState([]);
     const [loaded, setLoaded] = useState(false);
 
     const refresh = async () => {
         try {
             const list = await productsAPI.list();
-            if (Array.isArray(list) && list.length) setProducts(list);
-            setLoaded(true);
+            if (Array.isArray(list)) setProducts(list);
         } catch {
-            // Keep the static fallback — the shop stays browsable offline
+            // réseau indisponible — on garde la liste actuelle
+        } finally {
             setLoaded(true);
         }
     };

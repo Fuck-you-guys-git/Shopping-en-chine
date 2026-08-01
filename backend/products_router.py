@@ -34,23 +34,16 @@ def _db(request: Request):
 
 
 async def seed_products(db) -> None:
-    """Idempotent: insert seed products missing from Mongo ($setOnInsert keeps
-    seller edits), skipping any the seller deleted (tombstones)."""
+    """Migration : les produits de démonstration sont retirés définitivement.
+    Au démarrage, supprime tout produit de démo restant (ids du fichier seed,
+    jamais les produits du vendeur qui ont des ids p_xxx)."""
     if not SEED_FILE.exists():
-        logger.warning("[Products] seed_products.json missing — no seeding")
         return
     seeds = json.loads(SEED_FILE.read_text())
-    tombstones = {d["product_id"] async for d in db.deleted_seed_products.find({}, {"_id": 0})}
-    for p in seeds:
-        if p["id"] in tombstones:
-            continue
-        await db.products.update_one(
-            {"id": p["id"]},
-            {"$setOnInsert": {**p, "custom": False, "created_at": datetime.now(timezone.utc).isoformat()}},
-            upsert=True,
-        )
-    count = await db.products.count_documents({})
-    logger.info(f"[Products] Seeding done — {count} products in DB")
+    seed_ids = [p["id"] for p in seeds]
+    result = await db.products.delete_many({"id": {"$in": seed_ids}, "custom": {"$ne": True}})
+    if result.deleted_count:
+        logger.info(f"[Products] {result.deleted_count} produits de démo supprimés définitivement")
 
 
 class ProductPayload(BaseModel):

@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useState } from "react";
 import { authAPI, setSellerToken, getSellerToken } from "@/lib/api";
+import { toast } from "sonner";
 
 /*
  * Seller authentication — now backed by the server (JWT + bcrypt).
@@ -37,6 +38,22 @@ export const SellerAuthProvider = ({ children }) => {
         if (user) localStorage.setItem(USER_KEY, JSON.stringify(user));
         else localStorage.removeItem(USER_KEY);
     }, [user]);
+
+    // Token expiré (401 renvoyé par l'API) → déconnexion + message clair.
+    // ProtectedSellerRoute redirige alors automatiquement vers la page de connexion.
+    useEffect(() => {
+        const onExpired = () => {
+            setSellerToken(null);
+            localStorage.removeItem(USER_KEY);
+            setUser(null);
+            const path = window.location.pathname;
+            if (path.startsWith("/vendeur") || path.startsWith("/admin")) {
+                toast.error("Session expirée", { description: "Veuillez vous reconnecter pour continuer." });
+            }
+        };
+        window.addEventListener("seller-session-expired", onExpired);
+        return () => window.removeEventListener("seller-session-expired", onExpired);
+    }, []);
 
     const login = async (email, password) => {
         try {

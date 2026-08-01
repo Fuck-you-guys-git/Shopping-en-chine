@@ -232,3 +232,13 @@ Payments were failing with a **DNS error** because `backend/paxity_router.py` ha
 - Gate diagnostic auth-test behind `?deep=1` to avoid creating fraud-flagged test transactions on live keys
 - Redact secrets from `raw_response` before persisting to Mongo
 - Strip non-digits (not just spaces) from phone before send + per-country length validation
+
+## Update — Feb 2026 (fix « Enregistrement impossible » à l'ajout de produit)
+- CAUSE RACINE : le token JWT vendeur expire après 12h ; l'UI gardait l'utilisateur « connecté » (localStorage) et le POST /api/products renvoyait 401 → toast générique « Enregistrement impossible » sans explication. Vérifié : payloads jusqu'à 7 Mo passent sur preview ET production (pas de limite 413), petit produit OK → seule l'expiration de session reproduisait l'erreur.
+- FIX 1 (api.js) : intercepteur → sur 401 (hors /auth/login) avec token présent, événement `seller-session-expired`.
+- FIX 2 (SellerAuthContext.jsx) : écoute l'événement → purge token/user + toast « Session expirée — Veuillez vous reconnecter » + redirection auto vers /vendeur/login (via ProtectedSellerRoute).
+- FIX 3 (AddProduct.jsx) : messages d'erreur précis (422 = infos invalides, 413 = photos trop lourdes, timeout = connexion lente, sinon détail serveur) au lieu du message générique.
+- FIX 4 (bug annexe) : les mots-clés de recherche saisis n'étaient JAMAIS envoyés au backend (champ oublié dans submit) → désormais `keywords` inclus (vérifié en DB).
+- FIX 5 : timeout axios 90s pour create/update produit (photos base64 sur mobile lent).
+- Testé E2E (Playwright) : login → ajout produit avec photo + mots-clés → OK ; session expirée → toast + redirect login → OK. Produits de test supprimés, DB à 0 produit.
+- NOTE : si le bug était constaté sur shoppingenchine.com (production), un REDÉPLOIEMENT est nécessaire pour propager le correctif.

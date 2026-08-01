@@ -152,6 +152,9 @@ export default function AddProduct() {
             images: photos.length ? photos : [mainImage],
             badge: form.badge || undefined,
             colors: form.colors.length ? form.colors : undefined,
+            keywords: form.searchKeywords
+                ? form.searchKeywords.split(",").map((k) => k.trim()).filter(Boolean)
+                : undefined,
         };
         try {
             if (isEdit) {
@@ -162,8 +165,30 @@ export default function AddProduct() {
                 toast.success("Produit ajouté ✦", { description: form.name });
             }
             navigate(`${base}/produits`);
-        } catch {
-            toast.error("Enregistrement impossible", { description: "Vérifiez votre connexion et réessayez." });
+        } catch (err) {
+            const status = err.response?.status;
+            if (status === 401) {
+                // Session expirée : le contexte d'auth affiche déjà le message
+                // et redirige vers la page de connexion.
+                return;
+            }
+            if (status === 422) {
+                toast.error("Informations invalides", {
+                    description: "Vérifiez le nom (2 caractères minimum) et le prix (supérieur à 0).",
+                });
+            } else if (status === 413) {
+                toast.error("Photos trop lourdes", {
+                    description: "Supprimez une photo ou utilisez des images plus légères.",
+                });
+            } else if (err.code === "ECONNABORTED") {
+                toast.error("Connexion trop lente", {
+                    description: "L'envoi a pris trop de temps. Réessayez avec moins de photos.",
+                });
+            } else {
+                toast.error("Enregistrement impossible", {
+                    description: err.response?.data?.detail || "Vérifiez votre connexion internet et réessayez.",
+                });
+            }
         }
     };
 
