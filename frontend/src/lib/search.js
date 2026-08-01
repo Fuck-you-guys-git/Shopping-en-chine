@@ -17,6 +17,12 @@ export const productMatchesQuery = (product, query) => {
     const desc = norm(product.description);
     if (name.includes(q) || desc.includes(q)) return true;
 
+    // Mots-clés de recherche définis par le vendeur
+    if ((product.keywords || []).some((k) => {
+        const t = norm(k);
+        return t.includes(q) || q.includes(t);
+    })) return true;
+
     const cat = categories.find((c) => c.id === product.category);
     if (cat && norm(cat.name).includes(q)) return true;
 

@@ -38,7 +38,7 @@ export default function Products() {
 
     const filtered = useMemo(() => {
         let list = products.filter(
-            (p) => p.price >= priceRange[0] && p.price <= priceRange[1],
+            (p) => p.price >= priceRange[0] && (priceRange[1] >= 200000 || p.price <= priceRange[1]),
         );
         if (selectedCats.length) {
             list = list.filter((p) => selectedCats.includes(p.category));
@@ -100,7 +100,7 @@ export default function Products() {
                 />
                 <div className="flex justify-between text-sm text-muted-foreground">
                     <span>{new Intl.NumberFormat("fr-FR").format(priceRange[0])} F</span>
-                    <span>{new Intl.NumberFormat("fr-FR").format(priceRange[1])} F</span>
+                    <span>{priceRange[1] >= 200000 ? "200 000 F et +" : `${new Intl.NumberFormat("fr-FR").format(priceRange[1])} F`}</span>
                 </div>
             </div>
         </div>

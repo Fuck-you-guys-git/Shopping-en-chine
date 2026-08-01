@@ -58,6 +58,7 @@ class ProductPayload(BaseModel):
     category: str
     subcategory: Optional[str] = None
     images: Optional[list[str]] = None
+    keywords: Optional[list[str]] = None
     price: float = Field(gt=0)
     oldPrice: Optional[float] = None
     badge: Optional[str] = None

@@ -39,6 +39,7 @@ export default function AddProduct() {
         price: "",
         oldPrice: "",
         description: "",
+        searchKeywords: "",
         badge: "",
         colors: [],
         active: true,
@@ -60,6 +61,7 @@ export default function AddProduct() {
             price: String(p.price ?? ""),
             oldPrice: p.oldPrice ? String(p.oldPrice) : "",
             description: p.description === "Description à compléter." ? "" : (p.description || ""),
+            searchKeywords: (p.keywords || []).join(", "),
             badge: p.badge || "",
             colors: p.colors || [],
             active: p.active !== false,
@@ -246,6 +248,19 @@ export default function AddProduct() {
                                 onChange={(e) => set("description", e.target.value)}
                                 placeholder="Décrivez les matériaux, avantages, dimensions…"
                             />
+                        </div>
+                        <div className="space-y-1.5">
+                            <Label htmlFor="search-keywords">Mots-clés de recherche (optionnel)</Label>
+                            <Input
+                                id="search-keywords"
+                                data-testid="product-keywords-input"
+                                value={form.searchKeywords}
+                                onChange={(e) => set("searchKeywords", e.target.value)}
+                                placeholder="Ex : ordinateur, macbook, pc portable (séparés par des virgules)"
+                            />
+                            <p className="text-xs text-muted-foreground">
+                                Le client trouvera ce produit en cherchant ces mots, même s&apos;ils ne sont pas dans le nom.
+                            </p>
                         </div>
                     </div>
                 </div>

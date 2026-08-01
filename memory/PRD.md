@@ -216,6 +216,10 @@ Payments were failing with a **DNS error** because `backend/paxity_router.py` ha
 ## Update — Feb 2026 (tailles retirées des non-vêtements)
 - Tailles S–XL masquées pour : lunettes, sacs, bijoux, montres, accessoires, jouets, fournitures scolaires (détection par subcategory OU mots-clés dans le nom — helper hasSizes dans ProductDetail.jsx). Conservées pour vêtements/chaussures (mode + enfants). Vérifié : p6 lunettes sans tailles, p4 sneakers et p8 pull avec tailles.
 
+## Update — Feb 2026 (mots-clés de recherche vendeur + fix filtre prix)
+- Champ « Mots-clés de recherche » dans AddProduct (product-keywords-input, virgules → liste), pré-rempli en édition ; backend `ProductPayload.keywords` ; la recherche (`lib/search.js`) matche ces mots-clés. Vérifié : MacBook test trouvé via « ordinateur » et « pc portable ».
+- BUG CORRIGÉ : le filtre prix plafonnait à 200 000 F → les produits plus chers n'apparaissaient JAMAIS dans la boutique. Désormais curseur au max = « 200 000 F et + » (pas de limite haute).
+
 ## Next Action Items
 - **Stripe (demandé par l'utilisateur)** : en attente de ses choix (s'ajouter à Paxity ou remplacer ; devise ; email de confirmation). Clé de test dispo dans l'environnement — ne jamais demander de clé.
 - Redéploiement production (shopenchine.com) pour propager : menu rouge Dashboard + catalogue DB.
