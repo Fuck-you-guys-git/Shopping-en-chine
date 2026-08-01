@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { ArrowLeft, Heart, ShoppingBag, Truck, ShieldCheck, Minus, Plus, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -9,6 +9,7 @@ import { ProductCard, formatPrice } from "@/components/ProductCard";
 import { categories, subcategoriesByCategory } from "@/data/products";
 import { useCatalog } from "@/context/CatalogContext";
 import { useCart } from "@/context/CartContext";
+import { productsAPI } from "@/lib/api";
 import { toast } from "sonner";
 import { usePageTitle } from "@/hooks/usePageTitle";
 import { colorName } from "@/lib/colors";
@@ -31,13 +32,21 @@ export default function ProductDetail() {
     const navigate = useNavigate();
     const { addItem, setDrawerOpen } = useCart();
     const { products: allProducts, loaded } = useCatalog();
-    const product = allProducts.find((p) => p.id === id);
+    const catalogProduct = allProducts.find((p) => p.id === id);
+    // La liste publique est allégée (sans galerie) → on charge la fiche complète
+    const [fullProduct, setFullProduct] = useState(null);
+    useEffect(() => {
+        setFullProduct(null);
+        productsAPI.get(id).then(setFullProduct).catch(() => {});
+    }, [id]);
+    const product = fullProduct?.id === id ? fullProduct : catalogProduct;
     usePageTitle(product?.name || "Produit", product?.description);
     const [qty, setQty] = useState(1);
     const [imgIdx, setImgIdx] = useState(0);
-    useEffect(() => { setImgIdx(0); }, [id]);
+    useEffect(() => { setImgIdx(0); setSize(null); }, [id]);
+    const touchRef = useRef({ x: 0, y: 0 });
     const [color, setColor] = useState(product?.colors?.[0]);
-    const [size, setSize] = useState("M");
+    const [size, setSize] = useState(null);
 
     if (!product) {
         if (!loaded) {
@@ -56,6 +65,22 @@ export default function ProductDetail() {
     }
 
     const category = categories.find((c) => c.id === product.category);
+    const gallery = (product.images?.length ? product.images : [product.image]).filter(Boolean);
+    // Tailles : celles définies par le vendeur, sinon S–XL pour les vêtements
+    const sizeOptions = product.sizes?.length ? product.sizes : (hasSizes(product) ? ["S", "M", "L", "XL"] : []);
+
+    // Swipe tactile : glisser le doigt sur la photo pour changer d'image
+    const onTouchStart = (e) => {
+        touchRef.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+    };
+    const onTouchEnd = (e) => {
+        if (gallery.length < 2) return;
+        const dx = e.changedTouches[0].clientX - touchRef.current.x;
+        const dy = e.changedTouches[0].clientY - touchRef.current.y;
+        if (Math.abs(dx) > 45 && Math.abs(dx) > Math.abs(dy)) {
+            setImgIdx((i) => (dx < 0 ? (i + 1) % gallery.length : (i - 1 + gallery.length) % gallery.length));
+        }
+    };
     const related = allProducts.filter((p) => p.id !== product.id && p.category === product.category).slice(0, 4);
     if (related.length < 4) {
         const fill = allProducts.filter((p) => p.id !== product.id && p.category !== product.category);
@@ -63,12 +88,12 @@ export default function ProductDetail() {
     }
 
     const handleAdd = () => {
-        addItem(product, qty);
-        toast.success("Ajouté au panier", { description: `${product.name} × ${qty}` });
+        addItem(product, qty, size);
+        toast.success("Ajouté au panier", { description: `${product.name}${size ? ` · Taille ${size}` : ""} × ${qty}` });
     };
 
     const handleBuyNow = () => {
-        addItem(product, qty);
+        addItem(product, qty, size);
         setDrawerOpen(false);
         navigate("/commande");
     };
@@ -83,37 +108,51 @@ export default function ProductDetail() {
                 <div className="grid lg:grid-cols-2 gap-10 lg:gap-16">
                     {/* Gallery */}
                     <div className="space-y-3">
-                        {(() => {
-                            const gallery = (product.images?.length ? product.images : [product.image]).filter(Boolean);
-                            const current = gallery[imgIdx] || gallery[0];
-                            return (
-                                <>
-                                    <div className="aspect-square overflow-hidden rounded-3xl bg-muted relative">
-                                        {product.badge && (
-                                            <Badge className="absolute top-5 left-5 z-10 bg-background text-foreground rounded-full px-3 py-1 hover:bg-background">
-                                                {product.badge}
-                                            </Badge>
-                                        )}
-                                        <img src={current} alt={product.name} className="h-full w-full object-cover" data-testid="product-main-image" />
-                                    </div>
-                                    {gallery.length > 1 && (
-                                        <div className="grid grid-cols-5 gap-3" data-testid="product-gallery-thumbnails">
-                                            {gallery.map((src, i) => (
-                                                <button
-                                                    key={i}
-                                                    type="button"
-                                                    onClick={() => setImgIdx(i)}
-                                                    data-testid={`product-thumb-${i}`}
-                                                    className={`aspect-square rounded-xl overflow-hidden bg-muted border-2 transition-all ${i === imgIdx ? "border-primary" : "border-transparent hover:border-border"}`}
-                                                >
-                                                    <img src={src} alt="" className="h-full w-full object-cover" />
-                                                </button>
-                                            ))}
-                                        </div>
-                                    )}
-                                </>
-                            );
-                        })()}
+                        <div
+                            className="aspect-square overflow-hidden rounded-3xl bg-muted relative touch-pan-y select-none"
+                            onTouchStart={onTouchStart}
+                            onTouchEnd={onTouchEnd}
+                            data-testid="product-gallery-swipe-area"
+                        >
+                            {product.badge && (
+                                <Badge className="absolute top-5 left-5 z-10 bg-background text-foreground rounded-full px-3 py-1 hover:bg-background">
+                                    {product.badge}
+                                </Badge>
+                            )}
+                            <img
+                                key={imgIdx}
+                                src={gallery[imgIdx] || gallery[0]}
+                                alt={product.name}
+                                draggable={false}
+                                className="h-full w-full object-cover img-swap"
+                                data-testid="product-main-image"
+                            />
+                            {gallery.length > 1 && (
+                                <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-10 flex gap-1.5" data-testid="product-gallery-dots">
+                                    {gallery.map((_, i) => (
+                                        <span
+                                            key={i}
+                                            className={`h-1.5 rounded-full transition-all duration-300 ${i === imgIdx ? "w-5 bg-primary" : "w-1.5 bg-background/80"}`}
+                                        />
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                        {gallery.length > 1 && (
+                            <div className="grid grid-cols-5 gap-3" data-testid="product-gallery-thumbnails">
+                                {gallery.map((src, i) => (
+                                    <button
+                                        key={i}
+                                        type="button"
+                                        onClick={() => setImgIdx(i)}
+                                        data-testid={`product-thumb-${i}`}
+                                        className={`aspect-square rounded-xl overflow-hidden bg-muted border-2 transition-all ${i === imgIdx ? "border-primary" : "border-transparent hover:border-border"}`}
+                                    >
+                                        <img src={src} alt="" className="h-full w-full object-cover" />
+                                    </button>
+                                ))}
+                            </div>
+                        )}
                     </div>
 
                     {/* Info */}
@@ -163,15 +202,16 @@ export default function ProductDetail() {
                             </div>
                         )}
 
-                        {/* Size — uniquement vêtements & chaussures */}
-                        {hasSizes(product) && (
+                        {/* Size — tailles du vendeur (ou S–XL vêtements) */}
+                        {sizeOptions.length > 0 && (
                         <div className="mt-6">
-                            <p className="text-sm font-medium mb-3">Taille</p>
-                            <div className="flex gap-2">
-                                {["S", "M", "L", "XL"].map((s) => (
+                            <p className="text-sm font-medium mb-3">Taille {size ? <span className="text-muted-foreground font-normal">· {size}</span> : <span className="text-muted-foreground font-normal">(optionnel)</span>}</p>
+                            <div className="flex gap-2 flex-wrap" data-testid="product-sizes">
+                                {sizeOptions.map((s) => (
                                     <button
                                         key={s}
-                                        onClick={() => setSize(s)}
+                                        onClick={() => setSize(size === s ? null : s)}
+                                        data-testid={`size-option-${s}`}
                                         className={`h-10 min-w-[48px] px-3 rounded-full border text-sm font-medium transition-colors ${size === s ? "bg-ink text-ink-foreground border-ink" : "border-border hover:border-foreground"}`}
                                     >
                                         {s}

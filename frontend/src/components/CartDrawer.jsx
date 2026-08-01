@@ -35,24 +35,27 @@ export const CartDrawer = () => {
                     <>
                         <div className="flex-1 overflow-y-auto px-6 py-4 space-y-4">
                             {items.map((item) => (
-                                <div key={item.id} className="flex gap-3">
+                                <div key={item.line} className="flex gap-3">
                                     <Link to={`/produit/${item.id}`} onClick={() => setDrawerOpen(false)} className="h-24 w-20 shrink-0 rounded-lg overflow-hidden bg-muted">
                                         <img src={item.image} alt={item.name} className="h-full w-full object-cover" />
                                     </Link>
                                     <div className="flex-1 flex flex-col">
                                         <div className="flex items-start justify-between gap-2">
-                                            <h4 className="text-sm font-medium leading-snug line-clamp-2">{item.name}</h4>
-                                            <button onClick={() => removeItem(item.id)} className="text-muted-foreground hover:text-destructive">
+                                            <div>
+                                                <h4 className="text-sm font-medium leading-snug line-clamp-2">{item.name}</h4>
+                                                {item.size && <p className="text-xs text-muted-foreground mt-0.5">Taille {item.size}</p>}
+                                            </div>
+                                            <button onClick={() => removeItem(item.line)} className="text-muted-foreground hover:text-destructive">
                                                 <Trash2 className="h-4 w-4" />
                                             </button>
                                         </div>
                                         <div className="mt-auto flex items-center justify-between">
                                             <div className="inline-flex items-center border rounded-full">
-                                                <button onClick={() => updateQty(item.id, item.qty - 1)} className="h-7 w-7 flex items-center justify-center text-muted-foreground hover:text-foreground">
+                                                <button onClick={() => updateQty(item.line, item.qty - 1)} className="h-7 w-7 flex items-center justify-center text-muted-foreground hover:text-foreground">
                                                     <Minus className="h-3 w-3" />
                                                 </button>
                                                 <span className="w-7 text-center text-xs font-medium">{item.qty}</span>
-                                                <button onClick={() => updateQty(item.id, item.qty + 1)} className="h-7 w-7 flex items-center justify-center text-muted-foreground hover:text-foreground">
+                                                <button onClick={() => updateQty(item.line, item.qty + 1)} className="h-7 w-7 flex items-center justify-center text-muted-foreground hover:text-foreground">
                                                     <Plus className="h-3 w-3" />
                                                 </button>
                                             </div>

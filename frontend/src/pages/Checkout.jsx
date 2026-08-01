@@ -101,7 +101,7 @@ export default function Checkout() {
                     email: buyer.email,
                     city: buyer.city,
                 },
-                items: items.map((it) => ({ product_id: it.id, qty: it.qty })),
+                items: items.map((it) => ({ product_id: it.id, qty: it.qty, size: it.size || undefined })),
             });
             if (res.checkout_url) {
                 window.location.href = res.checkout_url;
@@ -165,7 +165,7 @@ export default function Checkout() {
                 },
                 items: items.map((it) => ({
                     product_id: it.id,
-                    name: it.name,
+                    name: it.size ? `${it.name} — Taille ${it.size}` : it.name,
                     price: it.price,
                     qty: it.qty,
                 })),

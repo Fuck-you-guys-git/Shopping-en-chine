@@ -58,13 +58,25 @@ class ProductPayload(BaseModel):
     image: str = ""
     description: str = ""
     colors: list[str] = []
+    sizes: Optional[list[str]] = None
 
 
 @router.get("")
 async def list_products(request: Request):
+    """Liste publique allégée : les galeries (base64 lourdes) sont exclues —
+    la fiche produit charge la galerie complète via GET /products/{id}."""
     db = _db(request)
-    items = await db.products.find({}, {"_id": 0}).sort("created_at", -1).to_list(500)
+    items = await db.products.find({}, {"_id": 0, "images": 0}).sort("created_at", -1).to_list(500)
     return {"products": items, "count": len(items)}
+
+
+@router.get("/{product_id}")
+async def get_product(product_id: str, request: Request):
+    db = _db(request)
+    doc = await db.products.find_one({"id": product_id}, {"_id": 0})
+    if not doc:
+        raise HTTPException(status_code=404, detail="Produit introuvable")
+    return doc
 
 
 @router.post("", status_code=201)

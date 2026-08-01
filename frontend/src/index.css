@@ -136,6 +136,13 @@
         from { opacity: 0; transform: translateY(8px); }
         to { opacity: 1; transform: translateY(0); }
     }
+
+    /* Changement de photo produit (swipe / clic vignette) */
+    .img-swap { animation: imgSwap 0.25s ease both; }
+    @keyframes imgSwap {
+        from { opacity: 0.35; transform: scale(1.02); }
+        to { opacity: 1; transform: scale(1); }
+    }
     .shadow-card { box-shadow: var(--shadow-card); }
     .shadow-lift { box-shadow: var(--shadow-lift); }
 

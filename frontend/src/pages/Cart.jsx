@@ -53,7 +53,7 @@ export default function Cart() {
             <div className="grid lg:grid-cols-[1fr_380px] gap-10">
                 <div className="space-y-4">
                     {items.map((item) => (
-                        <div key={item.id} className="flex gap-4 p-4 md:p-6 rounded-2xl bg-card shadow-card">
+                        <div key={item.line} className="flex gap-4 p-4 md:p-6 rounded-2xl bg-card shadow-card">
                             <Link to={`/produit/${item.id}`} className="h-28 w-24 md:h-32 md:w-28 shrink-0 rounded-xl overflow-hidden bg-muted">
                                 <img src={item.image} alt={item.name} className="h-full w-full object-cover" />
                             </Link>
@@ -63,19 +63,19 @@ export default function Cart() {
                                         <Link to={`/produit/${item.id}`} className="font-display text-lg font-medium leading-snug hover:text-primary transition-colors">
                                             {item.name}
                                         </Link>
-                                        <p className="text-xs text-muted-foreground mt-1">Taille M · En stock</p>
+                                        <p className="text-xs text-muted-foreground mt-1">{item.size ? `Taille ${item.size} · ` : ""}En stock</p>
                                     </div>
-                                    <button onClick={() => removeItem(item.id)} className="text-muted-foreground hover:text-destructive shrink-0">
+                                    <button onClick={() => removeItem(item.line)} className="text-muted-foreground hover:text-destructive shrink-0">
                                         <Trash2 className="h-4 w-4" />
                                     </button>
                                 </div>
                                 <div className="mt-auto flex items-center justify-between pt-3">
                                     <div className="inline-flex items-center border rounded-full">
-                                        <button onClick={() => updateQty(item.id, item.qty - 1)} className="h-8 w-8 flex items-center justify-center">
+                                        <button onClick={() => updateQty(item.line, item.qty - 1)} className="h-8 w-8 flex items-center justify-center">
                                             <Minus className="h-3.5 w-3.5" />
                                         </button>
                                         <span className="w-9 text-center text-sm font-medium">{item.qty}</span>
-                                        <button onClick={() => updateQty(item.id, item.qty + 1)} className="h-8 w-8 flex items-center justify-center">
+                                        <button onClick={() => updateQty(item.line, item.qty + 1)} className="h-8 w-8 flex items-center justify-center">
                                             <Plus className="h-3.5 w-3.5" />
                                         </button>
                                     </div>

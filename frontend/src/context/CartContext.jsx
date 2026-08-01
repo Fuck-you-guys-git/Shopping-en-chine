@@ -3,11 +3,16 @@ import { createContext, useContext, useEffect, useMemo, useState } from "react";
 const CartContext = createContext(null);
 const STORAGE_KEY = "sec_cart_v1";
 
+// Identifiant de ligne : même produit + tailles différentes = lignes séparées
+const lineKey = (id, size) => (size ? `${id}::${size}` : id);
+
 export const CartProvider = ({ children }) => {
     const [items, setItems] = useState(() => {
         try {
             const raw = localStorage.getItem(STORAGE_KEY);
-            return raw ? JSON.parse(raw) : [];
+            const parsed = raw ? JSON.parse(raw) : [];
+            // Migration : anciennes lignes sans `line`
+            return parsed.map((i) => ({ ...i, line: i.line || lineKey(i.id, i.size) }));
         } catch {
             return [];
         }
@@ -18,22 +23,25 @@ export const CartProvider = ({ children }) => {
         localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
     }, [items]);
 
-    const addItem = (product, qty = 1) => {
+    const addItem = (product, qty = 1, size = null) => {
+        // On ne stocke pas la galerie complète (base64 lourdes) dans le panier
+        const { images: _images, ...slim } = product;
+        const line = lineKey(product.id, size);
         setItems((prev) => {
-            const found = prev.find((i) => i.id === product.id);
+            const found = prev.find((i) => i.line === line);
             if (found) {
                 return prev.map((i) =>
-                    i.id === product.id ? { ...i, qty: i.qty + qty } : i,
+                    i.line === line ? { ...i, qty: i.qty + qty } : i,
                 );
             }
-            return [...prev, { ...product, qty }];
+            return [...prev, { ...slim, qty, size: size || undefined, line }];
         });
     };
 
-    const removeItem = (id) => setItems((prev) => prev.filter((i) => i.id !== id));
-    const updateQty = (id, qty) =>
+    const removeItem = (line) => setItems((prev) => prev.filter((i) => i.line !== line));
+    const updateQty = (line, qty) =>
         setItems((prev) =>
-            prev.map((i) => (i.id === id ? { ...i, qty: Math.max(1, qty) } : i)),
+            prev.map((i) => (i.line === line ? { ...i, qty: Math.max(1, qty) } : i)),
         );
     const clear = () => setItems([]);
 

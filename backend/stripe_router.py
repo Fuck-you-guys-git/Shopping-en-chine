@@ -43,6 +43,7 @@ class StripeCustomer(BaseModel):
 class StripeItem(BaseModel):
     product_id: str
     qty: int = Field(1, ge=1, le=50)
+    size: Optional[str] = None
 
 
 class StripeCheckoutRequest(BaseModel):
@@ -65,11 +66,12 @@ async def create_stripe_checkout(payload: StripeCheckoutRequest, request: Reques
             raise HTTPException(status_code=400, detail=f"Produit introuvable : {it.product_id}")
         price = int(round(float(product["price"])))
         amount += price * it.qty
-        order_items.append({"product_id": it.product_id, "name": product["name"], "price": price, "qty": it.qty})
+        item_name = f"{product['name']} — Taille {it.size}" if it.size else product["name"]
+        order_items.append({"product_id": it.product_id, "name": item_name, "price": price, "qty": it.qty})
         line_items.append({
             "price_data": {
                 "currency": "xof",  # zero-decimal: whole francs
-                "product_data": {"name": product["name"]},
+                "product_data": {"name": item_name},
                 "unit_amount": price,
             },
             "quantity": it.qty,

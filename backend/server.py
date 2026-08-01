@@ -1,6 +1,7 @@
 from fastapi import FastAPI, APIRouter
 from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
+from starlette.middleware.gzip import GZipMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
 import os
 import logging
@@ -21,6 +22,9 @@ db = client[os.environ['DB_NAME']]
 
 # Create the main app without a prefix
 app = FastAPI(title="Shopping en Chine API")
+
+# Compression des réponses (catalogue avec images base64 → chargement bien plus rapide)
+app.add_middleware(GZipMiddleware, minimum_size=1024)
 
 # Make db reachable from routers via request.app.state.db
 app.state.db = db

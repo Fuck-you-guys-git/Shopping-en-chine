@@ -62,6 +62,7 @@ export const authAPI = {
 // Timeout étendu pour l'envoi des produits (photos en base64 sur mobile lent)
 export const productsAPI = {
     list: () => api.get("/products").then((r) => r.data.products),
+    get: (id) => api.get(`/products/${id}`).then((r) => r.data),
     create: (p) => api.post("/products", p, { timeout: 90000 }).then((r) => r.data),
     update: (id, p) => api.put(`/products/${id}`, p, { timeout: 90000 }).then((r) => r.data),
     remove: (id) => api.delete(`/products/${id}`).then((r) => r.data),

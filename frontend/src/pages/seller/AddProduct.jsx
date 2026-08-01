@@ -7,8 +7,10 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
+import { Separator } from "@/components/ui/separator";
 import { Switch } from "@/components/ui/switch";
 import { useSeller } from "@/context/SellerContext";
+import { productsAPI } from "@/lib/api";
 import { categories, subcategoriesByCategory } from "@/data/products";
 import { formatPrice } from "@/components/ProductCard";
 import { COLOR_PALETTE } from "@/lib/colors";
@@ -23,9 +25,15 @@ const SAMPLE_IMAGES = [
     "https://images.unsplash.com/photo-1526170375885-4d8ecf77b99f?w=600&q=80",
 ];
 
+// Tailles proposées au vendeur (facultatif)
+const LETTER_SIZES = ["XS", "S", "M", "L", "XL", "2XL", "3XL", "4XL"];
+const NUMERIC_SIZES = Array.from({ length: 55 }, (_, i) => String(i + 1));
+const SIZE_ORDER = [...LETTER_SIZES, ...NUMERIC_SIZES];
+const sortSizes = (arr) => [...arr].sort((a, b) => SIZE_ORDER.indexOf(a) - SIZE_ORDER.indexOf(b));
+
 
 export default function AddProduct() {
-    const { addProduct, updateProduct, products } = useSeller();
+    const { addProduct, updateProduct } = useSeller();
     const navigate = useNavigate();
     const { pathname } = useLocation();
     const { editId } = useParams();
@@ -42,36 +50,43 @@ export default function AddProduct() {
         searchKeywords: "",
         badge: "",
         colors: [],
+        sizes: [],
         active: true,
     });
     const [urlInput, setUrlInput] = useState("");
 
-    // --- Mode édition : pré-remplir avec le produit existant ---
+    // --- Mode édition : pré-remplir avec le produit existant (fiche complète,
+    // la liste publique ne contient plus la galerie) ---
     const [ready, setReady] = useState(!isEdit);
     const prefilled = useRef(false);
     useEffect(() => {
         if (!isEdit || prefilled.current) return;
-        const p = products.find((x) => x.id === editId);
-        if (!p) return;
         prefilled.current = true;
-        setForm({
-            name: p.name || "",
-            category: p.category || "",
-            subcategory: p.subcategory || "",
-            price: String(p.price ?? ""),
-            oldPrice: p.oldPrice ? String(p.oldPrice) : "",
-            description: p.description === "Description à compléter." ? "" : (p.description || ""),
-            searchKeywords: (p.keywords || []).join(", "),
-            badge: p.badge || "",
-            colors: p.colors || [],
-            active: p.active !== false,
+        productsAPI.get(editId).then((p) => {
+            setForm({
+                name: p.name || "",
+                category: p.category || "",
+                subcategory: p.subcategory || "",
+                price: String(p.price ?? ""),
+                oldPrice: p.oldPrice ? String(p.oldPrice) : "",
+                description: p.description === "Description à compléter." ? "" : (p.description || ""),
+                searchKeywords: (p.keywords || []).join(", "),
+                badge: p.badge || "",
+                colors: p.colors || [],
+                sizes: p.sizes || [],
+                active: p.active !== false,
+            });
+            setPhotos((p.images?.length ? p.images : [p.image]).filter(Boolean).slice(0, 5));
+            setReady(true);
+        }).catch(() => {
+            toast.error("Produit introuvable");
+            navigate(`${base}/produits`);
         });
-        setPhotos((p.images?.length ? p.images : [p.image]).filter(Boolean).slice(0, 5));
-        setReady(true);
-    }, [isEdit, editId, products]);
+    }, [isEdit, editId, base, navigate]);
 
     const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
     const toggleColor = (c) => set("colors", form.colors.includes(c) ? form.colors.filter((x) => x !== c) : [...form.colors, c]);
+    const toggleSize = (s) => set("sizes", form.sizes.includes(s) ? form.sizes.filter((x) => x !== s) : sortSizes([...form.sizes, s]));
 
     // --- Photos (jusqu'à 5) : téléphone, exemples ou URL — compressées côté client ---
     const MAX_PHOTOS = 5;
@@ -152,6 +167,7 @@ export default function AddProduct() {
             images: photos.length ? photos : [mainImage],
             badge: form.badge || undefined,
             colors: form.colors.length ? form.colors : undefined,
+            sizes: form.sizes.length ? sortSizes(form.sizes) : undefined,
             keywords: form.searchKeywords
                 ? form.searchKeywords.split(",").map((k) => k.trim()).filter(Boolean)
                 : undefined,
@@ -431,6 +447,47 @@ export default function AddProduct() {
                             </div>
                         ))}
                     </div>
+
+                    <Separator className="my-5" />
+
+                    <p className="text-sm font-medium mb-1">
+                        Tailles disponibles {form.sizes.length > 0 && <span className="text-primary">({form.sizes.length})</span>}
+                    </p>
+                    <p className="text-xs text-muted-foreground mb-3">
+                        Facultatif — le client pourra choisir sa taille sur la fiche produit.
+                    </p>
+                    <div className="flex flex-wrap gap-2 mb-4" data-testid="letter-sizes">
+                        {LETTER_SIZES.map((s) => (
+                            <button
+                                type="button"
+                                key={s}
+                                onClick={() => toggleSize(s)}
+                                data-testid={`seller-size-${s}`}
+                                className={`h-9 min-w-[44px] px-3 rounded-full border text-sm font-medium transition-colors ${form.sizes.includes(s) ? "bg-ink text-ink-foreground border-ink" : "border-border hover:border-foreground"}`}
+                            >
+                                {s}
+                            </button>
+                        ))}
+                    </div>
+                    <p className="text-xs text-muted-foreground mb-2">Tailles numériques (pointures, âges… de 1 à 55) :</p>
+                    <div className="grid grid-cols-8 sm:grid-cols-11 gap-1.5" data-testid="numeric-sizes">
+                        {NUMERIC_SIZES.map((s) => (
+                            <button
+                                type="button"
+                                key={s}
+                                onClick={() => toggleSize(s)}
+                                data-testid={`seller-size-${s}`}
+                                className={`h-8 rounded-lg border text-xs font-medium transition-colors ${form.sizes.includes(s) ? "bg-ink text-ink-foreground border-ink" : "border-border hover:border-foreground"}`}
+                            >
+                                {s}
+                            </button>
+                        ))}
+                    </div>
+                    {form.sizes.length > 0 && (
+                        <p className="mt-3 text-xs text-muted-foreground">
+                            Sélection : <span className="font-medium text-foreground">{sortSizes(form.sizes).join(", ")}</span>
+                        </p>
+                    )}
                 </div>
 
                 <div className="bg-card rounded-2xl p-5 md:p-6 shadow-card border border-border/50 flex items-center justify-between">
