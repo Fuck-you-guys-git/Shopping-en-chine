@@ -242,3 +242,11 @@ Payments were failing with a **DNS error** because `backend/paxity_router.py` ha
 - FIX 5 : timeout axios 90s pour create/update produit (photos base64 sur mobile lent).
 - Testé E2E (Playwright) : login → ajout produit avec photo + mots-clés → OK ; session expirée → toast + redirect login → OK. Produits de test supprimés, DB à 0 produit.
 - NOTE : si le bug était constaté sur shoppingenchine.com (production), un REDÉPLOIEMENT est nécessaire pour propager le correctif.
+
+## Update — Feb 2026 (tailles produits + performance + swipe photos)
+- « Garantie 2 ans » supprimée (badges fiche produit → « Paiement sécurisé », ligne Caractéristiques retirée).
+- **Tailles facultatives vendeur** (AddProduct, carte Variantes) : lettres XS→4XL + numériques 1→55 (data-testid seller-size-X). Backend ProductPayload.sizes. Fiche produit affiche les tailles du vendeur (sinon fallback S–XL vêtements). Taille choisie par le client → panier (lignes séparées par taille via CartContext lineKey id::taille), affichée dans drawer + /panier, transmise au checkout : Paxity items[].name « — Taille X », Stripe StripeItem.size → nom de ligne. Édition produit pré-remplie via GET /api/products/{id}.
+- **Performance chargement produits** : GET /api/products allégé (projection sans 'images' — galeries base64 exclues), nouvel endpoint GET /api/products/{id} (fiche complète, utilisé par ProductDetail et l'édition vendeur), GZipMiddleware (min 1024o), galerie non stockée dans le panier localStorage.
+- **Swipe photos** : glisser le doigt sur la photo principale change d'image (onTouchStart/onTouchEnd, seuil 45px, wrap), points indicateurs (product-gallery-dots), animation img-swap (index.css).
+- Tests : backend 5/5 PASS (test_iter22_sizes_gzip.py — liste allégée, gzip, round-trip sizes, 404, Stripe taille dans l'ordre). UI auto-vérifiée par le main agent (tailles fiche, panier ligne p_xxx::40, toast Taille 40). Pass Playwright complet SKIPPÉ à la demande de l'utilisateur (« without test »). Rapport /app/test_reports/iteration_22.json.
+- Base nettoyée : 0 produit, commandes/QA de test supprimées.
