@@ -18,6 +18,7 @@ import PaymentSuccess from "@/pages/PaymentSuccess";
 import PaymentCancel from "@/pages/PaymentCancel";
 import RetryOrder from "@/pages/RetryOrder";
 import About from "@/pages/About";
+import Wholesale from "@/pages/Wholesale";
 import { WhatsAppButton } from "@/components/WhatsAppButton";
 import ScrollToTop from "@/components/ScrollToTop";
 import SellerLayout from "@/pages/seller/SellerLayout";
@@ -63,6 +64,7 @@ function App() {
                                 <Route path="/payment/cancel" element={<PaymentCancel />} />
                                 <Route path="/reprise/:orderId" element={<RetryOrder />} />
                                 <Route path="/a-propos" element={<About />} />
+                                <Route path="/achat-en-gros" element={<Wholesale />} />
 
                                 {/* Seller login (public) */}
                                 <Route path="/vendeur/login" element={<SellerLogin />} />

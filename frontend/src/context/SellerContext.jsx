@@ -64,7 +64,14 @@ export const SellerProvider = ({ children }) => {
     const refreshOrders = useCallback(async () => {
         try {
             const list = await ordersAPI.list();
-            if (Array.isArray(list)) setOrders(list.map((o) => mapOrder(o, productsById)));
+            if (Array.isArray(list)) {
+                // Le Dashboard n'affiche que les commandes PAYÉES
+                // (les paiements échoués ou en attente sont masqués)
+                setOrders(
+                    list.filter((o) => o.status === "success")
+                        .map((o) => mapOrder(o, productsById)),
+                );
+            }
         } catch {
             // token expired / network — keep current list
         } finally {

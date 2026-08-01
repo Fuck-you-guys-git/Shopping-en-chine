@@ -266,3 +266,8 @@ Payments were failing with a **DNS error** because `backend/paxity_router.py` ha
 - **Dashboard** : mapOrder expose phone/address ; le dialog commande affiche adresse complète + téléphone.
 - **Tickets colis imprimables (Orders.jsx)** : bouton « Imprimer les tickets (N) » dans la barre de sélection multiple + « Imprimer le ticket » dans le détail d'une commande. Génère une fenêtre imprimable (window.open + print) : un ticket par commande (marque, n° commande, client, tél, adresse, articles × qté avec tailles, total, date), HTML échappé, page-break-inside avoid. data-testid: orders-print-tickets-btn, order-print-ticket-btn.
 - Testé E2E : confirmation restaurée avec récap complet (screenshot validé), dialog dashboard avec tél/adresse, ticket popup contient client/tél/articles. Données de test purgées.
+
+## Update — Feb 2026 (commandes payées uniquement + page Achat en gros)
+- **Dashboard : commandes payées uniquement** — SellerContext.refreshOrders filtre `o.status === "success"` avant mapOrder : les paiements échoués/en attente n'apparaissent plus (liste, stats, badge notifications, activité en direct). Vérifié : 48 commandes → 1 payée affichée.
+- **Page « Achat en gros » (/achat-en-gros, pages/Wholesale.jsx)** : titre uppercase « LANCEZ VOTRE BUSINESS AVEC UN FOURNISSEUR DE CONFIANCE », texte fournisseur/revendeurs fourni par l'utilisateur, carte contact commercial 788206060 (boutons WhatsApp wa.me/221788206060 + tel:), bannière sombre « 🌍 NOUS EXPÉDIONS PARTOUT DANS LE MONDE » + CTA boutique. Ajoutée au menu desktop (navLinks) et menu mobile (fa-boxes-stacked). data-testid: wholesale-page/-title/-contact-card/-whatsapp-btn/-call-btn/-worldwide-banner.
+- Testé par screenshots : page complète OK, lien menu OK, dashboard filtré OK.

@@ -16,6 +16,7 @@ const navLinks = [
     { to: "/boutique/maison", label: "Maison" },
     { to: "/boutique/beaute", label: "Beauté" },
     { to: "/boutique/enfants", label: "Enfants" },
+    { to: "/achat-en-gros", label: "Achat en gros" },
     { to: "/suivi", label: "Suivi de colis" },
 ];
 
@@ -87,6 +88,7 @@ export const Navbar = () => {
                                             { to: "/", label: "Accueil", icon: "fa-house" },
                                             { to: "/boutique", label: "Boutique", icon: "fa-store" },
                                             ...categories.map((c) => ({ to: `/boutique/${c.id}`, label: c.name, icon: c.icon })),
+                                            { to: "/achat-en-gros", label: "Achat en gros", icon: "fa-boxes-stacked" },
                                         ].map((l) => (
                                             <NavLink
                                                 key={l.to}
