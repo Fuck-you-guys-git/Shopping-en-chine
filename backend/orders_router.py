@@ -10,11 +10,24 @@ from datetime import datetime, timezone
 
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
+from pymongo import ReturnDocument
 
 from auth_router import get_current_seller
 from tracking_router import TRACKING_STEPS, STEP_LABELS
 
 router = APIRouter(prefix="/orders", tags=["orders"])
+
+
+async def next_order_number(db) -> str:
+    """Numéro de commande séquentiel et lisible : 1000, 1001, 1002…
+    Compteur atomique en base (db.counters) — pas de doublon possible."""
+    doc = await db.counters.find_one_and_update(
+        {"_id": "order_number"},
+        {"$inc": {"seq": 1}},
+        upsert=True,
+        return_document=ReturnDocument.AFTER,
+    )
+    return str(999 + doc["seq"])
 
 
 class BulkTrackingUpdate(BaseModel):

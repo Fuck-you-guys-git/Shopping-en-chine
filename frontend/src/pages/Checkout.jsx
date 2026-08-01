@@ -397,7 +397,8 @@ export default function Checkout() {
                         </div>
                     )}
                     <p className="text-sm text-muted-foreground mb-6">
-                        Nous mettrons cette page à jour automatiquement dès la confirmation.
+                        Après le paiement, <span className="font-medium text-foreground">revenez sur cet onglet</span> :
+                        votre confirmation s&apos;affichera ici automatiquement.
                     </p>
                     <div className="mb-8">
                         <Button

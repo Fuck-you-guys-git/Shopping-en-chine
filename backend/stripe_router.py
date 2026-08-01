@@ -12,7 +12,6 @@ from __future__ import annotations
 
 import logging
 import os
-import uuid
 from datetime import datetime, timezone
 from typing import Optional
 
@@ -21,6 +20,7 @@ from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel, Field
 
 from email_service import maybe_send_order_confirmation, maybe_send_customer_confirmation
+from orders_router import next_order_number
 
 logger = logging.getLogger(__name__)
 
@@ -81,7 +81,7 @@ async def create_stripe_checkout(payload: StripeCheckoutRequest, request: Reques
     if amount <= 0:
         raise HTTPException(status_code=400, detail="Montant invalide.")
 
-    order_id = f"ord_{uuid.uuid4().hex[:12]}"
+    order_id = await next_order_number(db)
     now = datetime.now(timezone.utc).isoformat()
 
     kwargs = dict(
