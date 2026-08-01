@@ -208,7 +208,7 @@ export default function ProductDetail() {
                         <div className="grid grid-cols-2 gap-4 text-center">
                             {[
                                 { icon: Truck, label: "Livré en 10–20 jours" },
-                                { icon: ShieldCheck, label: "Garantie 2 ans" },
+                                { icon: ShieldCheck, label: "Paiement sécurisé" },
                             ].map((f) => (
                                 <div key={f.label} className="flex flex-col items-center gap-2">
                                     <f.icon className="h-5 w-5 text-primary" />
@@ -237,7 +237,6 @@ export default function ProductDetail() {
                                     ["Catégorie", category?.name],
                                     ["Poids", "280 g"],
                                     ["Origine", "Chine · Contrôle qualité UE"],
-                                    ["Garantie", "2 ans"],
                                     ["Matériaux", "Premium, hypoallergéniques"],
                                 ].map(([k, v]) => (
                                     <div key={k} className="flex justify-between py-2 border-b">
