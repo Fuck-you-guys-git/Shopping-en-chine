@@ -27,6 +27,9 @@ const hasSizes = (p) => {
     return !subs.some((s) => NON_APPAREL_SUBS.has(s.id) && s.keywords.some((k) => name.includes(k)));
 };
 
+// Vignettes : version miniature des images stockées côté serveur
+const thumbOf = (u) => (u && u.includes("/img/") ? u.replace("/img/", "/thumb/") : u);
+
 export default function ProductDetail() {
     const { id } = useParams();
     const navigate = useNavigate();
@@ -148,7 +151,7 @@ export default function ProductDetail() {
                                         data-testid={`product-thumb-${i}`}
                                         className={`aspect-square rounded-xl overflow-hidden bg-muted border-2 transition-all ${i === imgIdx ? "border-primary" : "border-transparent hover:border-border"}`}
                                     >
-                                        <img src={src} alt="" className="h-full w-full object-cover" />
+                                        <img src={thumbOf(src)} alt="" loading="lazy" className="h-full w-full object-cover" />
                                     </button>
                                 ))}
                             </div>

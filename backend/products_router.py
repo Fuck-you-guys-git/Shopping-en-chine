@@ -10,14 +10,21 @@ Product catalog API — products live in MongoDB so items added by the seller
 """
 from __future__ import annotations
 
+import asyncio
+import base64
+import hashlib
+import io
 import json
 import logging
+import re
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Request
+from bson import Binary
+from fastapi import APIRouter, Depends, HTTPException, Request, Response
+from PIL import Image
 from pydantic import BaseModel, Field
 
 from auth_router import get_current_seller
@@ -27,6 +34,96 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/products", tags=["products"])
 
 SEED_FILE = Path(__file__).parent / "seed_products.json"
+
+# ---------------------------------------------------------------------------
+# Stockage des images produit : les photos base64 (lourdes) sont converties en
+# fichiers servis par l'API avec cache navigateur → catalogue ultra léger.
+# ---------------------------------------------------------------------------
+DATA_URI_RE = re.compile(r"^data:(image/[a-zA-Z0-9+.-]+);base64,(.+)$", re.DOTALL)
+IMG_URL_RE = re.compile(r"^/api/products/([^/]+)/(?:img|thumb)/([a-f0-9]+)(\?v=\w+)?$")
+IMG_CACHE_HEADERS = {"Cache-Control": "public, max-age=31536000, immutable"}
+THUMB_MAX = 480
+THUMB_QUALITY = 70
+
+
+def _make_thumb(data: bytes) -> bytes:
+    img = Image.open(io.BytesIO(data)).convert("RGB")
+    img.thumbnail((THUMB_MAX, THUMB_MAX))
+    out = io.BytesIO()
+    img.save(out, format="JPEG", quality=THUMB_QUALITY)
+    return out.getvalue()
+
+
+def _thumb_url(url: str) -> str:
+    m = IMG_URL_RE.match(url or "")
+    if not m:
+        return url or ""
+    return f"/api/products/{m.group(1)}/thumb/{m.group(2)}{m.group(3) or ''}"
+
+
+async def _store_image(db, product_id: str, src: str) -> Optional[str]:
+    """data-URI → stocke bytes + miniature, renvoie l'URL API.
+    Les URLs (http… ou déjà /api/…) sont renvoyées telles quelles."""
+    if not src:
+        return None
+    m = DATA_URI_RE.match(src)
+    if not m:
+        return src
+    ctype, b64 = m.groups()
+    try:
+        data = base64.b64decode(b64)
+        thumb = _make_thumb(data)
+    except Exception:
+        logger.warning(f"[Products] Image illisible pour {product_id} — ignorée")
+        return None
+    image_id = uuid.uuid4().hex[:10]
+    v = hashlib.md5(data).hexdigest()[:8]
+    await db.product_images.insert_one({
+        "product_id": product_id,
+        "image_id": image_id,
+        "content_type": ctype,
+        "data": Binary(data),
+        "thumb": Binary(thumb),
+        "v": v,
+    })
+    return f"/api/products/{product_id}/img/{image_id}?v={v}"
+
+
+async def _process_images(db, product_id: str, doc: dict) -> None:
+    """Convertit les images du payload en URLs stockées + nettoie les orphelines."""
+    srcs = doc.get("images") or ([doc["image"]] if doc.get("image") else [])
+    stored = []
+    for src in srcs[:5]:
+        url = await _store_image(db, product_id, src)
+        if url:
+            stored.append(url)
+    doc["images"] = stored
+    doc["image"] = _thumb_url(stored[0]) if stored else ""
+    keep_ids = [m.group(2) for m in (IMG_URL_RE.match(u) for u in stored) if m]
+    await db.product_images.delete_many({"product_id": product_id, "image_id": {"$nin": keep_ids}})
+
+
+async def migrate_base64_images(db) -> None:
+    """Migration au démarrage : convertit les produits existants dont les photos
+    sont encore en base64 (production incluse, au premier redéploiement)."""
+    query = {"$or": [
+        {"image": {"$regex": "^data:"}},
+        {"images": {"$elemMatch": {"$regex": "^data:"}}},
+    ]}
+    count = 0
+    async for p in db.products.find(query, {"_id": 0}):
+        try:
+            doc = {"images": p.get("images") or [p.get("image")], "image": p.get("image", "")}
+            await _process_images(db, p["id"], doc)
+            await db.products.update_one(
+                {"id": p["id"]}, {"$set": {"images": doc["images"], "image": doc["image"]}}
+            )
+            count += 1
+        except Exception:
+            logger.warning(f"[Products] Migration image échouée pour {p.get('id')}", exc_info=True)
+        await asyncio.sleep(0)  # ne bloque pas l'event loop
+    if count:
+        logger.info(f"[Products] Migration images : {count} produits convertis en URLs légères")
 
 
 def _db(request: Request):
@@ -79,12 +176,33 @@ async def get_product(product_id: str, request: Request):
     return doc
 
 
+@router.get("/{product_id}/img/{image_id}")
+async def get_product_image(product_id: str, image_id: str, request: Request):
+    db = _db(request)
+    doc = await db.product_images.find_one({"product_id": product_id, "image_id": image_id})
+    if not doc:
+        raise HTTPException(status_code=404, detail="Image introuvable")
+    return Response(content=bytes(doc["data"]), media_type=doc.get("content_type", "image/jpeg"),
+                    headers=IMG_CACHE_HEADERS)
+
+
+@router.get("/{product_id}/thumb/{image_id}")
+async def get_product_thumb(product_id: str, image_id: str, request: Request):
+    db = _db(request)
+    doc = await db.product_images.find_one({"product_id": product_id, "image_id": image_id})
+    if not doc:
+        raise HTTPException(status_code=404, detail="Image introuvable")
+    return Response(content=bytes(doc["thumb"]), media_type="image/jpeg", headers=IMG_CACHE_HEADERS)
+
+
 @router.post("", status_code=201)
 async def create_product(payload: ProductPayload, request: Request, seller: dict = Depends(get_current_seller)):
     db = _db(request)
     doc = payload.model_dump()
+    product_id = f"p_{uuid.uuid4().hex[:10]}"
+    await _process_images(db, product_id, doc)
     doc.update({
-        "id": f"p_{uuid.uuid4().hex[:10]}",
+        "id": product_id,
         "rating": 5.0,
         "reviews": 0,
         "custom": True,
@@ -99,9 +217,12 @@ async def create_product(payload: ProductPayload, request: Request, seller: dict
 @router.put("/{product_id}")
 async def update_product(product_id: str, payload: ProductPayload, request: Request, seller: dict = Depends(get_current_seller)):
     db = _db(request)
-    res = await db.products.update_one({"id": product_id}, {"$set": payload.model_dump()})
-    if not res.matched_count:
+    existing = await db.products.find_one({"id": product_id}, {"_id": 0, "id": 1})
+    if not existing:
         raise HTTPException(status_code=404, detail="Produit introuvable")
+    doc = payload.model_dump()
+    await _process_images(db, product_id, doc)
+    await db.products.update_one({"id": product_id}, {"$set": doc})
     doc = await db.products.find_one({"id": product_id}, {"_id": 0})
     return doc
 
@@ -113,6 +234,7 @@ async def delete_product(product_id: str, request: Request, seller: dict = Depen
     if not doc:
         raise HTTPException(status_code=404, detail="Produit introuvable")
     await db.products.delete_one({"id": product_id})
+    await db.product_images.delete_many({"product_id": product_id})
     if doc.get("custom") is False:
         await db.deleted_seed_products.update_one(
             {"product_id": product_id}, {"$set": {"product_id": product_id}}, upsert=True

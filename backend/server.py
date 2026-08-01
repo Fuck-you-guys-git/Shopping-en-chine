@@ -97,7 +97,7 @@ api_router.include_router(orders_router)
 
 # ---- Seller auth + product catalog ---------------------------------------
 from auth_router import router as auth_router, seed_seller
-from products_router import router as products_router, seed_products
+from products_router import router as products_router, seed_products, migrate_base64_images
 api_router.include_router(auth_router)
 api_router.include_router(products_router)
 
@@ -127,9 +127,12 @@ async def startup_seed():
     await db.products.create_index("id", unique=True)
     await seed_seller(db)
     await seed_products(db)
+    await db.product_images.create_index([("product_id", 1), ("image_id", 1)])
     # Cart-abandonment recovery loop (checks every 30 min)
     import asyncio
     asyncio.create_task(_recovery_loop())
+    # Migration en arrière-plan : photos base64 → URLs légères + miniatures
+    asyncio.create_task(migrate_base64_images(db))
 
 
 async def _recovery_loop():

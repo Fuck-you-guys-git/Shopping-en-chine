@@ -22,6 +22,11 @@ const OPERATOR_META = {
     card: { label: "Carte", color: "#111", bg: "bg-secondary" },
 };
 
+// La transaction en attente est persistée : si le client part payer dans
+// l'app Wave/Orange Money et que le navigateur recharge la page au retour,
+// on restaure l'attente et on affiche la confirmation dès que c'est payé.
+const PENDING_TX_KEY = "sec_pending_paxity_tx_v1";
+
 export default function Checkout() {
     const { items, subtotal, clear } = useCart();
     const navigate = useNavigate();
@@ -43,6 +48,30 @@ export default function Checkout() {
     const [processing, setProcessing] = useState(false);
     const [transaction, setTransaction] = useState(null); // { transaction_id, status, order_id, ... }
     const [complete, setComplete] = useState(false);
+    const [checkingNow, setCheckingNow] = useState(false);
+
+    // Restaurer une transaction en attente (retour depuis l'app de paiement)
+    useEffect(() => {
+        try {
+            const raw = localStorage.getItem(PENDING_TX_KEY);
+            if (!raw) return;
+            const tx = JSON.parse(raw);
+            if (tx?.transaction_id && tx.status === "pending") setTransaction(tx);
+            else localStorage.removeItem(PENDING_TX_KEY);
+        } catch {
+            localStorage.removeItem(PENDING_TX_KEY);
+        }
+    }, []);
+
+    // Persister tant que le paiement est en attente
+    useEffect(() => {
+        if (!transaction) return;
+        if (transaction.status === "pending") {
+            localStorage.setItem(PENDING_TX_KEY, JSON.stringify(transaction));
+        } else {
+            localStorage.removeItem(PENDING_TX_KEY);
+        }
+    }, [transaction]);
 
     // Fetch backend config
     useEffect(() => {
@@ -58,12 +87,15 @@ export default function Checkout() {
             .catch(() => setPaxityError("Impossible de contacter le service de paiement."));
     }, []);
 
-    // Poll status while pending
+    // Poll status while pending — vérifie immédiatement, puis toutes les 3,5s,
+    // et dès que le client revient sur l'onglet (retour de l'app Wave/OM).
     useEffect(() => {
         if (!transaction || transaction.status !== "pending") return;
-        const interval = setInterval(async () => {
+        let stopped = false;
+        const checkNow = async () => {
             try {
                 const res = await paxityAPI.getStatus(transaction.transaction_id);
+                if (stopped) return;
                 if (res.status !== transaction.status) {
                     // Merge the full response so amount/order_id survive the
                     // cart clear() and render correctly on the confirmation.
@@ -72,18 +104,58 @@ export default function Checkout() {
                 if (res.status === "success") {
                     setComplete(true);
                     clear();
+                    localStorage.removeItem(PENDING_TX_KEY);
                     toast.success("Paiement confirmé ✦", { description: `Commande ${res.order_id}` });
-                    clearInterval(interval);
                 } else if (res.status === "failed") {
+                    localStorage.removeItem(PENDING_TX_KEY);
                     toast.error("Paiement échoué", { description: "Veuillez réessayer" });
-                    clearInterval(interval);
                 }
             } catch (e) {
                 // ignore transient errors
             }
-        }, 3500);
-        return () => clearInterval(interval);
+        };
+        checkNow();
+        const interval = setInterval(checkNow, 3500);
+        const onVisible = () => {
+            if (document.visibilityState === "visible") checkNow();
+        };
+        document.addEventListener("visibilitychange", onVisible);
+        window.addEventListener("focus", onVisible);
+        return () => {
+            stopped = true;
+            clearInterval(interval);
+            document.removeEventListener("visibilitychange", onVisible);
+            window.removeEventListener("focus", onVisible);
+        };
     }, [transaction, clear]);
+
+    // Bouton « J'ai payé — Vérifier » sur l'écran d'attente
+    const manualCheck = async () => {
+        if (!transaction?.transaction_id) return;
+        setCheckingNow(true);
+        try {
+            const res = await paxityAPI.getStatus(transaction.transaction_id);
+            if (res.status === "success") {
+                setTransaction((prev) => ({ ...prev, ...res }));
+                setComplete(true);
+                clear();
+                localStorage.removeItem(PENDING_TX_KEY);
+                toast.success("Paiement confirmé ✦", { description: `Commande ${res.order_id}` });
+            } else if (res.status === "failed") {
+                setTransaction((prev) => ({ ...prev, ...res }));
+                localStorage.removeItem(PENDING_TX_KEY);
+                toast.error("Paiement échoué", { description: "Veuillez réessayer" });
+            } else {
+                toast("Paiement toujours en attente", {
+                    description: "Validez la transaction sur votre téléphone, puis revérifiez.",
+                });
+            }
+        } catch {
+            toast.error("Vérification impossible", { description: "Vérifiez votre connexion et réessayez." });
+        } finally {
+            setCheckingNow(false);
+        }
+    };
 
     const buyerValid = () =>
         buyer.firstName && buyer.lastName && buyer.email && buyer.phone && buyer.address && buyer.city;
@@ -211,7 +283,7 @@ export default function Checkout() {
                 }
             }
 
-            setTransaction(res);
+            setTransaction({ ...res, operator_label: operatorIconMeta.label });
             if (res.status === "success") {
                 setComplete(true);
                 clear();
@@ -292,7 +364,7 @@ export default function Checkout() {
                     </div>
                     <h1 className="font-display text-3xl sm:text-4xl mb-3">Paiement en cours…</h1>
                     <p className="text-muted-foreground mb-2">
-                        Ouvrez l&apos;application <span className="font-semibold text-foreground">{operatorIconMeta.label}</span> sur votre téléphone et validez la transaction.
+                        Ouvrez l&apos;application <span className="font-semibold text-foreground">{transaction.operator_label || operatorIconMeta.label}</span> sur votre téléphone et validez la transaction.
                     </p>
                     {transaction.payment_link && (
                         <div className="my-6 space-y-4">
@@ -318,15 +390,41 @@ export default function Checkout() {
                             )}
                         </div>
                     )}
-                    <p className="text-sm text-muted-foreground mb-8">
+                    <p className="text-sm text-muted-foreground mb-6">
                         Nous mettrons cette page à jour automatiquement dès la confirmation.
                     </p>
+                    <div className="mb-8">
+                        <Button
+                            size="lg"
+                            variant="outline"
+                            onClick={manualCheck}
+                            disabled={checkingNow}
+                            className="rounded-full border-primary text-primary hover:bg-primary hover:text-primary-foreground"
+                            data-testid="paxity-manual-check-btn"
+                        >
+                            {checkingNow ? (
+                                <><Loader2 className="h-4 w-4 animate-spin" /> Vérification…</>
+                            ) : (
+                                <><Check className="h-4 w-4" /> J&apos;ai payé — Vérifier</>
+                            )}
+                        </Button>
+                    </div>
                     <div className="inline-flex items-center gap-2 text-xs text-muted-foreground bg-secondary/50 rounded-full px-3 py-1.5">
                         <span className="relative flex h-2 w-2">
                             <span className="absolute inline-flex h-full w-full rounded-full bg-primary opacity-75 animate-ping" />
                             <span className="relative inline-flex h-2 w-2 rounded-full bg-primary" />
                         </span>
                         En attente de confirmation Paxity
+                    </div>
+                    <div className="mt-6">
+                        <button
+                            type="button"
+                            onClick={() => { localStorage.removeItem(PENDING_TX_KEY); setTransaction(null); }}
+                            className="text-xs text-muted-foreground underline hover:text-foreground"
+                            data-testid="paxity-cancel-pending-btn"
+                        >
+                            Annuler et choisir un autre moyen de paiement
+                        </button>
                     </div>
                 </div>
             </div>
