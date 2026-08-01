@@ -258,3 +258,11 @@ Payments were failing with a **DNS error** because `backend/paxity_router.py` ha
 - Frontend : thumbOf() dans ProductDetail (vignettes en miniature), pillow==12.3.0 ajouté à requirements.txt.
 - Tests self-service complets (création produit → URLs, liste 380 octets, img/thumb servis, migration, boutique + fiche affichent les images, flux confirmation restauré). DB nettoyée : 0 produit.
 - RAPPEL UTILISATEUR : REDÉPLOYER pour activer en production (la migration des 92 produits se fera toute seule au démarrage).
+
+## Update — Feb 2026 (récap commande complet + tickets colis imprimables)
+- **Téléphone + adresse dans les commandes** : PaxityCustomer et StripeCustomer acceptent phone/address ; Checkout envoie `+{prefix} {phone}` et `adresse, zip` pour les deux moyens de paiement.
+- **Page de confirmation enrichie** : nouveau composant OrderSummary.jsx (fetch GET /api/paxity/orders/{id}) — articles avec tailles/qté/prix, total payé, bloc Livraison (nom, tél, adresse+ville, email). Intégré aux confirmations Paxity (Checkout) ET Stripe (PaymentSuccess).
+- **Email client enrichi** : section « Adresse de livraison » (nom, tél, adresse, ville) dans l'email de confirmation Resend. L'email marchand affichait déjà tél/adresse (désormais renseignés).
+- **Dashboard** : mapOrder expose phone/address ; le dialog commande affiche adresse complète + téléphone.
+- **Tickets colis imprimables (Orders.jsx)** : bouton « Imprimer les tickets (N) » dans la barre de sélection multiple + « Imprimer le ticket » dans le détail d'une commande. Génère une fenêtre imprimable (window.open + print) : un ticket par commande (marque, n° commande, client, tél, adresse, articles × qté avec tailles, total, date), HTML échappé, page-break-inside avoid. data-testid: orders-print-tickets-btn, order-print-ticket-btn.
+- Testé E2E : confirmation restaurée avec récap complet (screenshot validé), dialog dashboard avec tél/adresse, ticket popup contient client/tél/articles. Données de test purgées.

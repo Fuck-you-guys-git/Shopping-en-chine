@@ -4,6 +4,7 @@ import { CheckCircle2, Loader2, XCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { stripeAPI } from "@/lib/api";
 import { useCart } from "@/context/CartContext";
+import { OrderSummary } from "@/components/OrderSummary";
 import { toast } from "sonner";
 
 export default function PaymentSuccess() {
@@ -62,7 +63,8 @@ export default function PaymentSuccess() {
                     <h1 className="font-display text-3xl mb-2" data-testid="stripe-order-confirmed-title">Votre commande est confirmée 🎉</h1>
                     <p className="text-muted-foreground text-sm mb-2">Merci pour votre achat ! Livraison Chine → Dakar sous 10 à 20 jours.</p>
                     {orderId && <p className="font-mono text-sm mb-6">N° de commande : <strong>{orderId}</strong></p>}
-                    <div className="flex flex-col sm:flex-row gap-3 justify-center">
+                    {orderId && <OrderSummary orderId={orderId} />}
+                    <div className="flex flex-col sm:flex-row gap-3 justify-center mt-8">
                         {orderId && (
                             <Button asChild className="bg-primary text-primary-foreground rounded-full h-11 px-6">
                                 <Link to={`/suivi/${orderId}`}>Suivre ma commande</Link>

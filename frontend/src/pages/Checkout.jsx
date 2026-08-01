@@ -13,6 +13,7 @@ import { formatPrice } from "@/components/ProductCard";
 import { toast } from "sonner";
 import { paxityAPI, stripeAPI } from "@/lib/api";
 import { paxityDirectPayin, paxityDirectAvailable } from "@/lib/paxityDirect";
+import { OrderSummary } from "@/components/OrderSummary";
 
 const OPERATOR_META = {
     "orange-money": { label: "Orange Money", color: "#FF7900", bg: "bg-[#FF7900]/10" },
@@ -172,6 +173,8 @@ export default function Checkout() {
                     name: `${buyer.firstName} ${buyer.lastName}`,
                     email: buyer.email,
                     city: buyer.city,
+                    phone: buyer.phone ? `+${prefix} ${buyer.phone}` : undefined,
+                    address: [buyer.address, buyer.zip].filter(Boolean).join(", ") || undefined,
                 },
                 items: items.map((it) => ({ product_id: it.id, qty: it.qty, size: it.size || undefined })),
             });
@@ -234,6 +237,8 @@ export default function Checkout() {
                     name: `${buyer.firstName} ${buyer.lastName}`,
                     email: buyer.email,
                     city: buyer.city,
+                    phone: `+${prefix} ${buyer.phone}`,
+                    address: [buyer.address, buyer.zip].filter(Boolean).join(", ") || undefined,
                 },
                 items: items.map((it) => ({
                     product_id: it.id,
@@ -336,7 +341,8 @@ export default function Checkout() {
                     {transaction?.order_id && (
                         <p className="text-xs font-mono text-muted-foreground mb-8">Commande {transaction.order_id}</p>
                     )}
-                    <div className="flex flex-wrap gap-3 justify-center">
+                    {transaction?.order_id && <OrderSummary orderId={transaction.order_id} />}
+                    <div className="flex flex-wrap gap-3 justify-center mt-8">
                         {transaction?.order_id && (
                             <Button asChild size="lg" className="rounded-full bg-primary text-primary-foreground hover:bg-primary/90" data-testid="track-order-btn">
                                 <Link to={`/suivi/${transaction.order_id}`}>Suivre ma commande</Link>

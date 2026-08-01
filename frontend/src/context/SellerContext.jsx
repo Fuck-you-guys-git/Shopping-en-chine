@@ -26,6 +26,8 @@ const mapOrder = (o, productsById) => ({
     customer: o.customer?.name || "Client",
     city: o.customer?.city || "—",
     email: o.customer?.email || null,
+    phone: o.customer?.phone || null,
+    address: o.customer?.address || null,
     items: (o.items || []).map((it) => ({
         id: it.product_id,
         name: it.name,

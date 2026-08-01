@@ -38,6 +38,8 @@ class StripeCustomer(BaseModel):
     name: str
     email: Optional[str] = None
     city: Optional[str] = None
+    phone: Optional[str] = None
+    address: Optional[str] = None
 
 
 class StripeItem(BaseModel):

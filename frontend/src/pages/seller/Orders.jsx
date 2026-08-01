@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Search, MapPin, Clock, CheckSquare } from "lucide-react";
+import { Search, MapPin, Clock, CheckSquare, Printer, Phone } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -16,6 +16,49 @@ const timeAgo = (ts) => {
     if (s < 3600) return `il y a ${Math.floor(s / 60)}min`;
     if (s < 86400) return `il y a ${Math.floor(s / 3600)}h`;
     return `il y a ${Math.floor(s / 86400)}j`;
+};
+
+// --- Tickets colis imprimables (étiquettes pour les packages) ---
+const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const fmtF = (n) => `${Math.round(n).toLocaleString("fr-FR")} F`;
+
+const ticketHtml = (o) => `
+    <div class="ticket">
+        <div class="head">
+            <span class="brand">SHOPPING EN CHINE</span>
+            <span class="oid">${esc(o.id)}</span>
+        </div>
+        <h2>${esc(o.customer)}</h2>
+        ${o.phone ? `<p class="line"><b>Tél :</b> ${esc(o.phone)}</p>` : ""}
+        <p class="line"><b>Adresse :</b> ${esc([o.address, o.city].filter(Boolean).join(", ") || "—")}</p>
+        <div class="items">
+            ${o.items.map((it) => `<p class="line">• ${esc(it.name)} <b>× ${it.qty}</b></p>`).join("")}
+        </div>
+        <p class="total">Total payé : ${fmtF(o.total)}</p>
+        <p class="date">Commandé le ${new Date(o.createdAt).toLocaleDateString("fr-FR", { day: "2-digit", month: "long", year: "numeric" })}</p>
+    </div>`;
+
+const printTickets = (ordersToPrint) => {
+    if (!ordersToPrint.length) return false;
+    const w = window.open("", "_blank");
+    if (!w) return false;
+    w.document.write(`<!doctype html><html><head><title>Tickets colis — Shopping en Chine</title><style>
+        body{font-family:Arial,Helvetica,sans-serif;margin:0;padding:16px;color:#111;background:#fff}
+        .ticket{border:2px dashed #333;border-radius:12px;padding:16px 18px;margin:0 auto 14px;max-width:420px;page-break-inside:avoid}
+        .head{display:flex;justify-content:space-between;align-items:baseline;border-bottom:1px solid #ccc;padding-bottom:6px;margin-bottom:8px}
+        .brand{font-weight:bold;font-size:14px;letter-spacing:1px}
+        .oid{font-family:monospace;font-size:11px;color:#555}
+        h2{font-size:17px;margin:4px 0 6px}
+        .line{margin:3px 0;font-size:13px}
+        .items{margin-top:8px;border-top:1px solid #ccc;padding-top:6px}
+        .total{margin-top:8px;font-weight:bold;font-size:14px}
+        .date{margin-top:4px;font-size:11px;color:#666}
+        @media print{body{padding:0}.ticket{margin-bottom:8mm}}
+    </style></head><body>${ordersToPrint.map(ticketHtml).join("")}</body></html>`);
+    w.document.close();
+    w.focus();
+    setTimeout(() => w.print(), 400);
+    return true;
 };
 
 export default function Orders() {
@@ -118,7 +161,18 @@ export default function Orders() {
                         <CheckSquare className="h-4 w-4" />
                         {checkedIds.size} commande(s) sélectionnée(s)
                     </span>
-                    <div className="flex items-center gap-2 sm:ml-auto">
+                    <div className="flex items-center gap-2 sm:ml-auto flex-wrap">
+                        <Button
+                            variant="outline"
+                            onClick={() => {
+                                const sel = orders.filter((o) => checkedIds.has(o.id));
+                                if (!printTickets(sel)) toast.error("Autorisez les pop-ups pour imprimer les tickets.");
+                            }}
+                            className="border-primary text-primary hover:bg-primary hover:text-primary-foreground bg-card"
+                            data-testid="orders-print-tickets-btn"
+                        >
+                            <Printer className="h-4 w-4" /> Imprimer les tickets ({checkedIds.size})
+                        </Button>
                         <Select value={bulkStep} onValueChange={setBulkStep}>
                             <SelectTrigger className="w-52 bg-card" data-testid="orders-bulk-status-select">
                                 <SelectValue placeholder="Nouveau statut…" />
@@ -213,8 +267,13 @@ export default function Orders() {
                                     <div className="flex-1 min-w-0">
                                         <p className="font-medium">{selected.customer}</p>
                                         <p className="text-xs text-muted-foreground flex items-center gap-1">
-                                            <MapPin className="h-3 w-3" /> {selected.city} · {timeAgo(selected.createdAt)}
+                                            <MapPin className="h-3 w-3" /> {[selected.address, selected.city].filter(Boolean).join(", ")} · {timeAgo(selected.createdAt)}
                                         </p>
+                                        {selected.phone && (
+                                            <p className="text-xs text-muted-foreground flex items-center gap-1" data-testid="order-detail-phone">
+                                                <Phone className="h-3 w-3" /> {selected.phone}
+                                            </p>
+                                        )}
                                         {selected.email && <p className="text-xs text-muted-foreground truncate">{selected.email}</p>}
                                     </div>
                                     <span className={`text-xs font-medium px-2.5 py-1 rounded-full shrink-0 ${PAYMENT_LABELS[selected.payment].color}`}>
@@ -269,6 +328,16 @@ export default function Orders() {
 
                                 {/* Actions */}
                                 <div className="flex flex-col sm:flex-row gap-2">
+                                    <Button
+                                        variant="outline"
+                                        onClick={() => {
+                                            if (!printTickets([selected])) toast.error("Autorisez les pop-ups pour imprimer le ticket.");
+                                        }}
+                                        className="border-primary text-primary hover:bg-primary hover:text-primary-foreground"
+                                        data-testid="order-print-ticket-btn"
+                                    >
+                                        <Printer className="h-4 w-4" /> Imprimer le ticket
+                                    </Button>
                                     <Select
                                         value={selected.status}
                                         onValueChange={async (v) => {

@@ -164,6 +164,12 @@ async def maybe_send_customer_confirmation(db: AsyncIOMotorDatabase, order_id: s
         for it in items
     )
     track_link = f"{FRONTEND_URL}/suivi/{order.get('id')}" if FRONTEND_URL else ""
+    c = order.get("customer") or {}
+    delivery_lines = "<br/>".join(filter(None, [
+        c.get("name"),
+        c.get("phone"),
+        ", ".join(filter(None, [c.get("address"), c.get("city")])),
+    ]))
     inner = f"""
         <h1 style="margin:0 0 6px;font-size:20px;color:#1d1d1d;">Merci pour votre commande 🎉</h1>
         <p style="margin:0 0 16px;font-size:14px;color:#555;">
@@ -174,6 +180,8 @@ async def maybe_send_customer_confirmation(db: AsyncIOMotorDatabase, order_id: s
             <tr><td colspan="2" style="padding:10px;font-weight:bold;color:#1d1d1d;">Total payé</td>
             <td style="padding:10px;font-weight:bold;color:#c64c3a;text-align:right;">{_fmt_price(order.get('amount', 0))}</td></tr>
         </table>
+        <h2 style="margin:18px 0 6px;font-size:15px;color:#1d1d1d;">Adresse de livraison</h2>
+        <p style="margin:0;font-size:14px;color:#555;line-height:1.6;">{delivery_lines or '—'}</p>
         {f'<p style="margin:18px 0 0;"><a href="{track_link}" style="display:inline-block;background:#c64c3a;color:#fff;padding:10px 20px;border-radius:99px;text-decoration:none;font-size:14px;">Suivre ma commande</a></p>' if track_link else ''}
     """
     ok = await _send(to, f"Commande confirmée — {order.get('id')}", _wrap(inner), "customer-confirm")
