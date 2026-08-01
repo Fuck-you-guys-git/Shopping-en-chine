@@ -185,7 +185,7 @@ export default function ProductDetail() {
                             <p className="mt-6 text-muted-foreground leading-relaxed">{product.description}</p>
                         )}
 
-                        {/* Colors */}
+                        {/* Colors — cliquer une couleur affiche la photo associée */}
                         {product.colors && (
                             <div className="mt-8">
                                 <p className="text-sm font-medium mb-3">Couleur : <span className="text-muted-foreground font-normal">{colorName(color) || "Sélectionnée"}</span></p>
@@ -193,7 +193,12 @@ export default function ProductDetail() {
                                     {product.colors.map((c) => (
                                         <button
                                             key={c}
-                                            onClick={() => setColor(c)}
+                                            onClick={() => {
+                                                setColor(c);
+                                                const idx = (product.image_colors || []).indexOf(c);
+                                                if (idx >= 0 && idx < gallery.length) setImgIdx(idx);
+                                            }}
+                                            data-testid={`color-option-${c.replace("#", "")}`}
                                             className={`h-9 w-9 rounded-full border-2 flex items-center justify-center transition-all ${color === c ? "border-primary scale-110" : "border-border"}`}
                                             style={{ background: c }}
                                             aria-label={`Couleur ${c}`}

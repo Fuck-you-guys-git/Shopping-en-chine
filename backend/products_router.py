@@ -90,14 +90,18 @@ async def _store_image(db, product_id: str, src: str) -> Optional[str]:
 
 
 async def _process_images(db, product_id: str, doc: dict) -> None:
-    """Convertit les images du payload en URLs stockées + nettoie les orphelines."""
+    """Convertit les images du payload en URLs stockées + nettoie les orphelines.
+    Maintient l'alignement du tableau image_colors (couleur associée à chaque photo)."""
     srcs = doc.get("images") or ([doc["image"]] if doc.get("image") else [])
-    stored = []
-    for src in srcs[:5]:
+    colors = doc.get("image_colors") or []
+    stored, stored_colors = [], []
+    for i, src in enumerate(srcs[:5]):
         url = await _store_image(db, product_id, src)
         if url:
             stored.append(url)
+            stored_colors.append(colors[i] if i < len(colors) else None)
     doc["images"] = stored
+    doc["image_colors"] = stored_colors if any(stored_colors) else None
     doc["image"] = _thumb_url(stored[0]) if stored else ""
     keep_ids = [m.group(2) for m in (IMG_URL_RE.match(u) for u in stored) if m]
     await db.product_images.delete_many({"product_id": product_id, "image_id": {"$nin": keep_ids}})
@@ -156,6 +160,7 @@ class ProductPayload(BaseModel):
     description: str = ""
     colors: list[str] = []
     sizes: Optional[list[str]] = None
+    image_colors: Optional[list[Optional[str]]] = None
 
 
 @router.get("")

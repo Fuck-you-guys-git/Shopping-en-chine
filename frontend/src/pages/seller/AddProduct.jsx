@@ -77,6 +77,7 @@ export default function AddProduct() {
                 active: p.active !== false,
             });
             setPhotos((p.images?.length ? p.images : [p.image]).filter(Boolean).slice(0, 5));
+            setPhotoColors((p.image_colors || []).slice(0, 5));
             setReady(true);
         }).catch(() => {
             toast.error("Produit introuvable");
@@ -89,8 +90,10 @@ export default function AddProduct() {
     const toggleSize = (s) => set("sizes", form.sizes.includes(s) ? form.sizes.filter((x) => x !== s) : sortSizes([...form.sizes, s]));
 
     // --- Photos (jusqu'à 5) : téléphone, exemples ou URL — compressées côté client ---
+    // photoColors[i] = couleur associée à la photo i (null = aucune)
     const MAX_PHOTOS = 5;
     const [photos, setPhotos] = useState([]);
+    const [photoColors, setPhotoColors] = useState([]);
     const fileRef = useRef(null);
     const [uploading, setUploading] = useState(false);
 
@@ -136,18 +139,38 @@ export default function AddProduct() {
         setUploading(false);
         if (added.length) {
             setPhotos((prev) => [...prev, ...added].slice(0, MAX_PHOTOS));
+            setPhotoColors((prev) => [...prev, ...added.map(() => null)].slice(0, MAX_PHOTOS));
             toast.success(`${added.length} photo(s) ajoutée(s) ✦`, {
                 description: files.length > slots ? "Limite de 5 photos atteinte." : "Visible dans l'aperçu.",
             });
         }
     };
 
-    const removePhoto = (idx) => setPhotos((prev) => prev.filter((_, i) => i !== idx));
-    const makeMain = (idx) => setPhotos((prev) => [prev[idx], ...prev.filter((_, i) => i !== idx)]);
-    const addSample = (src) =>
-        setPhotos((prev) => (prev.includes(src)
-            ? prev.filter((p) => p !== src)
-            : prev.length < MAX_PHOTOS ? [...prev, src] : prev));
+    const removePhoto = (idx) => {
+        setPhotos((prev) => prev.filter((_, i) => i !== idx));
+        setPhotoColors((prev) => prev.filter((_, i) => i !== idx));
+    };
+    const makeMain = (idx) => {
+        setPhotos((prev) => [prev[idx], ...prev.filter((_, i) => i !== idx)]);
+        setPhotoColors((prev) => [prev[idx] ?? null, ...prev.filter((_, i) => i !== idx)]);
+    };
+    const addSample = (src) => {
+        const idx = photos.indexOf(src);
+        if (idx >= 0) {
+            removePhoto(idx);
+        } else if (photos.length < MAX_PHOTOS) {
+            setPhotos((prev) => [...prev, src]);
+            setPhotoColors((prev) => [...prev, null]);
+        }
+    };
+    // Associe (ou retire) une couleur à la photo idx
+    const assignPhotoColor = (idx, c) =>
+        setPhotoColors((prev) => {
+            const next = [...prev];
+            while (next.length < photos.length) next.push(null);
+            next[idx] = next[idx] === c ? null : c;
+            return next;
+        });
     const mainImage = photos[0] || SAMPLE_IMAGES[0];
 
     const submit = async (e) => {
@@ -168,6 +191,9 @@ export default function AddProduct() {
             badge: form.badge || undefined,
             colors: form.colors.length ? form.colors : undefined,
             sizes: form.sizes.length ? sortSizes(form.sizes) : undefined,
+            image_colors: photoColors.some(Boolean)
+                ? photos.map((_, i) => photoColors[i] || null)
+                : undefined,
             keywords: form.searchKeywords
                 ? form.searchKeywords.split(",").map((k) => k.trim()).filter(Boolean)
                 : undefined,
@@ -356,37 +382,60 @@ export default function AddProduct() {
                         {photos.length > 0 && (
                             <div className="grid grid-cols-3 sm:grid-cols-5 gap-2" data-testid="selected-photos-grid">
                                 {photos.map((src, i) => (
-                                    <div key={i} className="relative group aspect-square rounded-lg overflow-hidden bg-muted border-2 border-border">
-                                        <img src={src} alt="" className="h-full w-full object-cover" />
-                                        {i === 0 && (
-                                            <span className="absolute bottom-1 left-1 text-[9px] font-bold bg-primary text-primary-foreground px-1.5 py-0.5 rounded-full">
-                                                Principale
-                                            </span>
-                                        )}
-                                        <button
-                                            type="button"
-                                            onClick={() => removePhoto(i)}
-                                            data-testid={`remove-photo-${i}`}
-                                            aria-label="Supprimer la photo"
-                                            className="absolute top-1 right-1 h-6 w-6 rounded-full bg-black/60 text-white flex items-center justify-center text-xs hover:bg-destructive transition-colors"
-                                        >
-                                            <i className="fa-solid fa-xmark" />
-                                        </button>
-                                        {i !== 0 && (
+                                    <div key={i} className="space-y-1">
+                                        <div className="relative group aspect-square rounded-lg overflow-hidden bg-muted border-2 border-border">
+                                            <img src={src} alt="" className="h-full w-full object-cover" />
+                                            {i === 0 && (
+                                                <span className="absolute bottom-1 left-1 text-[9px] font-bold bg-primary text-primary-foreground px-1.5 py-0.5 rounded-full">
+                                                    Principale
+                                                </span>
+                                            )}
                                             <button
                                                 type="button"
-                                                onClick={() => makeMain(i)}
-                                                data-testid={`make-main-photo-${i}`}
-                                                aria-label="Définir comme principale"
-                                                title="Définir comme photo principale"
-                                                className="absolute bottom-1 right-1 h-6 w-6 rounded-full bg-black/60 text-white flex items-center justify-center text-[10px] hover:bg-primary transition-colors"
+                                                onClick={() => removePhoto(i)}
+                                                data-testid={`remove-photo-${i}`}
+                                                aria-label="Supprimer la photo"
+                                                className="absolute top-1 right-1 h-6 w-6 rounded-full bg-black/60 text-white flex items-center justify-center text-xs hover:bg-destructive transition-colors"
                                             >
-                                                <i className="fa-solid fa-star" />
+                                                <i className="fa-solid fa-xmark" />
                                             </button>
+                                            {i !== 0 && (
+                                                <button
+                                                    type="button"
+                                                    onClick={() => makeMain(i)}
+                                                    data-testid={`make-main-photo-${i}`}
+                                                    aria-label="Définir comme principale"
+                                                    title="Définir comme photo principale"
+                                                    className="absolute bottom-1 right-1 h-6 w-6 rounded-full bg-black/60 text-white flex items-center justify-center text-[10px] hover:bg-primary transition-colors"
+                                                >
+                                                    <i className="fa-solid fa-star" />
+                                                </button>
+                                            )}
+                                        </div>
+                                        {form.colors.length > 0 && (
+                                            <div className="flex justify-center gap-1 flex-wrap" data-testid={`photo-color-picker-${i}`}>
+                                                {form.colors.map((c) => (
+                                                    <button
+                                                        type="button"
+                                                        key={c}
+                                                        onClick={() => assignPhotoColor(i, c)}
+                                                        data-testid={`photo-${i}-color-${c.replace("#", "")}`}
+                                                        aria-label={`Associer cette couleur à la photo ${i + 1}`}
+                                                        className={`h-4 w-4 rounded-full border transition-all ${photoColors[i] === c ? "ring-2 ring-primary ring-offset-1 border-primary scale-110" : "border-border opacity-50 hover:opacity-100"}`}
+                                                        style={{ background: c }}
+                                                    />
+                                                ))}
+                                            </div>
                                         )}
                                     </div>
                                 ))}
                             </div>
+                        )}
+                        {photos.length > 0 && form.colors.length > 0 && (
+                            <p className="text-[11px] text-muted-foreground">
+                                Astuce : cliquez sur un point de couleur sous une photo pour l&apos;associer —
+                                le client verra cette photo en choisissant la couleur.
+                            </p>
                         )}
 
                         <p className="text-xs text-muted-foreground">Ou choisissez parmi les exemples :</p>
