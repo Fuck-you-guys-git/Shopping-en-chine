@@ -10,7 +10,7 @@ import { Logo } from "@/components/Logo";
  * Pour rouvrir le site à tous : passez GATE_ENABLED à false.
  */
 export const GATE_ENABLED = true;
-const SITE_PASSWORD = "2026";
+const SITE_PASSWORD = "alarba2026";
 const UNLOCK_KEY = "sec_site_unlocked_v1";
 
 export const isSiteUnlocked = () => {
