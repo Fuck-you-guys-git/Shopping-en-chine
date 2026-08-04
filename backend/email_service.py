@@ -34,6 +34,12 @@ def _fmt_price(amount) -> str:
         return f"{amount} F CFA"
 
 
+def _order_no(order_id) -> str:
+    """Numéro de commande affiché : #1000 (anciens ids ord_xxx inchangés)."""
+    s = str(order_id or "")
+    return f"#{s}" if s.isdigit() else s
+
+
 def _order_html(order: dict) -> str:
     customer = order.get("customer") or {}
     items = order.get("items") or []
@@ -53,7 +59,7 @@ def _order_html(order: dict) -> str:
         <tr><td style="padding:24px;">
             <h1 style="margin:0 0 6px;font-size:20px;color:#1d1d1d;">Nouvelle commande payée ✔</h1>
             <p style="margin:0 0 16px;font-size:14px;color:#555;">
-                Commande <strong>{order.get('id')}</strong> — paiement confirmé via {order.get('payment_method', 'Mobile Money')}.
+                Commande <strong>{_order_no(order.get('id'))}</strong> — paiement confirmé via {order.get('payment_method', 'Mobile Money')}.
             </p>
             <table width="100%" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:8px;">
                 {rows if rows else '<tr><td style="padding:12px;font-size:14px;color:#777;">Détail des articles indisponible</td></tr>'}
@@ -93,7 +99,7 @@ async def maybe_send_order_confirmation(db: AsyncIOMotorDatabase, order_id: str)
     params = {
         "from": f"Shopping en Chine <{SENDER_EMAIL}>",
         "to": [MERCHANT_EMAIL],
-        "subject": f"Nouvelle commande payée — {order.get('id')} ({_fmt_price(order.get('amount', 0))})",
+        "subject": f"Nouvelle commande payée — {_order_no(order.get('id'))} ({_fmt_price(order.get('amount', 0))})",
         "html": _order_html(order),
     }
     try:
@@ -173,7 +179,7 @@ async def maybe_send_customer_confirmation(db: AsyncIOMotorDatabase, order_id: s
     inner = f"""
         <h1 style="margin:0 0 6px;font-size:20px;color:#1d1d1d;">Merci pour votre commande 🎉</h1>
         <p style="margin:0 0 16px;font-size:14px;color:#555;">
-            Votre paiement est confirmé. Numéro de commande : <strong>{order.get('id')}</strong><br/>
+            Votre paiement est confirmé. Numéro de commande : <strong>{_order_no(order.get('id'))}</strong><br/>
             Livraison Chine → Dakar sous 10 à 20 jours.
         </p>
         <table width="100%" style="background:#fff;border-radius:8px;">{rows}
@@ -184,7 +190,7 @@ async def maybe_send_customer_confirmation(db: AsyncIOMotorDatabase, order_id: s
         <p style="margin:0;font-size:14px;color:#555;line-height:1.6;">{delivery_lines or '—'}</p>
         {f'<p style="margin:18px 0 0;"><a href="{track_link}" style="display:inline-block;background:#c64c3a;color:#fff;padding:10px 20px;border-radius:99px;text-decoration:none;font-size:14px;">Suivre ma commande</a></p>' if track_link else ''}
     """
-    ok = await _send(to, f"Commande confirmée — {order.get('id')}", _wrap(inner), "customer-confirm")
+    ok = await _send(to, f"Commande confirmée — {_order_no(order.get('id'))}", _wrap(inner), "customer-confirm")
     if not ok:
         await db.orders.update_one({"id": order_id}, {"$set": {"customer_email_sent": False}})
     return ok
@@ -224,7 +230,7 @@ async def send_tracking_update(order: dict, step_label: str) -> bool:
     inner = f"""
         <h1 style="margin:0 0 6px;font-size:20px;color:#1d1d1d;">Votre colis avance 📦</h1>
         <p style="margin:0 0 16px;font-size:14px;color:#555;">
-            Commande <strong>{order.get('id')}</strong> — nouveau statut :
+            Commande <strong>{_order_no(order.get('id'))}</strong> — nouveau statut :
             <strong style="color:#c64c3a;">{step_label}</strong>
         </p>
         {f'<p style="margin:0;"><a href="{track_link}" style="display:inline-block;background:#1d1d1d;color:#fff;padding:10px 20px;border-radius:99px;text-decoration:none;font-size:14px;">Voir le suivi complet</a></p>' if track_link else ''}

@@ -1,4 +1,5 @@
 import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom";
+import { useState } from "react";
 import "@/App.css";
 import { Toaster } from "@/components/ui/sonner";
 import { CartProvider } from "@/context/CartContext";
@@ -27,10 +28,17 @@ import Orders from "@/pages/seller/Orders";
 import SellerProducts from "@/pages/seller/Products";
 import AddProduct from "@/pages/seller/AddProduct";
 import SellerLogin from "@/pages/seller/Login";
+import { ComingSoon, GATE_ENABLED, isSiteUnlocked } from "@/components/ComingSoon";
 
 function Shell({ children }) {
     const { pathname } = useLocation();
     const isSeller = pathname.startsWith("/vendeur") || pathname.startsWith("/admin");
+    // Verrou de lancement : le site public affiche « Bientôt disponible »
+    // tant que le mot de passe n'a pas été saisi. L'espace vendeur reste ouvert.
+    const [unlocked, setUnlocked] = useState(isSiteUnlocked());
+    if (GATE_ENABLED && !isSeller && !unlocked) {
+        return <ComingSoon onUnlock={() => setUnlocked(true)} />;
+    }
     return (
         <>
             {!isSeller && <Navbar />}

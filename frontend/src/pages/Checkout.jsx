@@ -14,6 +14,7 @@ import { toast } from "sonner";
 import { paxityAPI, stripeAPI } from "@/lib/api";
 import { paxityDirectPayin, paxityDirectAvailable } from "@/lib/paxityDirect";
 import { OrderSummary } from "@/components/OrderSummary";
+import { orderNo } from "@/lib/utils";
 
 const OPERATOR_META = {
     "orange-money": { label: "Orange Money", color: "#FF7900", bg: "bg-[#FF7900]/10" },
@@ -106,7 +107,7 @@ export default function Checkout() {
                     setComplete(true);
                     clear();
                     localStorage.removeItem(PENDING_TX_KEY);
-                    toast.success("Paiement confirmé ✦", { description: `Commande ${res.order_id}` });
+                    toast.success("Paiement confirmé ✦", { description: `Commande ${orderNo(res.order_id)}` });
                 } else if (res.status === "failed") {
                     localStorage.removeItem(PENDING_TX_KEY);
                     toast.error("Paiement échoué", { description: "Veuillez réessayer" });
@@ -141,7 +142,7 @@ export default function Checkout() {
                 setComplete(true);
                 clear();
                 localStorage.removeItem(PENDING_TX_KEY);
-                toast.success("Paiement confirmé ✦", { description: `Commande ${res.order_id}` });
+                toast.success("Paiement confirmé ✦", { description: `Commande ${orderNo(res.order_id)}` });
             } else if (res.status === "failed") {
                 setTransaction((prev) => ({ ...prev, ...res }));
                 localStorage.removeItem(PENDING_TX_KEY);
@@ -339,7 +340,7 @@ export default function Checkout() {
                         Merci ! Votre paiement de <span className="font-semibold text-foreground">{formatPrice(transaction?.amount ?? total)}</span> a bien été reçu. Nous préparons votre commande pour l&apos;expédition depuis la Chine.
                     </p>
                     {transaction?.order_id && (
-                        <p className="text-xs font-mono text-muted-foreground mb-8">Commande {transaction.order_id}</p>
+                        <p className="text-xs font-mono text-muted-foreground mb-8">Commande {orderNo(transaction.order_id)}</p>
                     )}
                     {transaction?.order_id && <OrderSummary orderId={transaction.order_id} />}
                     <div className="flex flex-wrap gap-3 justify-center mt-8">

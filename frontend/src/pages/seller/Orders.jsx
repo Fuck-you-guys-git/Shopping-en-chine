@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Search, MapPin, Clock, CheckSquare, Printer, Phone } from "lucide-react";
+import { orderNo } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -26,7 +27,7 @@ const ticketHtml = (o) => `
     <div class="ticket">
         <div class="head">
             <span class="brand">SHOPPING EN CHINE</span>
-            <span class="oid">${esc(o.id)}</span>
+            <span class="oid">${esc(orderNo(o.id))}</span>
         </div>
         <h2>${esc(o.customer)}</h2>
         ${o.phone ? `<p class="line"><b>Tél :</b> ${esc(o.phone)}</p>` : ""}
@@ -82,7 +83,7 @@ export default function Orders() {
 
     const filtered = orders.filter((o) => {
         if (tab !== "toutes" && o.status !== tab) return false;
-        if (query && !`${o.id} ${o.customer} ${o.city}`.toLowerCase().includes(query.toLowerCase())) return false;
+        if (query && !`${o.id} #${o.id} ${o.customer} ${o.city}`.toLowerCase().includes(query.toLowerCase())) return false;
         return true;
     });
 
@@ -229,7 +230,7 @@ export default function Orders() {
                                     </p>
                                 </div>
                             </button>
-                            <div className="col-span-2 hidden md:block text-xs font-mono text-muted-foreground truncate">{o.id}</div>
+                            <div className="col-span-2 hidden md:block text-xs font-mono text-muted-foreground truncate">{orderNo(o.id)}</div>
                             <div className="col-span-2 hidden md:block">
                                 <span className={`inline-flex text-xs font-medium px-2 py-0.5 rounded-full ${PAYMENT_LABELS[o.payment].color}`}>
                                     {PAYMENT_LABELS[o.payment].label}
@@ -256,7 +257,7 @@ export default function Orders() {
                         <>
                             <DialogHeader>
                                 <DialogTitle className="font-display text-2xl flex items-center gap-3">
-                                    Commande {selected.id}
+                                    Commande {orderNo(selected.id)}
                                 </DialogTitle>
                             </DialogHeader>
                             <div className="space-y-5">

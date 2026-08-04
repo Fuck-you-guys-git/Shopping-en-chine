@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { stripeAPI } from "@/lib/api";
 import { useCart } from "@/context/CartContext";
 import { OrderSummary } from "@/components/OrderSummary";
+import { orderNo } from "@/lib/utils";
 import { toast } from "sonner";
 
 export default function PaymentSuccess() {
@@ -62,7 +63,7 @@ export default function PaymentSuccess() {
                     </div>
                     <h1 className="font-display text-3xl mb-2" data-testid="stripe-order-confirmed-title">Votre commande est confirmée 🎉</h1>
                     <p className="text-muted-foreground text-sm mb-2">Merci pour votre achat ! Livraison Chine → Dakar sous 10 à 20 jours.</p>
-                    {orderId && <p className="font-mono text-sm mb-6">N° de commande : <strong>{orderId}</strong></p>}
+                    {orderId && <p className="font-mono text-sm mb-6">N° de commande : <strong>{orderNo(orderId)}</strong></p>}
                     {orderId && <OrderSummary orderId={orderId} />}
                     <div className="flex flex-col sm:flex-row gap-3 justify-center mt-8">
                         {orderId && (

@@ -41,8 +41,11 @@ def _db(request: Request) -> AsyncIOMotorDatabase:
 
 
 def _normalize_order_id(raw: str) -> str:
-    oid = (raw or "").strip()
-    # Be forgiving: allow customers to paste without the "ord_" prefix
+    oid = (raw or "").strip().lstrip("#")
+    # Nouveaux numéros de commande : purement numériques (1000, 1001…)
+    if oid.isdigit():
+        return oid
+    # Anciens ids : tolère la saisie sans le préfixe "ord_"
     if oid and not oid.startswith("ord_"):
         oid = f"ord_{oid}"
     return oid

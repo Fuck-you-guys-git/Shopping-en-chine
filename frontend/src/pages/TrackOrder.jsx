@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
 import { formatPrice } from "@/components/ProductCard";
 import { trackingAPI } from "@/lib/api";
+import { orderNo } from "@/lib/utils";
 
 const STEP_ICONS = {
     ordered: Package,
@@ -47,7 +48,8 @@ export default function TrackOrder() {
         setError(null);
         setData(null);
         try {
-            const res = await trackingAPI.track(id.trim());
+            // tolère le format "#1000"
+            const res = await trackingAPI.track(id.trim().replace(/^#/, ""));
             setData(res);
         } catch (err) {
             setError(err.response?.data?.detail || "Commande introuvable. Vérifiez votre numéro de commande.");
@@ -62,7 +64,7 @@ export default function TrackOrder() {
 
     const onSubmit = (e) => {
         e.preventDefault();
-        const id = query.trim();
+        const id = query.trim().replace(/^#/, "");
         if (!id) return;
         navigate(`/suivi/${encodeURIComponent(id)}`, { replace: !!orderId });
         lookup(id);
@@ -131,7 +133,7 @@ export default function TrackOrder() {
                         <div className="bg-card rounded-2xl shadow-card p-6">
                             <div className="flex flex-wrap items-center justify-between gap-3 mb-1">
                                 <p className="font-mono text-sm text-muted-foreground" data-testid="tracking-order-id">
-                                    Commande {data.order_id}
+                                    Commande {orderNo(data.order_id)}
                                 </p>
                                 <span className={`text-xs font-medium px-2.5 py-1 rounded-full ${badge.cls}`} data-testid="tracking-payment-badge">
                                     {badge.label}
