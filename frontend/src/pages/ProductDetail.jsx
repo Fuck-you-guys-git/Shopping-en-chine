@@ -121,7 +121,7 @@ export default function ProductDetail() {
                     {/* Gallery */}
                     <div className="space-y-3">
                         <div
-                            className="aspect-square overflow-hidden rounded-3xl bg-muted relative touch-pan-y select-none"
+                            className="aspect-[4/5] overflow-hidden rounded-3xl bg-muted relative touch-pan-y select-none"
                             onTouchStart={onTouchStart}
                             onTouchEnd={onTouchEnd}
                             data-testid="product-gallery-swipe-area"
@@ -137,7 +137,7 @@ export default function ProductDetail() {
                                 alt={product.name}
                                 draggable={false}
                                 onClick={() => setLightbox(true)}
-                                className="h-full w-full object-cover img-swap cursor-zoom-in"
+                                className="h-full w-full object-contain img-swap cursor-zoom-in"
                                 data-testid="product-main-image"
                             />
                             {gallery.length > 1 && (

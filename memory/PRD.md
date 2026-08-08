@@ -294,3 +294,8 @@ Payments were failing with a **DNS error** because `backend/paxity_router.py` ha
 - CAUSE : pendant les animations d'entrée, les éléments SE DÉPLAÇAIENT (page-fade translateY(8px), fade-in-up translateY(16px)) → le doigt touchait une cible en mouvement (touchstart/touchend sur des éléments différents = pas de click) → il fallait appuyer 2 fois. En plus, le délai d'apparition des cartes était index*60ms SANS plafond → sur 92 produits, la dernière carte restait invisible ~5,5s.
 - FIX (index.css) : page-fade et fade-in-up en OPACITÉ SEULE (plus aucun déplacement), durées réduites (0.25s / 0.45s). ProductCard : animationDelay plafonné à Math.min(index, 8) * 50ms.
 - Testé : navigation au 1er clic OK juste après chargement.
+
+## Update — Feb 2026 (photo produit non recadrée)
+- PROBLÈME utilisateur (« la tête de la personne ne sort pas bien ») : la photo principale de la fiche produit était recadrée en carré (aspect-square + object-cover) → le haut de la tête des mannequins était coupé sur les photos portrait.
+- FIX (ProductDetail.jsx) : conteneur galerie aspect-[4/5] (portrait) + object-contain → la photo s'affiche EN ENTIER sans recadrage, sur fond bg-muted. La visionneuse plein écran restait déjà en object-contain. Vignettes inchangées (object-cover, OK en petit).
+- Testé : image portrait avec bandes repères haut/bas → entièrement visibles.
