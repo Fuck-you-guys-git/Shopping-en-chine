@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { useParams, Link, useNavigate } from "react-router-dom";
-import { ArrowLeft, Heart, ShoppingBag, Truck, ShieldCheck, Minus, Plus, Check } from "lucide-react";
+import { ArrowLeft, Heart, ShoppingBag, Truck, ShieldCheck, Minus, Plus, Check, X, ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
@@ -48,6 +49,12 @@ export default function ProductDetail() {
     const [imgIdx, setImgIdx] = useState(0);
     useEffect(() => { setImgIdx(0); setSize(null); }, [id]);
     const touchRef = useRef({ x: 0, y: 0 });
+    // Visionneuse plein écran (tap sur la photo)
+    const [lightbox, setLightbox] = useState(false);
+    useEffect(() => {
+        document.body.style.overflow = lightbox ? "hidden" : "";
+        return () => { document.body.style.overflow = ""; };
+    }, [lightbox]);
     const [color, setColor] = useState(product?.colors?.[0]);
     const [size, setSize] = useState(null);
 
@@ -84,6 +91,8 @@ export default function ProductDetail() {
             setImgIdx((i) => (dx < 0 ? (i + 1) % gallery.length : (i - 1 + gallery.length) % gallery.length));
         }
     };
+    const nextImg = () => setImgIdx((i) => (i + 1) % gallery.length);
+    const prevImg = () => setImgIdx((i) => (i - 1 + gallery.length) % gallery.length);
     const related = allProducts.filter((p) => p.id !== product.id && p.category === product.category).slice(0, 4);
     if (related.length < 4) {
         const fill = allProducts.filter((p) => p.id !== product.id && p.category !== product.category);
@@ -127,7 +136,8 @@ export default function ProductDetail() {
                                 src={gallery[imgIdx] || gallery[0]}
                                 alt={product.name}
                                 draggable={false}
-                                className="h-full w-full object-cover img-swap"
+                                onClick={() => setLightbox(true)}
+                                className="h-full w-full object-cover img-swap cursor-zoom-in"
                                 data-testid="product-main-image"
                             />
                             {gallery.length > 1 && (
@@ -155,6 +165,67 @@ export default function ProductDetail() {
                                     </button>
                                 ))}
                             </div>
+                        )}
+
+                        {/* Visionneuse plein écran — tap sur la photo pour l'ouvrir */}
+                        {lightbox && createPortal(
+                            <div
+                                className="fixed inset-0 z-[100] bg-black/95 flex items-center justify-center"
+                                onClick={() => setLightbox(false)}
+                                onTouchStart={onTouchStart}
+                                onTouchEnd={onTouchEnd}
+                                data-testid="image-lightbox"
+                            >
+                                <button
+                                    type="button"
+                                    onClick={() => setLightbox(false)}
+                                    aria-label="Fermer"
+                                    data-testid="lightbox-close-btn"
+                                    className="absolute top-4 right-4 z-10 h-11 w-11 rounded-full bg-white/10 text-white flex items-center justify-center hover:bg-white/20 transition-colors"
+                                >
+                                    <X className="h-5 w-5" />
+                                </button>
+                                <img
+                                    key={imgIdx}
+                                    src={gallery[imgIdx] || gallery[0]}
+                                    alt={product.name}
+                                    draggable={false}
+                                    onClick={(e) => e.stopPropagation()}
+                                    className="max-h-[88vh] max-w-[94vw] object-contain img-swap select-none"
+                                    data-testid="lightbox-image"
+                                />
+                                {gallery.length > 1 && (
+                                    <>
+                                        <button
+                                            type="button"
+                                            onClick={(e) => { e.stopPropagation(); prevImg(); }}
+                                            aria-label="Photo précédente"
+                                            data-testid="lightbox-prev-btn"
+                                            className="absolute left-3 top-1/2 -translate-y-1/2 h-11 w-11 rounded-full bg-white/10 text-white hidden sm:flex items-center justify-center hover:bg-white/20 transition-colors"
+                                        >
+                                            <ChevronLeft className="h-5 w-5" />
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={(e) => { e.stopPropagation(); nextImg(); }}
+                                            aria-label="Photo suivante"
+                                            data-testid="lightbox-next-btn"
+                                            className="absolute right-3 top-1/2 -translate-y-1/2 h-11 w-11 rounded-full bg-white/10 text-white hidden sm:flex items-center justify-center hover:bg-white/20 transition-colors"
+                                        >
+                                            <ChevronRight className="h-5 w-5" />
+                                        </button>
+                                        <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex gap-1.5">
+                                            {gallery.map((_, i) => (
+                                                <span
+                                                    key={i}
+                                                    className={`h-1.5 rounded-full transition-all duration-300 ${i === imgIdx ? "w-5 bg-primary" : "w-1.5 bg-white/50"}`}
+                                                />
+                                            ))}
+                                        </div>
+                                    </>
+                                )}
+                            </div>,
+                            document.body
                         )}
                     </div>
 
