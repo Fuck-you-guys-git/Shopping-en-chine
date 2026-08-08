@@ -130,11 +130,12 @@
     .shadow-soft { box-shadow: var(--shadow-soft); }
     .shadow-warm { box-shadow: var(--shadow-warm); }
 
-    /* Transition douce entre les pages */
-    .page-fade { animation: pageFade 0.35s ease-out both; }
+    /* Transition douce entre les pages — opacité seule : les boutons ne
+       bougent pas pendant l'animation (sinon le 1er tap rate sa cible) */
+    .page-fade { animation: pageFade 0.25s ease-out both; }
     @keyframes pageFade {
-        from { opacity: 0; transform: translateY(8px); }
-        to { opacity: 1; transform: translateY(0); }
+        from { opacity: 0; }
+        to { opacity: 1; }
     }
 
     /* Changement de photo produit (swipe / clic vignette) */
@@ -179,11 +180,10 @@
 
     .fade-in-up {
         opacity: 0;
-        transform: translateY(16px);
-        animation: fadeInUp 0.7s var(--ease-smooth) forwards;
+        animation: fadeInUp 0.45s var(--ease-smooth) forwards;
     }
     @keyframes fadeInUp {
-        to { opacity: 1; transform: translateY(0); }
+        to { opacity: 1; }
     }
 
     .no-scrollbar::-webkit-scrollbar { display: none; }

@@ -289,3 +289,8 @@ Payments were failing with a **DNS error** because `backend/paxity_router.py` ha
 ## Update — Feb 2026 (visionneuse photo plein écran)
 - Tap/clic sur la photo produit → visionneuse plein écran (ProductDetail.jsx) : rendue via createPortal(document.body) pour couvrir la navbar (z-100, fond noir 95%), image object-contain non recadrée (max-h 88vh), bouton X (lightbox-close-btn), flèches desktop (lightbox-prev/next-btn), points indicateurs, swipe tactile (mêmes handlers que la galerie), tap sur le fond ferme, stopPropagation sur l'image, body overflow hidden pendant l'ouverture, cursor-zoom-in sur la photo.
 - Testé : ouverture, image chargée plein écran, parent=BODY (navbar couverte), fermeture. Produit test purgé.
+
+## Update — Feb 2026 (fix taps qui ratent — double appui nécessaire)
+- CAUSE : pendant les animations d'entrée, les éléments SE DÉPLAÇAIENT (page-fade translateY(8px), fade-in-up translateY(16px)) → le doigt touchait une cible en mouvement (touchstart/touchend sur des éléments différents = pas de click) → il fallait appuyer 2 fois. En plus, le délai d'apparition des cartes était index*60ms SANS plafond → sur 92 produits, la dernière carte restait invisible ~5,5s.
+- FIX (index.css) : page-fade et fade-in-up en OPACITÉ SEULE (plus aucun déplacement), durées réduites (0.25s / 0.45s). ProductCard : animationDelay plafonné à Math.min(index, 8) * 50ms.
+- Testé : navigation au 1er clic OK juste après chargement.

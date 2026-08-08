@@ -26,7 +26,7 @@ export const ProductCard = ({ product, index = 0 }) => {
         <Link
             to={`/produit/${product.id}`}
             className="group flex flex-col fade-in-up"
-            style={{ animationDelay: `${index * 60}ms` }}
+            style={{ animationDelay: `${Math.min(index, 8) * 50}ms` }}
         >
             <div className="relative aspect-[4/5] overflow-hidden rounded-2xl bg-muted mb-4">
                 <img
