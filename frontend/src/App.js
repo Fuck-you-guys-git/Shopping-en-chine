@@ -1,5 +1,5 @@
-import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom";
-import { useState } from "react";
+import { BrowserRouter, Routes, Route, useLocation, useNavigate } from "react-router-dom";
+import { useEffect, useState } from "react";
 import "@/App.css";
 import { Toaster } from "@/components/ui/sonner";
 import { CartProvider } from "@/context/CartContext";
@@ -30,6 +30,32 @@ import AddProduct from "@/pages/seller/AddProduct";
 import SellerLogin from "@/pages/seller/Login";
 import { ComingSoon, GATE_ENABLED, isSiteUnlocked } from "@/components/ComingSoon";
 
+/*
+ * Retour de paiement Paxity (Wave / Orange Money) :
+ * Paxity redirige le client vers shoppingenchine.com après le paiement.
+ * Si un paiement est en cours (persisté dans localStorage), on amène
+ * automatiquement le client sur la page de confirmation (/commande),
+ * quelle que soit la page sur laquelle Paxity l'a fait atterrir.
+ * Vérifié UNE SEULE FOIS au chargement de la page (pas pendant la
+ * navigation interne, pour ne pas bloquer le client sur /commande).
+ */
+function PaymentReturnRedirect() {
+    const navigate = useNavigate();
+    useEffect(() => {
+        const path = window.location.pathname;
+        if (path === "/commande" || path.startsWith("/vendeur") || path.startsWith("/admin") || path.startsWith("/paiement")) return;
+        try {
+            const raw = localStorage.getItem("sec_pending_paxity_tx_v1");
+            if (!raw) return;
+            const tx = JSON.parse(raw);
+            if (tx?.transaction_id && tx.status === "pending") {
+                navigate("/commande", { replace: true });
+            }
+        } catch { /* ignore */ }
+    }, []);
+    return null;
+}
+
 function Shell({ children }) {
     const { pathname } = useLocation();
     const isSeller = pathname.startsWith("/vendeur") || pathname.startsWith("/admin");
@@ -41,6 +67,7 @@ function Shell({ children }) {
     }
     return (
         <>
+            <PaymentReturnRedirect />
             {!isSeller && <Navbar />}
             <main key={pathname} className="page-fade">{children}</main>
             {!isSeller && <Footer />}
