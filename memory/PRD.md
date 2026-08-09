@@ -299,3 +299,8 @@ Payments were failing with a **DNS error** because `backend/paxity_router.py` ha
 - PROBLÈME utilisateur (« la tête de la personne ne sort pas bien ») : la photo principale de la fiche produit était recadrée en carré (aspect-square + object-cover) → le haut de la tête des mannequins était coupé sur les photos portrait.
 - FIX (ProductDetail.jsx) : conteneur galerie aspect-[4/5] (portrait) + object-contain → la photo s'affiche EN ENTIER sans recadrage, sur fond bg-muted. La visionneuse plein écran restait déjà en object-contain. Vignettes inchangées (object-cover, OK en petit).
 - Testé : image portrait avec bandes repères haut/bas → entièrement visibles.
+
+## Update — Feb 2026 (retour Paxity → page de confirmation)
+- CONTEXTE : Paxity a configuré la redirection post-paiement vers shoppingenchine.com pour ce marchand (à la demande de l'utilisateur auprès du support).
+- FIX (App.js) : composant PaymentReturnRedirect monté dans Shell — au CHARGEMENT complet de la page (mount unique), si une tx Paxity pending existe dans localStorage (sec_pending_paxity_tx_v1), redirection automatique vers /commande (écran d'attente restauré → confirmation dès succès). Exclusions : /commande, /vendeur, /admin, /paiement. Ne se déclenche PAS pendant la navigation interne (le client peut quitter /commande librement).
+- TESTÉ PAR TESTING AGENT (iteration_23.json, 6/6 PASS) : retour sur '/' → redirect /commande + écran attente ; passage success en DB → confirmation avec récap complet + #1000 + localStorage nettoyé ; retour sur /boutique → redirect aussi ; pas de tx → navigation libre ; bouton Annuler → plus de redirect ; /vendeur exclu. Données de test nettoyées, compteur remis à 0, produits à 0.
