@@ -16,7 +16,7 @@ import { paxityDirectPayin, paxityDirectAvailable } from "@/lib/paxityDirect";
 import { OrderSummary } from "@/components/OrderSummary";
 import { StripeEmbedded } from "@/components/StripeEmbedded";
 import { orderNo } from "@/lib/utils";
-import { t, getLocale, formatXof } from "@/lib/locale";
+import { t, getLocale, formatXof, formatEquivalents } from "@/lib/locale";
 
 const OPERATOR_META = {
     "orange-money": { label: "Orange Money", color: "#FF7900", bg: "bg-[#FF7900]/10" },
@@ -763,6 +763,9 @@ export default function Checkout() {
                             <span className="font-medium">{t("Total")}</span>
                             <span className="font-display text-2xl font-semibold">{formatPrice(total)}</span>
                         </div>
+                        {getLocale().currency === "XOF" && (
+                            <p className="text-[11px] text-muted-foreground text-right" data-testid="checkout-equivalents">{formatEquivalents(total)}</p>
+                        )}
                         {getLocale().currency !== "XOF" && (
                             <p className="text-[11px] text-muted-foreground text-right" data-testid="checkout-xof-note">
                                 {t("Le montant est débité en F CFA :")} {formatXof(total)}

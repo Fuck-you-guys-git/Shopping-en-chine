@@ -5,7 +5,7 @@ import { Separator } from "@/components/ui/separator";
 import { Minus, Plus, Trash2, ShoppingBag } from "lucide-react";
 import { useCart } from "@/context/CartContext";
 import { formatPrice } from "@/components/ProductCard";
-import { t } from "@/lib/locale";
+import { t, formatEquivalents } from "@/lib/locale";
 import { useLocale } from "@/context/LocaleContext";
 
 export const CartDrawer = () => {
@@ -83,6 +83,7 @@ export const CartDrawer = () => {
                                 <span className="font-medium">{t("Total")}</span>
                                 <span className="font-display text-2xl font-semibold">{formatPrice(total)}</span>
                             </div>
+                            <p className="text-[11px] text-muted-foreground text-right -mt-2">{formatEquivalents(total)}</p>
                             <Button asChild size="lg" className="w-full bg-ink text-ink-foreground hover:bg-ink/90 rounded-full h-12">
                                 <Link to="/commande" onClick={() => setDrawerOpen(false)}>{t("Passer commande")}</Link>
                             </Button>

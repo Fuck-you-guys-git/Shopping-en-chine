@@ -23,17 +23,24 @@ export const setLocaleValues = (lang, currency) => {
 };
 
 /** Formate un montant F CFA dans la devise d'affichage courante. */
+const fmtCurrency = (value, locale, currency) => {
+    // Montant entier -> "20 €" ; sinon toujours 2 décimales -> "12,50 €"
+    const isWhole = Math.abs(value - Math.round(value)) < 0.005;
+    return new Intl.NumberFormat(locale, {
+        style: "currency",
+        currency,
+        minimumFractionDigits: isWhole ? 0 : 2,
+        maximumFractionDigits: isWhole ? 0 : 2,
+    }).format(value);
+};
+
 export const formatMoney = (xof) => {
     const v = Number(xof) || 0;
     if (current.currency === "EUR") {
-        return new Intl.NumberFormat("fr-FR", {
-            style: "currency", currency: "EUR", minimumFractionDigits: 0, maximumFractionDigits: 2,
-        }).format(v / RATES.EUR);
+        return fmtCurrency(v / RATES.EUR, "fr-FR", "EUR");
     }
     if (current.currency === "USD") {
-        return new Intl.NumberFormat("en-US", {
-            style: "currency", currency: "USD", minimumFractionDigits: 0, maximumFractionDigits: 2,
-        }).format(v / RATES.USD);
+        return fmtCurrency(v / RATES.USD, "en-US", "USD");
     }
     return `${new Intl.NumberFormat("fr-FR", { maximumFractionDigits: 0 }).format(Math.round(v))} F`;
 };
@@ -41,6 +48,19 @@ export const formatMoney = (xof) => {
 /** Montant F CFA formaté brut (pour la note « débité en F CFA »). */
 export const formatXof = (xof) =>
     `${new Intl.NumberFormat("fr-FR", { maximumFractionDigits: 0 }).format(Math.round(Number(xof) || 0))} F CFA`;
+
+/**
+ * Équivalents dans les autres devises, calculés depuis le F CFA (devise principale).
+ * - Mode FCFA  -> "≈ 11,25 € · $12"   (le client africain voit les conversions)
+ * - Mode EUR/USD -> "9 000 F CFA"     (rappel de la devise principale)
+ */
+export const formatEquivalents = (xof) => {
+    const v = Number(xof) || 0;
+    if (current.currency === "XOF") {
+        return `≈ ${fmtCurrency(v / RATES.EUR, "fr-FR", "EUR")} · ${fmtCurrency(v / RATES.USD, "en-US", "USD")}`;
+    }
+    return formatXof(v);
+};
 
 // ---------------------------------------------------------------------------
 // Dictionnaire FR -> EN (la clé est le texte français affiché)

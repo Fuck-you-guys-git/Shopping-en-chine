@@ -14,7 +14,7 @@ import { productsAPI } from "@/lib/api";
 import { toast } from "sonner";
 import { usePageTitle } from "@/hooks/usePageTitle";
 import { colorName } from "@/lib/colors";
-import { t } from "@/lib/locale";
+import { t, formatEquivalents } from "@/lib/locale";
 
 // Tailles S–XL : uniquement vêtements & chaussures (pas lunettes, sacs, bijoux, montres, jouets…)
 const NON_APPAREL_SUBS = new Set([
@@ -252,6 +252,9 @@ export default function ProductDetail() {
                                 </>
                             )}
                         </div>
+                        <p className="mt-1.5 text-xs text-muted-foreground" data-testid="product-detail-equivalents">
+                            {formatEquivalents(product.price)}
+                        </p>
 
                         {product.description && product.description !== "Description à compléter." && (
                             <p className="mt-6 text-muted-foreground leading-relaxed">{product.description}</p>
