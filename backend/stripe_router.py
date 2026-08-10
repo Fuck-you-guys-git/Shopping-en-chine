@@ -87,8 +87,9 @@ async def create_stripe_checkout(payload: StripeCheckoutRequest, request: Reques
     kwargs = dict(
         line_items=line_items,
         mode="payment",
-        success_url=f"{payload.origin_url}/payment/success?session_id={{CHECKOUT_SESSION_ID}}",
-        cancel_url=f"{payload.origin_url}/payment/cancel",
+        ui_mode="embedded",  # paiement intégré : le client ne quitte pas le site
+        locale="fr",  # formulaire Stripe affiché en français
+        return_url=f"{payload.origin_url}/payment/success?session_id={{CHECKOUT_SESSION_ID}}",
         metadata={"order_id": order_id},
     )
     try:
@@ -127,7 +128,12 @@ async def create_stripe_checkout(payload: StripeCheckoutRequest, request: Reques
         "created_at": now,
         "updated_at": now,
     })
-    return {"checkout_url": session.url, "session_id": session.id, "order_id": order_id}
+    return {
+        "client_secret": session.client_secret,
+        "checkout_url": session.url,
+        "session_id": session.id,
+        "order_id": order_id,
+    }
 
 
 async def _mark_paid(db, session_id: str, order_id: str | None = None):

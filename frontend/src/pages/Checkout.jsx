@@ -14,6 +14,7 @@ import { toast } from "sonner";
 import { paxityAPI, stripeAPI } from "@/lib/api";
 import { paxityDirectPayin, paxityDirectAvailable } from "@/lib/paxityDirect";
 import { OrderSummary } from "@/components/OrderSummary";
+import { StripeEmbedded } from "@/components/StripeEmbedded";
 import { orderNo } from "@/lib/utils";
 
 const OPERATOR_META = {
@@ -51,6 +52,7 @@ export default function Checkout() {
     const [transaction, setTransaction] = useState(null); // { transaction_id, status, order_id, ... }
     const [complete, setComplete] = useState(false);
     const [checkingNow, setCheckingNow] = useState(false);
+    const [stripeClientSecret, setStripeClientSecret] = useState(null);
 
     // Restaurer une transaction en attente (retour depuis l'app de paiement)
     useEffect(() => {
@@ -179,6 +181,13 @@ export default function Checkout() {
                 },
                 items: items.map((it) => ({ product_id: it.id, qty: it.qty, size: it.size || undefined })),
             });
+            if (res.client_secret) {
+                // Paiement intégré : le formulaire carte s'affiche dans la page
+                setStripeClientSecret(res.client_secret);
+                window.scrollTo({ top: 0, behavior: "smooth" });
+                setProcessing(false);
+                return;
+            }
             if (res.checkout_url) {
                 window.location.href = res.checkout_url;
                 return;
@@ -435,6 +444,15 @@ export default function Checkout() {
                         </button>
                     </div>
                 </div>
+            </div>
+        );
+    }
+
+    // ---------- Paiement par carte intégré (le client reste sur le site) ----------
+    if (stripeClientSecret) {
+        return (
+            <div className="container mx-auto px-5 py-10 md:py-14">
+                <StripeEmbedded clientSecret={stripeClientSecret} onBack={() => setStripeClientSecret(null)} />
             </div>
         );
     }
