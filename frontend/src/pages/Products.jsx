@@ -195,7 +195,7 @@ export default function Products() {
                         })}
                         {(priceRange[0] > 0 || priceRange[1] < 200000) && (
                             <Badge variant="secondary" className="rounded-full px-3 py-1 gap-1">
-                                {new Intl.NumberFormat("fr-FR").format(priceRange[0])}–{new Intl.NumberFormat("fr-FR").format(priceRange[1])} F
+                                {formatMoney(priceRange[0])}–{formatMoney(priceRange[1])}
                                 <button onClick={() => setPriceRange([0, 200000])}><X className="h-3 w-3" /></button>
                             </Badge>
                         )}
