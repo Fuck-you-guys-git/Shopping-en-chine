@@ -52,6 +52,7 @@ class StripeCheckoutRequest(BaseModel):
     origin_url: str
     customer: StripeCustomer
     items: list[StripeItem] = Field(min_length=1)
+    locale: Optional[str] = "fr"  # langue du formulaire Stripe (fr/en)
 
 
 @router.post("/payments/stripe/checkout")
@@ -88,7 +89,7 @@ async def create_stripe_checkout(payload: StripeCheckoutRequest, request: Reques
         line_items=line_items,
         mode="payment",
         ui_mode="embedded",  # paiement intégré : le client ne quitte pas le site
-        locale="fr",  # formulaire Stripe affiché en français
+        locale=payload.locale if payload.locale in ("fr", "en") else "fr",  # formulaire Stripe dans la langue du client
         return_url=f"{payload.origin_url}/payment/success?session_id={{CHECKOUT_SESSION_ID}}",
         metadata={"order_id": order_id},
     )

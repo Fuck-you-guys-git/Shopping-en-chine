@@ -16,6 +16,7 @@ import { paxityDirectPayin, paxityDirectAvailable } from "@/lib/paxityDirect";
 import { OrderSummary } from "@/components/OrderSummary";
 import { StripeEmbedded } from "@/components/StripeEmbedded";
 import { orderNo } from "@/lib/utils";
+import { t, getLocale, formatXof } from "@/lib/locale";
 
 const OPERATOR_META = {
     "orange-money": { label: "Orange Money", color: "#FF7900", bg: "bg-[#FF7900]/10" },
@@ -109,10 +110,10 @@ export default function Checkout() {
                     setComplete(true);
                     clear();
                     localStorage.removeItem(PENDING_TX_KEY);
-                    toast.success("Paiement confirmé ✦", { description: `Commande ${orderNo(res.order_id)}` });
+                    toast.success(t("Paiement confirmé ✦"), { description: `${t("Commande")} ${orderNo(res.order_id)}` });
                 } else if (res.status === "failed") {
                     localStorage.removeItem(PENDING_TX_KEY);
-                    toast.error("Paiement échoué", { description: "Veuillez réessayer" });
+                    toast.error(t("Paiement échoué"), { description: t("Veuillez réessayer") });
                 }
             } catch (e) {
                 // ignore transient errors
@@ -144,18 +145,18 @@ export default function Checkout() {
                 setComplete(true);
                 clear();
                 localStorage.removeItem(PENDING_TX_KEY);
-                toast.success("Paiement confirmé ✦", { description: `Commande ${orderNo(res.order_id)}` });
+                toast.success(t("Paiement confirmé ✦"), { description: `${t("Commande")} ${orderNo(res.order_id)}` });
             } else if (res.status === "failed") {
                 setTransaction((prev) => ({ ...prev, ...res }));
                 localStorage.removeItem(PENDING_TX_KEY);
-                toast.error("Paiement échoué", { description: "Veuillez réessayer" });
+                toast.error(t("Paiement échoué"), { description: t("Veuillez réessayer") });
             } else {
-                toast("Paiement toujours en attente", {
-                    description: "Validez la transaction sur votre téléphone, puis revérifiez.",
+                toast(t("Paiement toujours en attente"), {
+                    description: t("Validez la transaction sur votre téléphone, puis revérifiez."),
                 });
             }
         } catch {
-            toast.error("Vérification impossible", { description: "Vérifiez votre connexion et réessayez." });
+            toast.error(t("Vérification impossible"), { description: t("Vérifiez votre connexion et réessayez.") });
         } finally {
             setCheckingNow(false);
         }
@@ -172,6 +173,7 @@ export default function Checkout() {
         try {
             const res = await stripeAPI.checkout({
                 origin_url: window.location.origin,
+                locale: getLocale().lang, // formulaire Stripe en fr ou en
                 customer: {
                     name: `${buyer.firstName} ${buyer.lastName}`,
                     email: buyer.email,
@@ -195,7 +197,7 @@ export default function Checkout() {
             throw new Error("no url");
         } catch (err) {
             console.error("[Stripe] checkout error", err);
-            toast.error("Paiement carte indisponible", { description: "Réessayez ou utilisez Mobile Money." });
+            toast.error(t("Paiement carte indisponible"), { description: t("Réessayez ou utilisez Mobile Money.") });
             setProcessing(false);
         }
     };
@@ -219,8 +221,8 @@ export default function Checkout() {
         const validLengths = expectedLengths[prefix] || [8, 9, 10];
         if (!validLengths.includes(cleanPhone.length)) {
             const expected = validLengths.join(" ou ");
-            toast.error("Numéro de téléphone invalide", {
-                description: `Pour l'indicatif +${prefix}, le numéro doit contenir ${expected} chiffres. Vous avez saisi ${cleanPhone.length} chiffres.`,
+            toast.error(t("Numéro de téléphone invalide"), {
+                description: `${t("Pour l'indicatif")} +${prefix}, ${t("le numéro doit contenir")} ${expected} ${t("chiffres")}. ${t("Vous avez saisi")} ${cleanPhone.length} ${t("chiffres")}.`,
             });
             return;
         }
@@ -228,8 +230,8 @@ export default function Checkout() {
         // Phase 3: block submission when the selected method requires an OTP
         // but the user hasn't filled it in.
         if (selectedMethod?.requires_otp && !otp.trim()) {
-            toast.error("Code OTP requis", {
-                description: `${selectedMethod.label} exige un code OTP avant de valider le paiement.`,
+            toast.error(t("Code OTP requis"), {
+                description: `${selectedMethod.label} ${t("exige un code OTP avant de valider le paiement.")}`,
             });
             return;
         }
@@ -329,7 +331,7 @@ export default function Checkout() {
                 detail = "Le paiement n'a pas pu être traité pour le moment. Veuillez réessayer dans quelques instants ou choisir un autre moyen de paiement.";
             }
 
-            toast.error("Erreur de paiement", { description: detail });
+            toast.error(t("Erreur de paiement"), { description: detail });
             setPaxityError(detail);
         } finally {
             setProcessing(false);
@@ -344,25 +346,25 @@ export default function Checkout() {
                     <div className="h-20 w-20 mx-auto rounded-full bg-success/10 text-success flex items-center justify-center mb-6">
                         <Check className="h-10 w-10" />
                     </div>
-                    <h1 className="font-display text-4xl sm:text-5xl mb-3" data-testid="order-confirmed-title">Votre commande est confirmée 🎉</h1>
+                    <h1 className="font-display text-4xl sm:text-5xl mb-3" data-testid="order-confirmed-title">{t("Votre commande est confirmée 🎉")}</h1>
                     <p className="text-muted-foreground mb-2">
-                        Merci ! Votre paiement de <span className="font-semibold text-foreground">{formatPrice(transaction?.amount ?? total)}</span> a bien été reçu. Nous préparons votre commande pour l&apos;expédition depuis la Chine.
+                        {t("Merci ! Votre paiement de")} <span className="font-semibold text-foreground">{formatPrice(transaction?.amount ?? total)}</span> {t("a bien été reçu. Nous préparons votre commande pour l'expédition depuis la Chine.")}
                     </p>
                     {transaction?.order_id && (
-                        <p className="text-xs font-mono text-muted-foreground mb-8">Commande {orderNo(transaction.order_id)}</p>
+                        <p className="text-xs font-mono text-muted-foreground mb-8">{t("Commande")} {orderNo(transaction.order_id)}</p>
                     )}
                     {transaction?.order_id && <OrderSummary orderId={transaction.order_id} />}
                     <div className="flex flex-wrap gap-3 justify-center mt-8">
                         {transaction?.order_id && (
                             <Button asChild size="lg" className="rounded-full bg-primary text-primary-foreground hover:bg-primary/90" data-testid="track-order-btn">
-                                <Link to={`/suivi/${transaction.order_id}`}>Suivre ma commande</Link>
+                                <Link to={`/suivi/${transaction.order_id}`}>{t("Suivre ma commande")}</Link>
                             </Button>
                         )}
                         <Button asChild size="lg" className="rounded-full bg-ink text-ink-foreground hover:bg-ink/90">
-                            <Link to="/">Retour à l&apos;accueil</Link>
+                            <Link to="/">{t("Retour à l'accueil")}</Link>
                         </Button>
                         <Button asChild size="lg" variant="outline" className="rounded-full">
-                            <Link to="/boutique">Continuer les achats</Link>
+                            <Link to="/boutique">{t("Continuer les achats")}</Link>
                         </Button>
                     </div>
                 </div>
@@ -378,9 +380,9 @@ export default function Checkout() {
                     <div className="h-20 w-20 mx-auto rounded-full bg-primary/10 text-primary flex items-center justify-center mb-6">
                         <Loader2 className="h-10 w-10 animate-spin" />
                     </div>
-                    <h1 className="font-display text-3xl sm:text-4xl mb-3">Paiement en cours…</h1>
+                    <h1 className="font-display text-3xl sm:text-4xl mb-3">{t("Paiement en cours…")}</h1>
                     <p className="text-muted-foreground mb-2">
-                        Ouvrez l&apos;application <span className="font-semibold text-foreground">{transaction.operator_label || operatorIconMeta.label}</span> sur votre téléphone et validez la transaction.
+                        {t("Ouvrez l'application")} <span className="font-semibold text-foreground">{transaction.operator_label || operatorIconMeta.label}</span> {t("sur votre téléphone et validez la transaction.")}
                     </p>
                     {transaction.payment_link && (
                         <div className="my-6 space-y-4">
@@ -391,7 +393,7 @@ export default function Checkout() {
                                 data-testid="paxity-payment-link-btn"
                             >
                                 <a href={transaction.payment_link} target="_blank" rel="noopener noreferrer">
-                                    Payer maintenant
+                                    {t("Payer maintenant")}
                                 </a>
                             </Button>
                             {transaction.qr_code && (
@@ -407,8 +409,7 @@ export default function Checkout() {
                         </div>
                     )}
                     <p className="text-sm text-muted-foreground mb-6">
-                        Après le paiement, <span className="font-medium text-foreground">revenez sur cet onglet</span> :
-                        votre confirmation s&apos;affichera ici automatiquement.
+                        {t("Après le paiement,")} <span className="font-medium text-foreground">{t("revenez sur cet onglet")}</span>{t(": votre confirmation s'affichera ici automatiquement.")}
                     </p>
                     <div className="mb-8">
                         <Button
@@ -420,9 +421,9 @@ export default function Checkout() {
                             data-testid="paxity-manual-check-btn"
                         >
                             {checkingNow ? (
-                                <><Loader2 className="h-4 w-4 animate-spin" /> Vérification…</>
+                                <><Loader2 className="h-4 w-4 animate-spin" /> {t("Vérification…")}</>
                             ) : (
-                                <><Check className="h-4 w-4" /> J&apos;ai payé — Vérifier</>
+                                <><Check className="h-4 w-4" /> {t("J'ai payé — Vérifier")}</>
                             )}
                         </Button>
                     </div>
@@ -431,7 +432,7 @@ export default function Checkout() {
                             <span className="absolute inline-flex h-full w-full rounded-full bg-primary opacity-75 animate-ping" />
                             <span className="relative inline-flex h-2 w-2 rounded-full bg-primary" />
                         </span>
-                        En attente de confirmation Paxity
+                        {t("En attente de confirmation Paxity")}
                     </div>
                     <div className="mt-6">
                         <button
@@ -440,7 +441,7 @@ export default function Checkout() {
                             className="text-xs text-muted-foreground underline hover:text-foreground"
                             data-testid="paxity-cancel-pending-btn"
                         >
-                            Annuler et choisir un autre moyen de paiement
+                            {t("Annuler et choisir un autre moyen de paiement")}
                         </button>
                     </div>
                 </div>
@@ -461,25 +462,25 @@ export default function Checkout() {
     if (items.length === 0) {
         return (
             <div className="container mx-auto px-5 py-24 text-center">
-                <h1 className="font-display text-4xl mb-3">Panier vide</h1>
-                <p className="text-muted-foreground mb-6">Ajoutez des produits avant de commander.</p>
-                <Button asChild className="rounded-full"><Link to="/boutique">Voir la boutique</Link></Button>
+                <h1 className="font-display text-4xl mb-3">{t("Panier vide")}</h1>
+                <p className="text-muted-foreground mb-6">{t("Ajoutez des produits avant de commander.")}</p>
+                <Button asChild className="rounded-full"><Link to="/boutique">{t("Voir la boutique")}</Link></Button>
             </div>
         );
     }
 
     const steps = [
-        { n: 1, label: "Adresse" },
-        { n: 2, label: "Livraison" },
-        { n: 3, label: "Paiement" },
+        { n: 1, label: t("Adresse") },
+        { n: 2, label: t("Livraison") },
+        { n: 3, label: t("Paiement") },
     ];
 
     return (
         <div className="container mx-auto px-5 py-10 md:py-14">
             <Link to="/panier" className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground mb-6">
-                <ArrowLeft className="h-4 w-4" /> Retour au panier
+                <ArrowLeft className="h-4 w-4" /> {t("Retour au panier")}
             </Link>
-            <h1 className="font-display text-4xl sm:text-5xl font-medium tracking-tight mb-8">Commande</h1>
+            <h1 className="font-display text-4xl sm:text-5xl font-medium tracking-tight mb-8">{t("Commande")}</h1>
 
             {/* Stepper */}
             <div className="flex items-center gap-2 sm:gap-4 mb-10">
@@ -498,45 +499,45 @@ export default function Checkout() {
                 <div className="space-y-8 order-2 lg:order-1">
                     {step === 1 && (
                         <div className="space-y-5 bg-card p-6 md:p-8 rounded-2xl shadow-card">
-                            <h2 className="font-display text-2xl">Adresse de livraison</h2>
+                            <h2 className="font-display text-2xl">{t("Adresse de livraison")}</h2>
                             <div className="grid sm:grid-cols-2 gap-4">
-                                <div className="space-y-1.5"><Label>Prénom</Label><Input required placeholder="Marie" value={buyer.firstName} onChange={(e) => setBuyer({ ...buyer, firstName: e.target.value })} /></div>
-                                <div className="space-y-1.5"><Label>Nom</Label><Input required placeholder="Dupont" value={buyer.lastName} onChange={(e) => setBuyer({ ...buyer, lastName: e.target.value })} /></div>
+                                <div className="space-y-1.5"><Label>{t("Prénom")}</Label><Input required placeholder="Marie" value={buyer.firstName} onChange={(e) => setBuyer({ ...buyer, firstName: e.target.value })} /></div>
+                                <div className="space-y-1.5"><Label>{t("Nom")}</Label><Input required placeholder="Dupont" value={buyer.lastName} onChange={(e) => setBuyer({ ...buyer, lastName: e.target.value })} /></div>
                                 <div className="space-y-1.5 sm:col-span-2"><Label>Email</Label><Input required type="email" placeholder="marie@exemple.com" value={buyer.email} onChange={(e) => setBuyer({ ...buyer, email: e.target.value })} /></div>
-                                <div className="space-y-1.5 sm:col-span-2"><Label>Adresse</Label><Input required placeholder="Rue, quartier…" value={buyer.address} onChange={(e) => setBuyer({ ...buyer, address: e.target.value })} /></div>
-                                <div className="space-y-1.5"><Label>Code postal</Label><Input placeholder="10000" value={buyer.zip} onChange={(e) => setBuyer({ ...buyer, zip: e.target.value })} /></div>
-                                <div className="space-y-1.5"><Label>Ville</Label><Input required placeholder="Dakar" value={buyer.city} onChange={(e) => setBuyer({ ...buyer, city: e.target.value })} /></div>
-                                <div className="space-y-1.5 sm:col-span-2"><Label>Téléphone</Label><Input required type="tel" placeholder="77 XXX XX XX" value={buyer.phone} onChange={(e) => setBuyer({ ...buyer, phone: e.target.value })} /></div>
+                                <div className="space-y-1.5 sm:col-span-2"><Label>{t("Adresse")}</Label><Input required placeholder="Rue, quartier…" value={buyer.address} onChange={(e) => setBuyer({ ...buyer, address: e.target.value })} /></div>
+                                <div className="space-y-1.5"><Label>{t("Code postal")}</Label><Input placeholder="10000" value={buyer.zip} onChange={(e) => setBuyer({ ...buyer, zip: e.target.value })} /></div>
+                                <div className="space-y-1.5"><Label>{t("Ville")}</Label><Input required placeholder="Dakar" value={buyer.city} onChange={(e) => setBuyer({ ...buyer, city: e.target.value })} /></div>
+                                <div className="space-y-1.5 sm:col-span-2"><Label>{t("Téléphone")}</Label><Input required type="tel" placeholder="77 XXX XX XX" value={buyer.phone} onChange={(e) => setBuyer({ ...buyer, phone: e.target.value })} /></div>
                             </div>
                             <Button
                                 type="button"
                                 onClick={() => {
-                                    if (!buyerValid()) { toast.error("Veuillez remplir tous les champs requis"); return; }
+                                    if (!buyerValid()) { toast.error(t("Veuillez remplir tous les champs requis")); return; }
                                     setStep(2);
                                 }}
                                 className="w-full sm:w-auto bg-ink text-ink-foreground hover:bg-ink/90 rounded-full h-11 px-8"
                             >
-                                Continuer
+                                {t("Continuer")}
                             </Button>
                         </div>
                     )}
 
                     {step === 2 && (
                         <div className="space-y-5 bg-card p-6 md:p-8 rounded-2xl shadow-card">
-                            <h2 className="font-display text-2xl">Mode de livraison</h2>
+                            <h2 className="font-display text-2xl">{t("Mode de livraison")}</h2>
                             <RadioGroup defaultValue="std" className="space-y-3">
                                 <label className="flex items-center gap-4 p-4 border rounded-xl cursor-pointer hover:border-primary transition-colors">
                                     <RadioGroupItem value="std" />
                                     <Truck className="h-5 w-5 text-primary" />
                                     <div className="flex-1">
-                                        <p className="font-medium">Livraison standard · Chine → Dakar</p>
-                                        <p className="text-xs text-muted-foreground">10–20 jours</p>
+                                        <p className="font-medium">{t("Livraison standard · Chine → Dakar")}</p>
+                                        <p className="text-xs text-muted-foreground">{t("10–20 jours")}</p>
                                     </div>
                                 </label>
                             </RadioGroup>
                             <div className="flex gap-2 pt-2">
-                                <Button type="button" variant="outline" onClick={() => setStep(1)} className="rounded-full h-11 px-6">Retour</Button>
-                                <Button type="button" onClick={() => setStep(3)} className="bg-ink text-ink-foreground hover:bg-ink/90 rounded-full h-11 px-8">Continuer</Button>
+                                <Button type="button" variant="outline" onClick={() => setStep(1)} className="rounded-full h-11 px-6">{t("Retour")}</Button>
+                                <Button type="button" onClick={() => setStep(3)} className="bg-ink text-ink-foreground hover:bg-ink/90 rounded-full h-11 px-8">{t("Continuer")}</Button>
                             </div>
                         </div>
                     )}
@@ -544,7 +545,7 @@ export default function Checkout() {
                     {step === 3 && (
                         <div className="space-y-5 bg-card p-6 md:p-8 rounded-2xl shadow-card">
                             <div className="flex items-center justify-between">
-                                <h2 className="font-display text-2xl">Paiement</h2>
+                                <h2 className="font-display text-2xl">{t("Paiement")}</h2>
                                 {paxityConfig && (
                                     <span className={`inline-flex items-center gap-1.5 text-[10px] uppercase tracking-widest font-semibold px-2 py-1 rounded-full ${paxityConfig.configured ? "bg-success/15 text-success" : "bg-amber-100 text-amber-700"}`}>
                                         <ShieldCheck className="h-3 w-3" /> Paxity {paxityConfig.environment}
@@ -556,9 +557,9 @@ export default function Checkout() {
                                 <div className="flex gap-3 p-4 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-sm">
                                     <AlertTriangle className="h-5 w-5 shrink-0 mt-0.5" />
                                     <div>
-                                        <p className="font-medium">Paiement momentanément indisponible</p>
+                                        <p className="font-medium">{t("Paiement momentanément indisponible")}</p>
                                         <p className="text-xs mt-1 opacity-90">
-                                            Le paiement en ligne est en cours de maintenance. Veuillez réessayer dans quelques instants.
+                                            {t("Le paiement en ligne est en cours de maintenance. Veuillez réessayer dans quelques instants.")}
                                         </p>
                                     </div>
                                 </div>
@@ -583,7 +584,7 @@ export default function Checkout() {
 
                             {/* Method picker */}
                             <div>
-                                <p className="text-sm font-medium mb-3">Choisissez votre moyen de paiement</p>
+                                <p className="text-sm font-medium mb-3">{t("Choisissez votre moyen de paiement")}</p>
                                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                                     {paxityConfig?.methods?.map((m) => {
                                         const meta = OPERATOR_META[m.icon] || OPERATOR_META.card;
@@ -618,7 +619,7 @@ export default function Checkout() {
                                         <span className="h-10 w-10 rounded-full flex items-center justify-center bg-indigo-500/10">
                                             <CreditCard className="h-4 w-4 text-indigo-600" />
                                         </span>
-                                        <span className="text-xs font-medium text-center leading-tight">Carte bancaire</span>
+                                        <span className="text-xs font-medium text-center leading-tight">{t("Carte bancaire")}</span>
                                     </button>
                                 </div>
                             </div>
@@ -629,16 +630,21 @@ export default function Checkout() {
                                     <div className="flex gap-3 p-4 rounded-xl bg-indigo-50 border border-indigo-200 text-sm text-indigo-900">
                                         <CreditCard className="h-5 w-5 shrink-0 mt-0.5" />
                                         <div>
-                                            <p className="font-medium">Paiement par carte sécurisé (Visa, Mastercard)</p>
-                                            <p className="text-xs mt-1 opacity-80">Vous serez redirigé vers une page de paiement sécurisée Stripe.</p>
+                                            <p className="font-medium">{t("Paiement par carte sécurisé (Visa, Mastercard)")}</p>
+                                            <p className="text-xs mt-1 opacity-80">{t("Payez directement sur le site, sans redirection.")}</p>
                                         </div>
                                     </div>
                                     <div className="flex items-center gap-2 text-xs text-muted-foreground">
                                         <ShieldCheck className="h-4 w-4 text-success" />
-                                        Paiement sécurisé via Stripe · Chiffrement bout-en-bout
+                                        {t("Paiement sécurisé via Stripe · Chiffrement bout-en-bout")}
                                     </div>
+                                    {getLocale().currency !== "XOF" && (
+                                        <p className="text-[11px] text-muted-foreground" data-testid="stripe-xof-note">
+                                            {t("Le montant est débité en F CFA :")} <span className="font-medium text-foreground">{formatXof(total)}</span>
+                                        </p>
+                                    )}
                                     <div className="flex gap-2 pt-2">
-                                        <Button type="button" variant="outline" onClick={() => setStep(2)} className="rounded-full h-11 px-6">Retour</Button>
+                                        <Button type="button" variant="outline" onClick={() => setStep(2)} className="rounded-full h-11 px-6">{t("Retour")}</Button>
                                         <Button
                                             type="button"
                                             data-testid="stripe-pay-btn"
@@ -647,9 +653,9 @@ export default function Checkout() {
                                             className="bg-primary hover:bg-primary/90 text-primary-foreground rounded-full h-11 px-8 flex-1 sm:flex-none shadow-warm"
                                         >
                                             {processing ? (
-                                                <><Loader2 className="h-4 w-4 animate-spin" /> Redirection…</>
+                                                <><Loader2 className="h-4 w-4 animate-spin" /> {t("Chargement…")}</>
                                             ) : (
-                                                <>Payer par carte {formatPrice(total)}</>
+                                                <>{t("Payer par carte")} {formatPrice(total)}</>
                                             )}
                                         </Button>
                                     </div>
@@ -661,14 +667,14 @@ export default function Checkout() {
                                 <form onSubmit={handlePayment} className="space-y-4">
                                     <div className="grid grid-cols-[100px_1fr] gap-2">
                                         <div className="space-y-1.5">
-                                            <Label>Indicatif</Label>
+                                            <Label>{t("Indicatif")}</Label>
                                             <div className="relative">
                                                 <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">+</span>
                                                 <Input value={prefix} onChange={(e) => setPrefix(e.target.value.replace(/\D/g, ""))} className="pl-6" />
                                             </div>
                                         </div>
                                         <div className="space-y-1.5">
-                                            <Label>Numéro de téléphone</Label>
+                                            <Label>{t("Numéro de téléphone")}</Label>
                                             <Input
                                                 required
                                                 type="tel"
@@ -679,35 +685,35 @@ export default function Checkout() {
                                             <p className="text-[11px] text-muted-foreground">
                                                 {(() => {
                                                     const digits = buyer.phone.replace(/\D/g, "").length;
-                                                    const expected = { "221": "9 chiffres", "225": "10 chiffres", "226": "8 chiffres", "227": "8 chiffres", "228": "8 chiffres", "233": "9 chiffres", "237": "9 chiffres" }[prefix] || "8 à 10 chiffres";
-                                                    return `+${prefix} — attendu : ${expected} · saisi : ${digits}`;
+                                                    const expected = { "221": `9 ${t("chiffres")}`, "225": `10 ${t("chiffres")}`, "226": `8 ${t("chiffres")}`, "227": `8 ${t("chiffres")}`, "228": `8 ${t("chiffres")}`, "233": `9 ${t("chiffres")}`, "237": `9 ${t("chiffres")}` }[prefix] || `8 à 10 ${t("chiffres")}`;
+                                                    return `+${prefix} — ${t("attendu :")} ${expected} · ${t("saisi :")} ${digits}`;
                                                 })()}
                                             </p>
                                         </div>
                                     </div>
                                     <div className="space-y-1.5">
                                         <Label>
-                                            Code OTP <span className="text-muted-foreground text-xs">(facultatif)</span>
+                                            {t("Code OTP")} <span className="text-muted-foreground text-xs">{t("(facultatif)")}</span>
                                         </Label>
                                         <Input
                                             data-testid="paxity-otp-input"
                                             value={otp}
                                             onChange={(e) => setOtp(e.target.value)}
-                                            placeholder="Laissez vide si non requis"
+                                            placeholder={t("Laissez vide si non requis")}
                                             className="font-mono tracking-wider"
                                         />
                                         <p className="text-[11px] text-muted-foreground">
-                                            Après validation, vous recevrez un lien de paiement à confirmer. Si votre opérateur vous a déjà fourni un code, saisissez-le ici.
+                                            {t("Après validation, vous recevrez un lien de paiement à confirmer. Si votre opérateur vous a déjà fourni un code, saisissez-le ici.")}
                                         </p>
                                     </div>
 
                                     <div className="flex items-center gap-2 text-xs text-muted-foreground pt-2">
                                         <ShieldCheck className="h-4 w-4 text-success" />
-                                        Paiement sécurisé via Paxity · Chiffrement bout-en-bout
+                                        {t("Paiement sécurisé via Paxity · Chiffrement bout-en-bout")}
                                     </div>
 
                                     <div className="flex gap-2 pt-2">
-                                        <Button type="button" variant="outline" onClick={() => setStep(2)} className="rounded-full h-11 px-6">Retour</Button>
+                                        <Button type="button" variant="outline" onClick={() => setStep(2)} className="rounded-full h-11 px-6">{t("Retour")}</Button>
                                         <Button
                                             type="submit"
                                             disabled={processing || !paxityConfig?.configured}
@@ -716,10 +722,10 @@ export default function Checkout() {
                                             {processing ? (
                                                 <>
                                                     <Loader2 className="h-4 w-4 animate-spin" />
-                                                    Traitement…
+                                                    {t("Traitement…")}
                                                 </>
                                             ) : (
-                                                <>Payer {formatPrice(total)}</>
+                                                <>{t("Payer")} {formatPrice(total)}</>
                                             )}
                                         </Button>
                                     </div>
@@ -731,7 +737,7 @@ export default function Checkout() {
 
                 <aside className="order-1 lg:order-2">
                     <div className="sticky top-24 bg-secondary/40 rounded-2xl p-6 space-y-4">
-                        <h3 className="font-display text-xl">Votre commande</h3>
+                        <h3 className="font-display text-xl">{t("Votre commande")}</h3>
                         <div className="space-y-3 max-h-[280px] overflow-y-auto">
                             {items.map((it) => (
                                 <div key={it.id} className="flex gap-3">
@@ -741,7 +747,7 @@ export default function Checkout() {
                                     </div>
                                     <div className="flex-1 min-w-0">
                                         <p className="text-sm font-medium truncate">{it.name}</p>
-                                        <p className="text-xs text-muted-foreground">Taille M</p>
+                                        {it.size && <p className="text-xs text-muted-foreground">{t("Taille")} {it.size}</p>}
                                     </div>
                                     <span className="text-sm font-medium">{formatPrice(it.price * it.qty)}</span>
                                 </div>
@@ -749,14 +755,19 @@ export default function Checkout() {
                         </div>
                         <Separator />
                         <div className="space-y-2 text-sm">
-                            <div className="flex justify-between"><span className="text-muted-foreground">Sous-total</span><span>{formatPrice(subtotal)}</span></div>
-                            <div className="flex justify-between"><span className="text-muted-foreground">Livraison Chine → Dakar</span><span className="text-muted-foreground">10–20 jours</span></div>
+                            <div className="flex justify-between"><span className="text-muted-foreground">{t("Sous-total")}</span><span>{formatPrice(subtotal)}</span></div>
+                            <div className="flex justify-between"><span className="text-muted-foreground">{t("Livraison Chine → Dakar")}</span><span className="text-muted-foreground">{t("10–20 jours")}</span></div>
                         </div>
                         <Separator />
                         <div className="flex justify-between items-baseline">
-                            <span className="font-medium">Total</span>
+                            <span className="font-medium">{t("Total")}</span>
                             <span className="font-display text-2xl font-semibold">{formatPrice(total)}</span>
                         </div>
+                        {getLocale().currency !== "XOF" && (
+                            <p className="text-[11px] text-muted-foreground text-right" data-testid="checkout-xof-note">
+                                {t("Le montant est débité en F CFA :")} {formatXof(total)}
+                            </p>
+                        )}
                     </div>
                 </aside>
             </div>

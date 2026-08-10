@@ -14,6 +14,7 @@ import { productsAPI } from "@/lib/api";
 import { toast } from "sonner";
 import { usePageTitle } from "@/hooks/usePageTitle";
 import { colorName } from "@/lib/colors";
+import { t } from "@/lib/locale";
 
 // Tailles S–XL : uniquement vêtements & chaussures (pas lunettes, sacs, bijoux, montres, jouets…)
 const NON_APPAREL_SUBS = new Set([
@@ -62,14 +63,14 @@ export default function ProductDetail() {
         if (!loaded) {
             return (
                 <div className="container mx-auto px-5 py-24 text-center" data-testid="product-loading">
-                    <p className="text-muted-foreground">Chargement du produit…</p>
+                    <p className="text-muted-foreground">{t("Chargement du produit…")}</p>
                 </div>
             );
         }
         return (
             <div className="container mx-auto px-5 py-24 text-center">
-                <h2 className="font-display text-3xl mb-4">Produit introuvable</h2>
-                <Button asChild variant="outline" className="rounded-full"><Link to="/boutique">Retour à la boutique</Link></Button>
+                <h2 className="font-display text-3xl mb-4">{t("Produit introuvable")}</h2>
+                <Button asChild variant="outline" className="rounded-full"><Link to="/boutique">{t("Retour à la boutique")}</Link></Button>
             </div>
         );
     }
@@ -101,7 +102,7 @@ export default function ProductDetail() {
 
     const handleAdd = () => {
         addItem(product, qty, size);
-        toast.success("Ajouté au panier", { description: `${product.name}${size ? ` · Taille ${size}` : ""} × ${qty}` });
+        toast.success(t("Ajouté au panier"), { description: `${product.name}${size ? ` · ${t("Taille")} ${size}` : ""} × ${qty}` });
     };
 
     const handleBuyNow = () => {
@@ -232,9 +233,9 @@ export default function ProductDetail() {
                     {/* Info */}
                     <div className="flex flex-col">
                         <nav className="text-xs text-muted-foreground mb-2">
-                            <Link to="/boutique" className="hover:text-foreground">Boutique</Link>
+                            <Link to="/boutique" className="hover:text-foreground">{t("Boutique")}</Link>
                             <span className="mx-2">/</span>
-                            <Link to={`/boutique/${category?.id}`} className="hover:text-foreground">{category?.name}</Link>
+                            <Link to={`/boutique/${category?.id}`} className="hover:text-foreground">{t(category?.name)}</Link>
                         </nav>
                         <h1 className="font-display text-xl sm:text-2xl lg:text-3xl font-medium leading-tight tracking-tight">
                             {product.name}
@@ -259,7 +260,7 @@ export default function ProductDetail() {
                         {/* Colors — cliquer une couleur affiche la photo associée */}
                         {product.colors && (
                             <div className="mt-8">
-                                <p className="text-sm font-medium mb-3">Couleur : <span className="text-muted-foreground font-normal">{colorName(color) || "Sélectionnée"}</span></p>
+                                <p className="text-sm font-medium mb-3">{t("Couleur :")} <span className="text-muted-foreground font-normal">{colorName(color) || t("Sélectionnée")}</span></p>
                                 <div className="flex gap-2">
                                     {product.colors.map((c) => (
                                         <button
@@ -284,7 +285,7 @@ export default function ProductDetail() {
                         {/* Size — tailles du vendeur (ou S–XL vêtements) */}
                         {sizeOptions.length > 0 && (
                         <div className="mt-6">
-                            <p className="text-sm font-medium mb-3">Taille {size ? <span className="text-muted-foreground font-normal">· {size}</span> : <span className="text-muted-foreground font-normal">(optionnel)</span>}</p>
+                            <p className="text-sm font-medium mb-3">{t("Taille")} {size ? <span className="text-muted-foreground font-normal">· {size}</span> : <span className="text-muted-foreground font-normal">{t("(optionnel)")}</span>}</p>
                             <div className="flex gap-2 flex-wrap" data-testid="product-sizes">
                                 {sizeOptions.map((s) => (
                                     <button
@@ -312,14 +313,14 @@ export default function ProductDetail() {
                                 </button>
                             </div>
                             <Button onClick={handleAdd} size="lg" data-testid="add-to-cart-btn" className="sm:flex-1 h-14 bg-ink hover:bg-ink/90 text-ink-foreground rounded-full text-base font-semibold shadow-warm">
-                                <ShoppingBag className="!h-5 !w-5" /> Ajouter au panier
+                                <ShoppingBag className="!h-5 !w-5" /> {t("Ajouter au panier")}
                             </Button>
                             <Button onClick={handleBuyNow} size="lg" variant="outline" className="rounded-full h-12 border-primary text-primary hover:bg-primary hover:text-primary-foreground">
                                 <Heart className="h-4 w-4" />
                             </Button>
                         </div>
                         <Button onClick={handleBuyNow} variant="link" className="mt-3 text-primary self-start px-0">
-                            Acheter maintenant →
+                            {t("Acheter maintenant →")}
                         </Button>
 
                         <Separator className="my-8" />
@@ -342,21 +343,21 @@ export default function ProductDetail() {
                 <div className="mt-16 md:mt-24 max-w-3xl">
                     <Tabs defaultValue="desc">
                         <TabsList className="bg-transparent p-0 border-b rounded-none w-full justify-start gap-8">
-                            <TabsTrigger value="desc" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none px-0 pb-3">Description</TabsTrigger>
+                            <TabsTrigger value="desc" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none px-0 pb-3">{t("Description")}</TabsTrigger>
                             <TabsTrigger value="specs" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none px-0 pb-3">Caractéristiques</TabsTrigger>
-                            <TabsTrigger value="ship" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none px-0 pb-3">Livraison</TabsTrigger>
+                            <TabsTrigger value="ship" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none px-0 pb-3">{t("Livraison")}</TabsTrigger>
                         </TabsList>
                         <TabsContent value="desc" className="pt-6 text-muted-foreground leading-relaxed">
-                            <p>{product.description && product.description !== "Description à compléter." ? `${product.description} ` : ""}Conçu pour durer et vivre avec vous, ce produit combine matériaux nobles et savoir-faire moderne. Chaque détail a été pensé pour une expérience quotidienne agréable et sans friction.</p>
+                            <p>{product.description && product.description !== "Description à compléter." ? `${product.description} ` : ""}{t("Conçu pour durer et vivre avec vous, ce produit combine matériaux nobles et savoir-faire moderne. Chaque détail a été pensé pour une expérience quotidienne agréable et sans friction.")}</p>
                         </TabsContent>
                         <TabsContent value="specs" className="pt-6">
                             <dl className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                 {[
-                                    ["Référence", `SEC-${product.id.toUpperCase()}`],
+                                    [t("Référence"), `SEC-${product.id.toUpperCase()}`],
                                     ["Catégorie", category?.name],
-                                    ["Poids", "280 g"],
-                                    ["Origine", "Chine · Contrôle qualité UE"],
-                                    ["Matériaux", "Premium, hypoallergéniques"],
+                                    [t("Poids"), "280 g"],
+                                    [t("Origine"), t("Chine · Contrôle qualité UE")],
+                                    [t("Matériaux"), t("Premium, hypoallergéniques")],
                                 ].map(([k, v]) => (
                                     <div key={k} className="flex justify-between py-2 border-b">
                                         <dt className="text-muted-foreground">{k}</dt>
@@ -366,14 +367,14 @@ export default function ProductDetail() {
                             </dl>
                         </TabsContent>
                         <TabsContent value="ship" className="pt-6 text-muted-foreground leading-relaxed space-y-2">
-                            <p><span className="text-foreground font-medium">Livraison Chine → Dakar</span> en 10–20 jours.</p>
+                            <p><span className="text-foreground font-medium">{t("Livraison Chine → Dakar")}</span> {t("en 10–20 jours.")}</p>
                         </TabsContent>
                     </Tabs>
                 </div>
 
                 {/* Related */}
                 <div className="mt-20 md:mt-28">
-                    <h2 className="font-display text-2xl sm:text-3xl font-medium mb-10">Vous aimerez aussi</h2>
+                    <h2 className="font-display text-2xl sm:text-3xl font-medium mb-10">{t("Vous aimerez aussi")}</h2>
                     <div className="grid grid-cols-2 lg:grid-cols-4 gap-x-4 gap-y-10 md:gap-x-6">
                         {related.map((p, i) => (
                             <ProductCard key={p.id} product={p} index={i} />

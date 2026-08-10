@@ -7,6 +7,7 @@ import { useCart } from "@/context/CartContext";
 import { OrderSummary } from "@/components/OrderSummary";
 import { orderNo } from "@/lib/utils";
 import { toast } from "sonner";
+import { t } from "@/lib/locale";
 
 export default function PaymentSuccess() {
     const [searchParams] = useSearchParams();
@@ -29,7 +30,7 @@ export default function PaymentSuccess() {
                     setOrderId(res.order_id);
                     setState("paid");
                     clear();
-                    toast.success("Paiement confirmé ✦");
+                    toast.success(t("Paiement confirmé ✦"));
                     return;
                 }
                 if (["failed", "expired"].includes(res.payment_status)) {
@@ -52,8 +53,8 @@ export default function PaymentSuccess() {
             {state === "checking" && (
                 <>
                     <Loader2 className="h-12 w-12 mx-auto animate-spin text-primary mb-6" />
-                    <h1 className="font-display text-3xl mb-2">Vérification du paiement…</h1>
-                    <p className="text-muted-foreground text-sm">Un instant, nous confirmons votre transaction.</p>
+                    <h1 className="font-display text-3xl mb-2">{t("Vérification du paiement…")}</h1>
+                    <p className="text-muted-foreground text-sm">{t("Un instant, nous confirmons votre transaction.")}</p>
                 </>
             )}
             {state === "paid" && (
@@ -61,18 +62,18 @@ export default function PaymentSuccess() {
                     <div className="h-20 w-20 mx-auto rounded-full bg-success/10 text-success flex items-center justify-center mb-6">
                         <CheckCircle2 className="h-10 w-10" />
                     </div>
-                    <h1 className="font-display text-3xl mb-2" data-testid="stripe-order-confirmed-title">Votre commande est confirmée 🎉</h1>
-                    <p className="text-muted-foreground text-sm mb-2">Merci pour votre achat ! Livraison Chine → Dakar sous 10 à 20 jours.</p>
-                    {orderId && <p className="font-mono text-sm mb-6">N° de commande : <strong>{orderNo(orderId)}</strong></p>}
+                    <h1 className="font-display text-3xl mb-2" data-testid="stripe-order-confirmed-title">{t("Votre commande est confirmée 🎉")}</h1>
+                    <p className="text-muted-foreground text-sm mb-2">{t("Merci pour votre achat ! Livraison Chine → Dakar sous 10 à 20 jours.")}</p>
+                    {orderId && <p className="font-mono text-sm mb-6">{t("N° de commande :")} <strong>{orderNo(orderId)}</strong></p>}
                     {orderId && <OrderSummary orderId={orderId} />}
                     <div className="flex flex-col sm:flex-row gap-3 justify-center mt-8">
                         {orderId && (
                             <Button asChild className="bg-primary text-primary-foreground rounded-full h-11 px-6">
-                                <Link to={`/suivi/${orderId}`}>Suivre ma commande</Link>
+                                <Link to={`/suivi/${orderId}`}>{t("Suivre ma commande")}</Link>
                             </Button>
                         )}
                         <Button asChild variant="outline" className="rounded-full h-11 px-6">
-                            <Link to="/boutique">Continuer mes achats</Link>
+                            <Link to="/boutique">{t("Continuer mes achats")}</Link>
                         </Button>
                     </div>
                 </>
@@ -83,15 +84,15 @@ export default function PaymentSuccess() {
                         <XCircle className="h-10 w-10" />
                     </div>
                     <h1 className="font-display text-3xl mb-2">
-                        {state === "timeout" ? "Vérification en cours" : "Paiement non confirmé"}
+                        {state === "timeout" ? t("Vérification en cours") : t("Paiement non confirmé")}
                     </h1>
                     <p className="text-muted-foreground text-sm mb-6">
                         {state === "timeout"
-                            ? "Votre paiement est peut-être encore en traitement. Vérifiez vos emails ou réessayez."
-                            : "Le paiement n'a pas abouti. Vos articles sont toujours dans votre panier."}
+                            ? t("Votre paiement est peut-être encore en traitement. Vérifiez vos emails ou réessayez.")
+                            : t("Le paiement n'a pas abouti. Vos articles sont toujours dans votre panier.")}
                     </p>
                     <Button asChild className="bg-primary text-primary-foreground rounded-full h-11 px-6">
-                        <Link to="/commande">Réessayer le paiement</Link>
+                        <Link to="/commande">{t("Réessayer le paiement")}</Link>
                     </Button>
                 </>
             )}

@@ -13,6 +13,7 @@ import { categories, subcategoriesByCategory } from "@/data/products";
 import { useCatalog } from "@/context/CatalogContext";
 import { usePageTitle } from "@/hooks/usePageTitle";
 import { productMatchesQuery } from "@/lib/search";
+import { t, formatMoney } from "@/lib/locale";
 
 export default function Products() {
     const { categoryId } = useParams();
@@ -67,7 +68,7 @@ export default function Products() {
     const FiltersPanel = () => (
         <div className="space-y-8">
             <div>
-                <h4 className="font-display text-lg mb-4">Catégories</h4>
+                <h4 className="font-display text-lg mb-4">{t("Catégories")}</h4>
                 <div className="space-y-3">
                     {categories.map((c) => (
                         <div key={c.id} className="flex items-center gap-3">
@@ -79,7 +80,7 @@ export default function Products() {
                             <Label htmlFor={`c-${c.id}`} className="flex-1 flex items-center justify-between cursor-pointer font-normal">
                                 <span className="flex items-center gap-2">
                                     <i className={`fa-solid ${c.icon} text-primary text-xs w-4`} />
-                                    {c.name}
+                                    {t(c.name)}
                                 </span>
                                 <span className="text-xs text-muted-foreground">{c.count.toLocaleString("fr-FR")}</span>
                             </Label>
@@ -89,7 +90,7 @@ export default function Products() {
             </div>
 
             <div>
-                <h4 className="font-display text-lg mb-4">Prix</h4>
+                <h4 className="font-display text-lg mb-4">{t("Prix")}</h4>
                 <Slider
                     value={priceRange}
                     onValueChange={setPriceRange}
@@ -99,8 +100,8 @@ export default function Products() {
                     className="mb-3"
                 />
                 <div className="flex justify-between text-sm text-muted-foreground">
-                    <span>{new Intl.NumberFormat("fr-FR").format(priceRange[0])} F</span>
-                    <span>{priceRange[1] >= 200000 ? "200 000 F et +" : `${new Intl.NumberFormat("fr-FR").format(priceRange[1])} F`}</span>
+                    <span>{formatMoney(priceRange[0])}</span>
+                    <span>{priceRange[1] >= 200000 ? `${formatMoney(200000)} ${t("et +")}` : formatMoney(priceRange[1])}</span>
                 </div>
             </div>
         </div>
@@ -111,45 +112,45 @@ export default function Products() {
             {/* Breadcrumb + Title */}
             <div className="mb-8 md:mb-12">
                 <nav className="text-xs text-muted-foreground mb-3">
-                    <Link to="/" className="hover:text-foreground">Accueil</Link>
+                    <Link to="/" className="hover:text-foreground">{t("Accueil")}</Link>
                     <span className="mx-2">/</span>
-                    <Link to="/boutique" className="hover:text-foreground">Boutique</Link>
+                    <Link to="/boutique" className="hover:text-foreground">{t("Boutique")}</Link>
                     {activeCategory && (
                         <>
                             <span className="mx-2">/</span>
-                            <span className="text-foreground">{activeCategory.name}</span>
+                            <span className="text-foreground">{t(activeCategory.name)}</span>
                         </>
                     )}
                 </nav>
                 <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
                     <div>
                         <h1 className="font-display text-2xl sm:text-3xl lg:text-4xl font-medium tracking-tight">
-                            {activeSub ? activeSub.name : activeCategory ? activeCategory.name : searchQuery ? `« ${searchQuery} »` : "Toute la boutique"}
+                            {activeSub ? t(activeSub.name) : activeCategory ? t(activeCategory.name) : searchQuery ? `« ${searchQuery} »` : t("Toute la boutique")}
                         </h1>
                         <p className="text-muted-foreground mt-2">
-                            {filtered.length} produit{filtered.length > 1 ? "s" : ""} · trié{filtered.length > 1 ? "s" : ""} pour vous
+                            {filtered.length} {filtered.length > 1 ? t("produits") : t("produit")} · {filtered.length > 1 ? t("triés pour vous") : t("trié pour vous")}
                         </p>
                     </div>
                     <div className="flex items-center gap-2">
                         <Sheet>
                             <SheetTrigger asChild>
                                 <Button variant="outline" className="lg:hidden rounded-full">
-                                    <SlidersHorizontal className="h-4 w-4 mr-2" /> Filtres
+                                    <SlidersHorizontal className="h-4 w-4 mr-2" /> {t("Filtres")}
                                 </Button>
                             </SheetTrigger>
                             <SheetContent side="left" className="w-[300px] overflow-y-auto">
-                                <SheetHeader><SheetTitle>Filtres</SheetTitle></SheetHeader>
+                                <SheetHeader><SheetTitle>{t("Filtres")}</SheetTitle></SheetHeader>
                                 <div className="mt-6"><FiltersPanel /></div>
                             </SheetContent>
                         </Sheet>
                         <Select value={sortBy} onValueChange={setSortBy}>
                             <SelectTrigger className="w-[200px] rounded-full">
-                                <SelectValue placeholder="Trier par" />
+                                <SelectValue placeholder={t("Trier par")} />
                             </SelectTrigger>
                             <SelectContent>
-                                <SelectItem value="pertinence">Pertinence</SelectItem>
-                                <SelectItem value="prix-asc">Prix croissant</SelectItem>
-                                <SelectItem value="prix-desc">Prix décroissant</SelectItem>
+                                <SelectItem value="pertinence">{t("Pertinence")}</SelectItem>
+                                <SelectItem value="prix-asc">{t("Prix croissant")}</SelectItem>
+                                <SelectItem value="prix-desc">{t("Prix décroissant")}</SelectItem>
                             </SelectContent>
                         </Select>
                     </div>
@@ -164,7 +165,7 @@ export default function Products() {
                                 !activeSub ? "bg-primary text-primary-foreground border-primary" : "bg-card border-border text-foreground/70 hover:border-primary/40 hover:text-foreground"
                             }`}
                         >
-                            Tout
+                            {t("Tout")}
                         </Link>
                         {categorySubs.map((s) => (
                             <Link
@@ -175,7 +176,7 @@ export default function Products() {
                                     activeSub?.id === s.id ? "bg-primary text-primary-foreground border-primary" : "bg-card border-border text-foreground/70 hover:border-primary/40 hover:text-foreground"
                                 }`}
                             >
-                                {s.name}
+                                {t(s.name)}
                             </Link>
                         ))}
                     </div>
@@ -187,7 +188,7 @@ export default function Products() {
                             const c = categories.find((x) => x.id === id);
                             return (
                                 <Badge key={id} variant="secondary" className="rounded-full px-3 py-1 gap-1">
-                                    {c?.name}
+                                    {t(c?.name)}
                                     <button onClick={() => toggleCat(id)}><X className="h-3 w-3" /></button>
                                 </Badge>
                             );
@@ -198,7 +199,7 @@ export default function Products() {
                                 <button onClick={() => setPriceRange([0, 200000])}><X className="h-3 w-3" /></button>
                             </Badge>
                         )}
-                        <button onClick={() => { setSelectedCats([]); setPriceRange([0, 200000]); }} className="text-xs text-primary hover:underline ml-2">Effacer tout</button>
+                        <button onClick={() => { setSelectedCats([]); setPriceRange([0, 200000]); }} className="text-xs text-primary hover:underline ml-2">{t("Effacer tout")}</button>
                     </div>
                 )}
             </div>
@@ -209,7 +210,7 @@ export default function Products() {
                     <div className="sticky top-24">
                         <div className="flex items-center gap-2 mb-6">
                             <Filter className="h-4 w-4" />
-                            <h3 className="font-medium">Filtres</h3>
+                            <h3 className="font-medium">{t("Filtres")}</h3>
                         </div>
                         <FiltersPanel />
                     </div>
@@ -219,10 +220,10 @@ export default function Products() {
                     {filtered.length === 0 ? (
                         <div className="text-center py-24 border-2 border-dashed border-border rounded-2xl">
                             <div className="text-5xl mb-4 opacity-40">🌿</div>
-                            <h3 className="font-display text-xl mb-2">Aucun produit trouvé</h3>
-                            <p className="text-muted-foreground text-sm mb-6">Essayez d&apos;ajuster vos filtres.</p>
+                            <h3 className="font-display text-xl mb-2">{t("Aucun produit trouvé")}</h3>
+                            <p className="text-muted-foreground text-sm mb-6">{t("Essayez d'ajuster vos filtres.")}</p>
                             <Button onClick={() => { setSelectedCats([]); setPriceRange([0, 200000]); }} variant="outline" className="rounded-full">
-                                Réinitialiser les filtres
+                                {t("Réinitialiser les filtres")}
                             </Button>
                         </div>
                     ) : (

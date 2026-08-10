@@ -91,6 +91,10 @@ api_router.include_router(tracking_router)
 from stripe_router import router as stripe_router
 api_router.include_router(stripe_router)
 
+# Géolocalisation IP -> langue + devise (Europe EUR, Afrique FCFA, USA USD)
+from geo_router import router as geo_router
+api_router.include_router(geo_router)
+
 # ---- Seller orders (real customer orders) ---------------------------------
 from orders_router import router as orders_router
 api_router.include_router(orders_router)

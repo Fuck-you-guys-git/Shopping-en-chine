@@ -9,6 +9,7 @@ import { useCatalog } from "@/context/CatalogContext";
 import { useNavigate } from "react-router-dom";
 import { useState } from "react";
 import { usePageTitle } from "@/hooks/usePageTitle";
+import { t } from "@/lib/locale";
 
 const benefits = [
     { icon: Truck, title: "Livraison Chine → Dakar", desc: "En 10–20 jours" },
@@ -36,10 +37,10 @@ export default function Home() {
                         <div className="max-w-2xl">
                             <h1 className="font-display text-2xl sm:text-3xl md:text-4xl font-medium leading-tight tracking-tight">
                                 Shopping en Chine
-                                <span className="block italic text-primary text-xl sm:text-2xl md:text-3xl mt-1">Tout, plus simple.</span>
+                                <span className="block italic text-primary text-xl sm:text-2xl md:text-3xl mt-1">{t("Tout, plus simple.")}</span>
                             </h1>
                             <p className="mt-2 text-sm md:text-base text-muted-foreground">
-                                Livraison Chine → Dakar en 10–20 jours · Paiement Mobile Money
+                                {t("Livraison Chine → Dakar en 10–20 jours · Paiement Mobile Money")}
                             </p>
                         </div>
                         <form onSubmit={onSearch} className="relative w-full md:w-96 shrink-0">
@@ -47,11 +48,11 @@ export default function Home() {
                             <Input
                                 value={query}
                                 onChange={(e) => setQuery(e.target.value)}
-                                placeholder="Que cherchez-vous ?"
+                                placeholder={t("Que cherchez-vous ?")}
                                 className="pl-11 h-12 rounded-full bg-background border-border shadow-soft"
                             />
                             <Button type="submit" size="sm" className="absolute right-1.5 top-1/2 -translate-y-1/2 rounded-full h-9 bg-primary hover:bg-primary/90">
-                                Chercher
+                                {t("Chercher")}
                             </Button>
                         </form>
                     </div>
@@ -62,7 +63,7 @@ export default function Home() {
                             to="/boutique"
                             className="shrink-0 px-4 py-2 rounded-full bg-ink text-ink-foreground text-sm font-medium hover:opacity-90"
                         >
-                            Tout voir
+                            {t("Tout voir")}
                         </Link>
                         {categories.map((c) => (
                             <Link
@@ -71,7 +72,7 @@ export default function Home() {
                                 className="shrink-0 px-4 py-2 rounded-full bg-background border border-border text-sm font-medium text-foreground hover:border-primary hover:text-primary transition-colors flex items-center gap-2"
                             >
                                 <i className={`fa-solid ${c.icon} text-xs text-primary`} />
-                                {c.name}
+                                {t(c.name)}
                             </Link>
                         ))}
                     </div>
@@ -82,10 +83,10 @@ export default function Home() {
             <section className="container mx-auto px-5 pt-8 pb-6">
                 <div className="flex items-baseline justify-between gap-4 mb-6">
                     <h2 className="font-display text-2xl sm:text-3xl font-medium tracking-tight">
-                        Produits populaires
+                        {t("Produits populaires")}
                     </h2>
                     <Button asChild variant="ghost" size="sm" className="text-primary">
-                        <Link to="/boutique">Voir tout <ArrowRight className="ml-1 h-4 w-4" /></Link>
+                        <Link to="/boutique">{t("Voir tout")} <ArrowRight className="ml-1 h-4 w-4" /></Link>
                     </Button>
                 </div>
                 <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-x-4 gap-y-8 md:gap-x-6 md:gap-y-10">
@@ -100,16 +101,16 @@ export default function Home() {
                 <div className="relative overflow-hidden rounded-2xl bg-ink text-ink-foreground p-6 md:p-10 flex flex-col md:flex-row items-center gap-6">
                     <div className="absolute -top-16 -right-10 h-48 w-48 rounded-full bg-primary/30 blur-3xl" />
                     <Badge className="bg-primary text-primary-foreground border-0 rounded-full px-3 py-1 hover:bg-primary shrink-0">
-                        ⭐ Offre limitée
+                        {t("⭐ Offre limitée")}
                     </Badge>
                     <div className="flex-1 text-center md:text-left">
                         <h3 className="font-display text-2xl md:text-3xl leading-tight">
-                            −30% sur l&apos;Électronique <span className="italic text-primary-glow">jusqu&apos;à dimanche</span>
+                            {t("−30% sur l'Électronique")} <span className="italic text-primary-glow">{t("jusqu'à dimanche")}</span>
                         </h3>
-                        <p className="text-sm text-ink-foreground/70 mt-1">Casques, gadgets, accessoires connectés.</p>
+                        <p className="text-sm text-ink-foreground/70 mt-1">{t("Casques, gadgets, accessoires connectés.")}</p>
                     </div>
                     <Button asChild size="lg" className="bg-primary hover:bg-primary/90 text-primary-foreground rounded-full shrink-0">
-                        <Link to="/boutique/tech">Profiter <ArrowRight className="ml-1 h-4 w-4" /></Link>
+                        <Link to="/boutique/tech">{t("Profiter")} <ArrowRight className="ml-1 h-4 w-4" /></Link>
                     </Button>
                 </div>
             </section>
@@ -118,7 +119,7 @@ export default function Home() {
             <section className="container mx-auto px-5 py-10">
                 <div className="flex items-baseline justify-between gap-4 mb-6">
                     <h2 className="font-display text-2xl sm:text-3xl font-medium tracking-tight">
-                        Toutes les catégories
+                        {t("Toutes les catégories")}
                     </h2>
                 </div>
                 <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 md:gap-4">
@@ -141,7 +142,7 @@ export default function Home() {
                                     <span>{cat.count.toLocaleString("fr-FR")}</span>
                                 </div>
                                 <h3 className="font-display text-lg md:text-xl font-medium leading-tight mt-1">
-                                    {cat.name}
+                                    {t(cat.name)}
                                 </h3>
                             </div>
                         </Link>
@@ -153,10 +154,10 @@ export default function Home() {
             <section className="container mx-auto px-5 py-10">
                 <div className="flex items-baseline justify-between gap-4 mb-6">
                     <h2 className="font-display text-2xl sm:text-3xl font-medium tracking-tight">
-                        Nouveautés de la semaine
+                        {t("Nouveautés de la semaine")}
                     </h2>
                     <Button asChild variant="ghost" size="sm" className="text-primary">
-                        <Link to="/boutique">Voir tout <ArrowRight className="ml-1 h-4 w-4" /></Link>
+                        <Link to="/boutique">{t("Voir tout")} <ArrowRight className="ml-1 h-4 w-4" /></Link>
                     </Button>
                 </div>
                 <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-x-4 gap-y-8 md:gap-x-6 md:gap-y-10">
@@ -176,8 +177,8 @@ export default function Home() {
                                     <b.icon className="h-4 w-4" />
                                 </div>
                                 <div>
-                                    <h3 className="font-medium text-sm">{b.title}</h3>
-                                    <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">{b.desc}</p>
+                                    <h3 className="font-medium text-sm">{t(b.title)}</h3>
+                                    <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">{t(b.desc)}</p>
                                 </div>
                             </div>
                         ))}

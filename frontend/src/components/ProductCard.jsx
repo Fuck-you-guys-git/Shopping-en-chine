@@ -3,14 +3,10 @@ import { Heart, ShoppingBag } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useCart } from "@/context/CartContext";
 import { toast } from "sonner";
+import { formatMoney, t } from "@/lib/locale";
 
-export const formatPrice = (v) => {
-    // Prices are in CFA (XOF). Format: "12 500 F CFA"
-    const formatted = new Intl.NumberFormat("fr-FR", {
-        maximumFractionDigits: 0,
-    }).format(Math.round(v));
-    return `${formatted} F`;
-};
+// Formatage des prix : convertit F CFA -> devise d'affichage (FCFA / € / $)
+export const formatPrice = (v) => formatMoney(v);
 
 export const ProductCard = ({ product, index = 0 }) => {
     const { addItem } = useCart();
@@ -19,7 +15,7 @@ export const ProductCard = ({ product, index = 0 }) => {
         e.preventDefault();
         e.stopPropagation();
         addItem(product);
-        toast.success("Ajouté au panier", { description: product.name });
+        toast.success(t("Ajouté au panier"), { description: product.name });
     };
 
     return (
@@ -41,7 +37,7 @@ export const ProductCard = ({ product, index = 0 }) => {
                     </span>
                 )}
                 <div
-                    onClick={(e) => { e.preventDefault(); toast("Ajouté aux favoris ♥"); }}
+                    onClick={(e) => { e.preventDefault(); toast(t("Ajouté aux favoris ♥")); }}
                     className="absolute top-3 right-3 h-8 w-8 rounded-full bg-background/90 backdrop-blur flex items-center justify-center text-foreground/70 hover:text-primary transition-colors cursor-pointer"
                     aria-label="Ajouter aux favoris"
                 >
@@ -68,7 +64,7 @@ export const ProductCard = ({ product, index = 0 }) => {
                     data-testid="product-card-add-btn"
                     className="mt-3 w-full bg-ink text-ink-foreground hover:bg-ink/90 rounded-full h-10"
                 >
-                    <ShoppingBag className="h-4 w-4" /> Ajouter au panier
+                    <ShoppingBag className="h-4 w-4" /> {t("Ajouter au panier")}
                 </Button>
             </div>
         </Link>

@@ -22,6 +22,7 @@ import About from "@/pages/About";
 import Wholesale from "@/pages/Wholesale";
 import { WhatsAppButton } from "@/components/WhatsAppButton";
 import ScrollToTop from "@/components/ScrollToTop";
+import { LocaleProvider, useLocale } from "@/context/LocaleContext";
 import SellerLayout from "@/pages/seller/SellerLayout";
 import Dashboard from "@/pages/seller/Dashboard";
 import Orders from "@/pages/seller/Orders";
@@ -58,6 +59,7 @@ function PaymentReturnRedirect() {
 
 function Shell({ children }) {
     const { pathname } = useLocation();
+    const { lang, currency } = useLocale();
     const isSeller = pathname.startsWith("/vendeur") || pathname.startsWith("/admin");
     // Verrou de lancement : le site public affiche « Bientôt disponible »
     // tant que le mot de passe n'a pas été saisi. L'espace vendeur reste ouvert.
@@ -69,7 +71,7 @@ function Shell({ children }) {
         <>
             <PaymentReturnRedirect />
             {!isSeller && <Navbar />}
-            <main key={pathname} className="page-fade">{children}</main>
+            <main key={`${pathname}-${lang}-${currency}`} className="page-fade">{children}</main>
             {!isSeller && <Footer />}
             {!isSeller && <CartDrawer />}
             {!isSeller && <WhatsAppButton />}
@@ -81,6 +83,7 @@ function App() {
     return (
         <div className="App min-h-screen bg-background text-foreground">
             <BrowserRouter>
+                <LocaleProvider>
                 <SellerAuthProvider>
                     <CatalogProvider>
                     <CartProvider>
@@ -143,6 +146,7 @@ function App() {
                     </CartProvider>
                     </CatalogProvider>
                 </SellerAuthProvider>
+                </LocaleProvider>
             </BrowserRouter>
         </div>
     );

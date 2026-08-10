@@ -7,6 +7,9 @@ import { Sheet, SheetContent, SheetTrigger, SheetTitle } from "@/components/ui/s
 import { Logo } from "@/components/Logo";
 import { useCart } from "@/context/CartContext";
 import { categories } from "@/data/products";
+import { t } from "@/lib/locale";
+import { LocaleSwitcher } from "@/components/LocaleSwitcher";
+import { useLocale } from "@/context/LocaleContext";
 
 const navLinks = [
     { to: "/", label: "Accueil" },
@@ -22,6 +25,7 @@ const navLinks = [
 
 export const Navbar = () => {
     const { count, setDrawerOpen } = useCart();
+    useLocale(); // re-render au changement de langue/devise
     const [scrolled, setScrolled] = useState(false);
     const [query, setQuery] = useState("");
     const [searchOpen, setSearchOpen] = useState(false);
@@ -48,14 +52,14 @@ export const Navbar = () => {
                 <div className="container mx-auto flex items-center justify-between py-2 px-5">
                     <p className="hidden sm:block opacity-80">
                         <i className="fa-solid fa-truck-fast mr-2" />
-                        Livraison Chine → Dakar en 10–20 jours
+                        {t("Livraison Chine → Dakar en 10–20 jours")}
                     </p>
-                    <div className="flex items-center gap-4 opacity-80 mx-auto sm:mx-0">
-                        <span>FR · F CFA</span>
-                        <span className="hidden sm:inline">Service client 7j/7</span>
-                        <Link to="/admin" className="hidden sm:inline-flex items-center gap-1.5 text-ink-foreground hover:text-primary transition-colors font-medium">
+                    <div className="flex items-center gap-4 opacity-90 mx-auto sm:mx-0">
+                        <LocaleSwitcher />
+                        <span className="hidden sm:inline opacity-80">{t("Service client 7j/7")}</span>
+                        <Link to="/admin" className="hidden sm:inline-flex items-center gap-1.5 text-ink-foreground hover:text-primary transition-colors font-medium opacity-80">
                             <i className="fa-solid fa-store text-[10px]" />
-                            Espace vendeur
+                            {t("Espace vendeur")}
                         </Link>
                     </div>
                 </div>
@@ -105,7 +109,7 @@ export const Navbar = () => {
                                             >
                                                 <span className="flex items-center gap-3">
                                                     <i className={`fa-solid ${l.icon} text-primary text-xs w-4 text-center shrink-0`} />
-                                                    <span className="leading-none">{l.label}</span>
+                                                    <span className="leading-none">{t(l.label)}</span>
                                                 </span>
                                                 <i className="fa-solid fa-chevron-right text-xs opacity-40" />
                                             </NavLink>
@@ -119,7 +123,7 @@ export const Navbar = () => {
                                             className="flex items-center justify-center gap-2 w-full h-11 rounded-full bg-ink text-ink-foreground text-sm font-medium hover:bg-ink/90 transition-colors"
                                         >
                                             <i className="fa-solid fa-truck-fast text-xs" />
-                                            Suivi de commande
+                                            {t("Suivi de commande")}
                                         </Link>
                                     </div>
                                 </SheetContent>
@@ -145,7 +149,7 @@ export const Navbar = () => {
                                 >
                                     {({ isActive }) => (
                                         <>
-                                            {l.label}
+                                            {t(l.label)}
                                             {isActive && (
                                                 <span className="absolute left-1/2 -translate-x-1/2 -bottom-0.5 h-1 w-1 rounded-full bg-primary" />
                                             )}
@@ -162,7 +166,7 @@ export const Navbar = () => {
                                 <Input
                                     value={query}
                                     onChange={(e) => setQuery(e.target.value)}
-                                    placeholder="Rechercher..."
+                                    placeholder={t("Rechercher...")}
                                     className="pl-9 h-9 w-[220px] bg-muted/50 border-transparent focus-visible:bg-background focus-visible:border-border"
                                 />
                             </form>
@@ -201,7 +205,7 @@ export const Navbar = () => {
                                     autoFocus
                                     value={query}
                                     onChange={(e) => setQuery(e.target.value)}
-                                    placeholder="Que cherchez-vous ?"
+                                    placeholder={t("Que cherchez-vous ?")}
                                     className="pl-9 pr-9 h-10 bg-muted/50"
                                 />
                                 <button type="button" onClick={() => setSearchOpen(false)} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground">

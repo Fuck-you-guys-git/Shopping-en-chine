@@ -10,6 +10,7 @@ import { Separator } from "@/components/ui/separator";
 import { formatPrice } from "@/components/ProductCard";
 import { trackingAPI } from "@/lib/api";
 import { orderNo } from "@/lib/utils";
+import { t, getLocale } from "@/lib/locale";
 
 const STEP_ICONS = {
     ordered: Package,
@@ -22,7 +23,8 @@ const STEP_ICONS = {
 const formatDate = (iso) => {
     if (!iso) return null;
     try {
-        return new Date(iso).toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" });
+        const loc = getLocale().lang === "en" ? "en-US" : "fr-FR";
+        return new Date(iso).toLocaleDateString(loc, { day: "numeric", month: "long", year: "numeric" });
     } catch {
         return null;
     }
@@ -52,7 +54,7 @@ export default function TrackOrder() {
             const res = await trackingAPI.track(id.trim().replace(/^#/, ""));
             setData(res);
         } catch (err) {
-            setError(err.response?.data?.detail || "Commande introuvable. Vérifiez votre numéro de commande.");
+            setError(err.response?.data?.detail || t("Commande introuvable. Vérifiez votre numéro de commande."));
         } finally {
             setLoading(false);
         }
@@ -81,11 +83,10 @@ export default function TrackOrder() {
                         <Truck className="h-7 w-7" />
                     </div>
                     <h1 className="font-display text-4xl sm:text-5xl font-medium tracking-tight mb-3">
-                        Où est mon colis ?
+                        {t("Où est mon colis ?")}
                     </h1>
                     <p className="text-muted-foreground text-sm md:text-base">
-                        Entrez votre numéro de commande (reçu après le paiement) pour suivre
-                        votre colis de la Chine jusqu&apos;à Dakar.
+                        {t("Entrez votre numéro de commande (reçu après le paiement) pour suivre votre colis de la Chine jusqu'à Dakar.")}
                     </p>
                 </div>
 
@@ -106,7 +107,7 @@ export default function TrackOrder() {
                         data-testid="tracking-submit-btn"
                         className="rounded-full h-12 px-7 bg-ink text-ink-foreground hover:bg-ink/90"
                     >
-                        {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Suivre"}
+                        {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : t("Suivre")}
                     </Button>
                 </form>
 
@@ -120,7 +121,7 @@ export default function TrackOrder() {
                         <div>
                             <p className="font-medium">{error}</p>
                             <p className="text-xs mt-1 opacity-80">
-                                Le numéro figure sur l&apos;écran de confirmation et commence par « ord_ ».
+                                {t("Le numéro figure sur l'écran de confirmation et commence par « ord_ ».")}
                             </p>
                         </div>
                     </div>
@@ -133,14 +134,14 @@ export default function TrackOrder() {
                         <div className="bg-card rounded-2xl shadow-card p-6">
                             <div className="flex flex-wrap items-center justify-between gap-3 mb-1">
                                 <p className="font-mono text-sm text-muted-foreground" data-testid="tracking-order-id">
-                                    Commande {orderNo(data.order_id)}
+                                    {t("Commande")} {orderNo(data.order_id)}
                                 </p>
                                 <span className={`text-xs font-medium px-2.5 py-1 rounded-full ${badge.cls}`} data-testid="tracking-payment-badge">
-                                    {badge.label}
+                                    {t(badge.label)}
                                 </span>
                             </div>
                             <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
-                                <span>Passée le {formatDate(data.created_at)}</span>
+                                <span>{t("Passée le")} {formatDate(data.created_at)}</span>
                                 {data.city && (
                                     <span className="inline-flex items-center gap-1">
                                         <MapPin className="h-3 w-3" /> {data.city}
@@ -150,9 +151,9 @@ export default function TrackOrder() {
 
                             {!data.delivered && (
                                 <div className="mt-4 p-3 rounded-xl bg-primary/5 border border-primary/15 text-sm" data-testid="tracking-eta">
-                                    <span className="text-muted-foreground">Livraison estimée : </span>
+                                    <span className="text-muted-foreground">{t("Livraison estimée :")} </span>
                                     <span className="font-medium text-foreground">
-                                        entre le {formatDate(data.eta_start)} et le {formatDate(data.eta_end)}
+                                        {t("entre le")} {formatDate(data.eta_start)} {t("et le")} {formatDate(data.eta_end)}
                                     </span>
                                 </div>
                             )}
@@ -160,7 +161,7 @@ export default function TrackOrder() {
 
                         {/* Timeline */}
                         <div className="bg-card rounded-2xl shadow-card p-6" data-testid="tracking-timeline">
-                            <h2 className="text-base md:text-lg font-medium mb-6">Suivi du colis</h2>
+                            <h2 className="text-base md:text-lg font-medium mb-6">{t("Suivi du colis")}</h2>
                             <ol className="relative space-y-0">
                                 {data.steps.map((s, i) => {
                                     const Icon = STEP_ICONS[s.code] || Package;
@@ -188,10 +189,10 @@ export default function TrackOrder() {
                                             </div>
                                             <div className={`pb-7 ${isLast ? "pb-0" : ""}`}>
                                                 <p className={`text-sm font-medium leading-10 ${done ? "text-foreground" : "text-muted-foreground"}`}>
-                                                    {s.label}
+                                                    {t(s.label)}
                                                     {current && !data.delivered && (
                                                         <span className="ml-2 text-[10px] uppercase tracking-widest bg-primary/10 text-primary px-2 py-0.5 rounded-full align-middle">
-                                                            En cours
+                                                            {t("En cours")}
                                                         </span>
                                                     )}
                                                 </p>
@@ -209,7 +210,7 @@ export default function TrackOrder() {
                         {data.items?.length > 0 && (
                             <div className="bg-card rounded-2xl shadow-card p-6" data-testid="tracking-items">
                                 <h2 className="text-base md:text-lg font-medium mb-4">
-                                    Articles ({data.items.length})
+                                    {t("Articles")} ({data.items.length})
                                 </h2>
                                 <div className="space-y-3">
                                     {data.items.map((it, i) => (
@@ -223,7 +224,7 @@ export default function TrackOrder() {
                                 </div>
                                 <Separator className="my-4" />
                                 <div className="flex justify-between items-baseline">
-                                    <span className="font-medium">Total</span>
+                                    <span className="font-medium">{t("Total")}</span>
                                     <span className="font-display text-xl font-semibold">
                                         {formatPrice(data.amount)}
                                     </span>
@@ -237,8 +238,8 @@ export default function TrackOrder() {
                 {!data && !error && !loading && (
                     <div className="text-center text-sm text-muted-foreground">
                         <p>
-                            Vous n&apos;avez pas encore commandé ?{" "}
-                            <Link to="/boutique" className="text-primary hover:underline">Découvrir la boutique</Link>
+                            {t("Vous n'avez pas encore commandé ?")}{" "}
+                            <Link to="/boutique" className="text-primary hover:underline">{t("Découvrir la boutique")}</Link>
                         </p>
                     </div>
                 )}
