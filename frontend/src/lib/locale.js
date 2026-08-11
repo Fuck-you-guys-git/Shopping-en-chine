@@ -288,6 +288,34 @@ const EN = {
     "Continuer": "Continue",
     "Veuillez remplir tous les champs requis": "Please fill in all required fields",
     "Mode de livraison": "Shipping method",
+    // Options de livraison (étape 2)
+    "Livraison économique Chine-Dakar": "Economy shipping China-Dakar",
+    "Livraison express Chine-Dakar": "Express shipping China-Dakar",
+    "15 à 20 jours ouvrés": "15 to 20 business days",
+    "5 à 7 jours ouvrés": "5 to 7 business days",
+    "Une option plus économique, spécialement conçue pour les clients ayant des colis de poids important, afin de bénéficier de frais de livraison plus avantageux.":
+        "A more economical option, specially designed for customers with heavy packages, to benefit from lower shipping costs.",
+    "Pour recevoir votre commande plus rapidement, choisissez cette option express.":
+        "To receive your order faster, choose this express option.",
+    "Le délai estimatif est de 15 à 20 jours ouvrés.": "The estimated delivery time is 15 to 20 business days.",
+    "Le délai estimatif est de 5 à 7 jours ouvrés après l'expédition.": "The estimated delivery time is 5 to 7 business days after shipment.",
+    "Après votre commande, votre colis est pesé afin de déterminer vos frais de livraison.":
+        "After your order, your package is weighed to determine your shipping costs.",
+    "Le calcul est simple :": "The calculation is simple:",
+    "Poids du colis (en kg)": "Package weight (in kg)",
+    "Le montant obtenu correspond à vos frais de livraison jusqu'à Dakar.": "The resulting amount is your shipping cost to Dakar.",
+    "Une fois votre colis prêt à être expédié, nous vous communiquerons le montant exact de vos frais de livraison.":
+        "Once your package is ready to ship, we will let you know the exact amount of your shipping costs.",
+    "Vous avez le choix :": "You can choose to:",
+    "payer vos frais de livraison avant l'expédition, ou": "pay your shipping costs before shipment, or",
+    "payer à l'arrivée de votre colis à Dakar.": "pay when your package arrives in Dakar.",
+    "Les frais de livraison sont calculés uniquement lorsque le colis est pesé et prêt à être expédié.":
+        "Shipping costs are calculated only when the package is weighed and ready to ship.",
+    "Et une fois à Dakar le livreur vous contactera pour la réception de votre colis.":
+        "Once in Dakar, the courier will contact you to deliver your package.",
+    "Les frais de livraison à domicile sont à la charge du client. Ils sont fixés à":
+        "Home delivery fees are paid by the customer. They are fixed at",
+    "quel que soit le lieu de livraison à Dakar.": "regardless of the delivery location in Dakar.",
     "Livraison standard · Chine → Dakar": "Standard delivery · China → Dakar",
     "Choisissez votre moyen de paiement": "Choose your payment method",
     "Carte bancaire": "Card",

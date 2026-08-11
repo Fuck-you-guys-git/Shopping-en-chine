@@ -1,13 +1,12 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import {
-    Check, CreditCard, Truck, ShieldCheck, ArrowLeft, Phone, Loader2, XCircle, AlertTriangle,
+    Check, CreditCard, ShieldCheck, ArrowLeft, Phone, Loader2, XCircle, AlertTriangle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { useCart } from "@/context/CartContext";
 import { formatPrice } from "@/components/ProductCard";
 import { toast } from "sonner";
@@ -15,6 +14,7 @@ import { paxityAPI, stripeAPI } from "@/lib/api";
 import { paxityDirectPayin, paxityDirectAvailable } from "@/lib/paxityDirect";
 import { OrderSummary } from "@/components/OrderSummary";
 import { StripeEmbedded } from "@/components/StripeEmbedded";
+import { DeliveryOptions } from "@/components/DeliveryOptions";
 import { orderNo } from "@/lib/utils";
 import { t, getLocale, formatEquivalents } from "@/lib/locale";
 
@@ -35,6 +35,7 @@ export default function Checkout() {
     const { items, subtotal, clear } = useCart();
     const navigate = useNavigate();
     const [step, setStep] = useState(1);
+    const [deliveryMode, setDeliveryMode] = useState("standard");
     const shipping = 0;
     const total = subtotal + shipping;
 
@@ -175,6 +176,7 @@ export default function Checkout() {
                 origin_url: window.location.origin,
                 locale: getLocale().lang, // formulaire Stripe en fr ou en
                 currency: getLocale().currency, // le client paie dans SA devise (XOF / EUR / USD)
+                delivery_mode: deliveryMode,
                 customer: {
                     name: `${buyer.firstName} ${buyer.lastName}`,
                     email: buyer.email,
@@ -246,6 +248,7 @@ export default function Checkout() {
                 payment_method: paymentMethod,
                 otp_code: otp || undefined,
                 description: `Commande Shopping en Chine · ${items.length} article(s)`,
+                delivery_mode: deliveryMode,
                 customer: {
                     name: `${buyer.firstName} ${buyer.lastName}`,
                     email: buyer.email,
@@ -526,16 +529,7 @@ export default function Checkout() {
                     {step === 2 && (
                         <div className="space-y-5 bg-card p-6 md:p-8 rounded-2xl shadow-card">
                             <h2 className="font-display text-2xl">{t("Mode de livraison")}</h2>
-                            <RadioGroup defaultValue="std" className="space-y-3">
-                                <label className="flex items-center gap-4 p-4 border rounded-xl cursor-pointer hover:border-primary transition-colors">
-                                    <RadioGroupItem value="std" />
-                                    <Truck className="h-5 w-5 text-primary" />
-                                    <div className="flex-1">
-                                        <p className="font-medium">{t("Livraison standard · Chine → Dakar")}</p>
-                                        <p className="text-xs text-muted-foreground">{t("10–20 jours")}</p>
-                                    </div>
-                                </label>
-                            </RadioGroup>
+                            <DeliveryOptions value={deliveryMode} onChange={setDeliveryMode} />
                             <div className="flex gap-2 pt-2">
                                 <Button type="button" variant="outline" onClick={() => setStep(1)} className="rounded-full h-11 px-6">{t("Retour")}</Button>
                                 <Button type="button" onClick={() => setStep(3)} className="bg-ink text-ink-foreground hover:bg-ink/90 rounded-full h-11 px-8">{t("Continuer")}</Button>

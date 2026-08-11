@@ -58,6 +58,7 @@ class StripeCheckoutRequest(BaseModel):
     items: list[StripeItem] = Field(min_length=1)
     locale: Optional[str] = "fr"  # langue du formulaire Stripe (fr/en)
     currency: Optional[str] = "XOF"  # devise de PAIEMENT du client : XOF, EUR ou USD
+    delivery_mode: Optional[str] = "standard"  # standard (économique) | express
 
 
 @router.post("/payments/stripe/checkout")
@@ -135,6 +136,7 @@ async def create_stripe_checkout(payload: StripeCheckoutRequest, request: Reques
         "charged_amount": charged_amount,
         "status": "pending",
         "payment_method": "CARD",
+        "delivery_mode": payload.delivery_mode or "standard",
         "stripe_session_id": session.id,
         "created_at": now,
         "tracking_step": "ordered",

@@ -366,3 +366,9 @@ Payments were failing with a **DNS error** because `backend/paxity_router.py` ha
 - LocaleContext.jsx réécrit : plus de localStorage sec_locale_v1, appel /api/geo à chaque chargement, plus de setLocale exposé. LocaleSwitcher.jsx SUPPRIMÉ. Navbar affiche un indicateur statique non cliquable (data-testid locale-indicator, drapeau + « FR · € »).
 - Vérifié par playwright avec header X-Forwarded-For 78.46.0.1 (Allemagne) : site auto en €, prix 4,67 €, aucun F CFA, aucun bouton de changement.
 - NOTE : les anciens visiteurs avec sec_locale_v1 en localStorage ne sont plus affectés (clé ignorée).
+
+## Update — Feb 2026 (Modes de livraison : économique / express)
+- ÉTAPE 2 CHECKOUT (avant paiement) : 2 boutons sélectionnables (components/DeliveryOptions.jsx) — « Livraison économique Chine-Dakar » 15-20 j ouvrés · 6 500 F/kg et « Livraison express Chine-Dakar » 5-7 j ouvrés · 11 000 F/kg. Cliquer sélectionne + déploie le texte explicatif COMPLET fourni par l'utilisateur (pesée du colis, calcul poids × tarif, paiement avant expédition ou à l'arrivée, livraison domicile 2 000 F). data-testids: delivery-standard-btn/-details, delivery-express-btn/-details.
+- Montants via formatMoney (convertis €/$ pour Europe/USA, texte traduit EN via dict). NOTE : l'utilisateur avait écrit « Poids du colis (en grammes) x 6500 » — corrigé en « (en kg) » (sinon calcul ×1000) ; signalé à l'utilisateur.
+- Choix stocké dans la commande : `delivery_mode` (standard|express) envoyé par le frontend et enregistré par stripe_router + paxity_router (défaut standard). Vérifié en base.
+- Textes de livraison sur la fiche produit (onglet Livraison) inchangés (10-20 jours) — à harmoniser si l'utilisateur le demande.

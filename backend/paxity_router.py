@@ -241,6 +241,7 @@ class PaxityPayinRequest(BaseModel):
     otp_code: Optional[str] = None
     description: str = "Commande Shopping en Chine"
     currency: Optional[str] = None  # override PAXITY_DEFAULT_CURRENCY if provided
+    delivery_mode: Optional[str] = "standard"  # standard (économique) | express
     customer: PaxityCustomer
     items: list[PaxityOrderItem] = []
 
