@@ -316,6 +316,19 @@ const EN = {
     "Les frais de livraison à domicile sont à la charge du client. Ils sont fixés à":
         "Home delivery fees are paid by the customer. They are fixed at",
     "quel que soit le lieu de livraison à Dakar.": "regardless of the delivery location in Dakar.",
+    // Option internationale (Europe/USA)
+    "Livraison Chine-Europe": "China-Europe shipping",
+    "Une option pensée pour vous permettre de recevoir votre commande en toute sérénité.":
+        "An option designed so you can receive your order with complete peace of mind.",
+    "En cas de perte du colis ou de retenue par les services douaniers, vous bénéficiez d'un remboursement intégral, conformément aux conditions de cette option.":
+        "In case of package loss or customs retention, you benefit from a full refund, in accordance with the terms of this option.",
+    "Délai estimatif : 15 à 20 jours ouvrés.": "Estimated delivery time: 15 to 20 business days.",
+    "Le montant obtenu correspond à vos frais de livraison.": "The resulting amount is your shipping cost.",
+    "Une fois votre colis prêt à être expédié, nous vous communiquerons le montant exact de vos frais de livraison afin de finaliser votre paiement via un lien sécurisé que vous recevrez.":
+        "Once your package is ready to ship, we will let you know the exact amount of your shipping costs so you can complete the payment via a secure link that you will receive.",
+    "payer vos frais de livraison avant l'expédition": "pay your shipping costs before shipment",
+    "Dès l'arrivée de votre colis dans votre pays, notre assistante vous contactera pour organiser sa réception, soit par livraison (ces frais restent à votre charge), soit par remise en main propre.":
+        "As soon as your package arrives in your country, our assistant will contact you to arrange its reception, either by delivery (these costs remain at your expense) or by hand delivery.",
     "Livraison standard · Chine → Dakar": "Standard delivery · China → Dakar",
     "Choisissez votre moyen de paiement": "Choose your payment method",
     "Carte bancaire": "Card",

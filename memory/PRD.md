@@ -372,3 +372,8 @@ Payments were failing with a **DNS error** because `backend/paxity_router.py` ha
 - Montants via formatMoney (convertis €/$ pour Europe/USA, texte traduit EN via dict). NOTE : l'utilisateur avait écrit « Poids du colis (en grammes) x 6500 » — corrigé en « (en kg) » (sinon calcul ×1000) ; signalé à l'utilisateur.
 - Choix stocké dans la commande : `delivery_mode` (standard|express) envoyé par le frontend et enregistré par stripe_router + paxity_router (défaut standard). Vérifié en base.
 - Textes de livraison sur la fiche produit (onglet Livraison) inchangés (10-20 jours) — à harmoniser si l'utilisateur le demande.
+
+## Update — Feb 2026 (Livraison Europe : option unique 13 €/kg)
+- DeliveryOptions.jsx restructuré : getDeliveryModes() selon getLocale().currency — XOF → 2 options Dakar (6500/11000 F/kg) ; EUR/USD → UNE seule option « Livraison Chine-Europe » 15-20 j ouvrés · 13 €/kg avec texte spécifique (remboursement intégral perte/douane, paiement des frais AVANT expédition via lien sécurisé, assistante contacte à l'arrivée dans le pays, livraison à charge du client ou remise en main propre).
+- 13 €/kg encodé comme rateXof = 13×9000/28 ≈ 4178,57 F → affiche 13 € pile en mode EUR, ≈ $14.86/kg en mode USD (PAS de tarif USA spécifique fourni par l'utilisateur — à confirmer avec lui). Textes traduits EN pour les visiteurs USD.
+- delivery_mode stocké reste "standard" pour l'option Europe. Vérifié par screenshot avec IP allemande : 1 seule option, texte complet, « Poids du colis (en kg) × 13 € ».
