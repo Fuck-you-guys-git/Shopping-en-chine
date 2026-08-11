@@ -377,3 +377,7 @@ Payments were failing with a **DNS error** because `backend/paxity_router.py` ha
 - DeliveryOptions.jsx restructuré : getDeliveryModes() selon getLocale().currency — XOF → 2 options Dakar (6500/11000 F/kg) ; EUR/USD → UNE seule option « Livraison Chine-Europe » 15-20 j ouvrés · 13 €/kg avec texte spécifique (remboursement intégral perte/douane, paiement des frais AVANT expédition via lien sécurisé, assistante contacte à l'arrivée dans le pays, livraison à charge du client ou remise en main propre).
 - 13 €/kg encodé comme rateXof = 13×9000/28 ≈ 4178,57 F → affiche 13 € pile en mode EUR, ≈ $14.86/kg en mode USD (PAS de tarif USA spécifique fourni par l'utilisateur — à confirmer avec lui). Textes traduits EN pour les visiteurs USD.
 - delivery_mode stocké reste "standard" pour l'option Europe. Vérifié par screenshot avec IP allemande : 1 seule option, texte complet, « Poids du colis (en kg) × 13 € ».
+
+## Update — Feb 2026 (Livraison USA : option unique 18 $/kg)
+- US_MODES ajouté dans DeliveryOptions.jsx : « Livraison Chine-USA » 15-20 j ouvrés · 18 $/kg (rateXof = 18×9000/32 = 5062,5 F → $18 pile en USD), texte identique à l'Europe mais « jusqu'à New York » / « à New York ». getDeliveryModes(): XOF→2 options Dakar, EUR→Chine-Europe 13 €/kg, USD→Chine-USA 18 $/kg.
+- Traductions EN ajoutées. Vérifié par screenshot IP 8.8.8.8 : « China-USA shipping · $18/kg », texte anglais complet.

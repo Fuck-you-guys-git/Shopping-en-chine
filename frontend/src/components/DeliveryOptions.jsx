@@ -12,6 +12,7 @@ import { formatMoney, getLocale, t } from "@/lib/locale";
  */
 
 const EU_RATE_XOF = 13 * (9000 / 28); // 13 €/kg exprimé en F CFA -> 13 € pile en mode EUR
+const US_RATE_XOF = 18 * (9000 / 32); // 18 $/kg exprimé en F CFA -> $18 pile en mode USD
 
 const AFRICA_MODES = [
     {
@@ -58,7 +59,7 @@ const AFRICA_MODES = [
     },
 ];
 
-const INTERNATIONAL_MODES = [
+const EU_MODES = [
     {
         id: "standard",
         icon: Truck,
@@ -81,8 +82,35 @@ const INTERNATIONAL_MODES = [
     },
 ];
 
-export const getDeliveryModes = () =>
-    getLocale().currency === "XOF" ? AFRICA_MODES : INTERNATIONAL_MODES;
+const US_MODES = [
+    {
+        id: "standard",
+        icon: Truck,
+        title: "Livraison Chine-USA",
+        delay: "15 à 20 jours ouvrés",
+        rateXof: US_RATE_XOF,
+        lines: [
+            { p: "Une option pensée pour vous permettre de recevoir votre commande en toute sérénité." },
+            { p: "En cas de perte du colis ou de retenue par les services douaniers, vous bénéficiez d'un remboursement intégral, conformément aux conditions de cette option." },
+            { p: "Délai estimatif : 15 à 20 jours ouvrés." },
+            { p: "Après votre commande, votre colis est pesé afin de déterminer vos frais de livraison." },
+            { p: "Le calcul est simple :" },
+            { calc: US_RATE_XOF },
+            { p: "Le montant obtenu correspond à vos frais de livraison jusqu'à New York." },
+            { p: "Une fois votre colis prêt à être expédié, nous vous communiquerons le montant exact de vos frais de livraison afin de finaliser votre paiement via un lien sécurisé que vous recevrez." },
+            { bullets: ["payer vos frais de livraison avant l'expédition"] },
+            { p: "Les frais de livraison sont calculés uniquement lorsque le colis est pesé et prêt à être expédié." },
+            { p: "Dès l'arrivée de votre colis à New York, notre assistante vous contactera pour organiser sa réception, soit par livraison (ces frais restent à votre charge), soit par remise en main propre." },
+        ],
+    },
+];
+
+export const getDeliveryModes = () => {
+    const cur = getLocale().currency;
+    if (cur === "EUR") return EU_MODES;
+    if (cur === "USD") return US_MODES;
+    return AFRICA_MODES;
+};
 
 const Line = ({ line }) => {
     if (line.calc) {

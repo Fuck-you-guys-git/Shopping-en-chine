@@ -318,6 +318,10 @@ const EN = {
     "quel que soit le lieu de livraison à Dakar.": "regardless of the delivery location in Dakar.",
     // Option internationale (Europe/USA)
     "Livraison Chine-Europe": "China-Europe shipping",
+    "Livraison Chine-USA": "China-USA shipping",
+    "Le montant obtenu correspond à vos frais de livraison jusqu'à New York.": "The resulting amount is your shipping cost to New York.",
+    "Dès l'arrivée de votre colis à New York, notre assistante vous contactera pour organiser sa réception, soit par livraison (ces frais restent à votre charge), soit par remise en main propre.":
+        "As soon as your package arrives in New York, our assistant will contact you to arrange its reception, either by delivery (these costs remain at your expense) or by hand delivery.",
     "Une option pensée pour vous permettre de recevoir votre commande en toute sérénité.":
         "An option designed so you can receive your order with complete peace of mind.",
     "En cas de perte du colis ou de retenue par les services douaniers, vous bénéficiez d'un remboursement intégral, conformément aux conditions de cette option.":
