@@ -334,3 +334,8 @@ Payments were failing with a **DNS error** because `backend/paxity_router.py` ha
 - AUSSI : formatMoney affiche désormais 2 décimales pour les montants non entiers (« 12,50 € » au lieu de « 12,5 € »).
 - Vérifié par screenshots (preview) : carte + fiche produit affichent « ≈ 1,88 € · $2 » sous « 1 500 F ». Production vérifiée conforme pour les conversions de base (280 produits, calculs corrects) — l'utilisateur doit REDÉPLOYER pour voir les équivalents sous les prix.
 - LEÇON : quand l'utilisateur dit « la conversion n'est pas appliquée », vérifier s'il VOIT la conversion depuis sa région (Afrique = FCFA par défaut) avant de déboguer les calculs.
+
+## Update — Feb 2026 (Tickets 100×150 mm + dashboard toujours en FCFA)
+- TICKETS D'IMPRESSION (Orders.jsx seller) : format étiquette 100 × 150 mm (4 × 6 pouces) via @page{size:100mm 150mm;margin:0}, chaque .ticket = 100mm×150mm flex column avec page-break-after:always → 1 commande = 1 ticket = 1 page. Layout : entête marque + n° commande, bloc DESTINATAIRE (nom 22px, tél/adresse 15px), ARTICLES, pied Total payé + date. Vérifié par playwright : bounding box 378×567px = exactement 100×150mm @96dpi.
+- DASHBOARD VENDEUR TOUJOURS EN F CFA : les pages seller (Orders, Products, Dashboard, AddProduct) utilisaient formatPrice (converti selon la devise du visiteur → totaux en $ si le navigateur était en mode USD). Remplacé par `formatCfa` (locale.js) qui affiche toujours « X F ». La boutique publique reste multi-devise.
+- ASTUCE TEST : pour capturer la popup d'impression en playwright : `async with page.context.expect_page() as popup_info:` puis récupérer popup.content() et le charger dans la page principale (les screenshots de popup ne sont pas remontés par l'outil).

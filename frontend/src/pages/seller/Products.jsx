@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { useSeller } from "@/context/SellerContext";
-import { formatPrice } from "@/components/ProductCard";
+import { formatCfa as formatPrice } from "@/lib/locale";
 import { categories } from "@/data/products";
 import { toast } from "sonner";
 

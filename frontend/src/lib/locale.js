@@ -49,6 +49,10 @@ export const formatMoney = (xof) => {
 export const formatXof = (xof) =>
     `${new Intl.NumberFormat("fr-FR", { maximumFractionDigits: 0 }).format(Math.round(Number(xof) || 0))} F CFA`;
 
+/** Toujours en F CFA, quel que soit le choix du visiteur (dashboard vendeur). */
+export const formatCfa = (xof) =>
+    `${new Intl.NumberFormat("fr-FR", { maximumFractionDigits: 0 }).format(Math.round(Number(xof) || 0))} F`;
+
 /**
  * Équivalents dans les autres devises, calculés depuis le F CFA (devise principale).
  * - Mode FCFA  -> "≈ 11,25 € · $12"   (le client africain voit les conversions)

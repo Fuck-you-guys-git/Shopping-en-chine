@@ -4,7 +4,7 @@ import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, 
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useSeller } from "@/context/SellerContext";
-import { formatPrice } from "@/components/ProductCard";
+import { formatCfa as formatPrice } from "@/lib/locale";
 
 const PIE_COLORS = ["hsl(8 72% 52%)", "hsl(22 62% 60%)", "hsl(40 70% 60%)", "hsl(152 30% 42%)", "hsl(210 30% 40%)", "hsl(280 30% 50%)"];
 

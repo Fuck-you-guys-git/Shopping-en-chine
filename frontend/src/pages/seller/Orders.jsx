@@ -8,7 +8,7 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useSeller } from "@/context/SellerContext";
-import { formatPrice } from "@/components/ProductCard";
+import { formatCfa as formatPrice } from "@/lib/locale";
 import { toast } from "sonner";
 
 const timeAgo = (ts) => {
@@ -19,7 +19,7 @@ const timeAgo = (ts) => {
     return `il y a ${Math.floor(s / 86400)}j`;
 };
 
-// --- Tickets colis imprimables (étiquettes pour les packages) ---
+// --- Tickets colis imprimables — étiquette 100 × 150 mm (4 × 6 pouces), 1 commande = 1 page ---
 const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 const fmtF = (n) => `${Math.round(n).toLocaleString("fr-FR")} F`;
 
@@ -29,14 +29,20 @@ const ticketHtml = (o) => `
             <span class="brand">SHOPPING EN CHINE</span>
             <span class="oid">${esc(orderNo(o.id))}</span>
         </div>
-        <h2>${esc(o.customer)}</h2>
-        ${o.phone ? `<p class="line"><b>Tél :</b> ${esc(o.phone)}</p>` : ""}
-        <p class="line"><b>Adresse :</b> ${esc([o.address, o.city].filter(Boolean).join(", ") || "—")}</p>
+        <div class="dest">
+            <p class="label">Destinataire</p>
+            <h2>${esc(o.customer)}</h2>
+            ${o.phone ? `<p class="line big"><b>Tél :</b> ${esc(o.phone)}</p>` : ""}
+            <p class="line big"><b>Adresse :</b> ${esc([o.address, o.city].filter(Boolean).join(", ") || "—")}</p>
+        </div>
         <div class="items">
+            <p class="label">Articles</p>
             ${o.items.map((it) => `<p class="line">• ${esc(it.name)} <b>× ${it.qty}</b></p>`).join("")}
         </div>
-        <p class="total">Total payé : ${fmtF(o.total)}</p>
-        <p class="date">Commandé le ${new Date(o.createdAt).toLocaleDateString("fr-FR", { day: "2-digit", month: "long", year: "numeric" })}</p>
+        <div class="foot">
+            <p class="total">Total payé : ${fmtF(o.total)}</p>
+            <p class="date">Commandé le ${new Date(o.createdAt).toLocaleDateString("fr-FR", { day: "2-digit", month: "long", year: "numeric" })}</p>
+        </div>
     </div>`;
 
 const printTickets = (ordersToPrint) => {
@@ -44,17 +50,26 @@ const printTickets = (ordersToPrint) => {
     const w = window.open("", "_blank");
     if (!w) return false;
     w.document.write(`<!doctype html><html><head><title>Tickets colis — Shopping en Chine</title><style>
-        body{font-family:Arial,Helvetica,sans-serif;margin:0;padding:16px;color:#111;background:#fff}
-        .ticket{border:2px dashed #333;border-radius:12px;padding:16px 18px;margin:0 auto 14px;max-width:420px;page-break-inside:avoid}
-        .head{display:flex;justify-content:space-between;align-items:baseline;border-bottom:1px solid #ccc;padding-bottom:6px;margin-bottom:8px}
-        .brand{font-weight:bold;font-size:14px;letter-spacing:1px}
-        .oid{font-family:monospace;font-size:11px;color:#555}
-        h2{font-size:17px;margin:4px 0 6px}
-        .line{margin:3px 0;font-size:13px}
-        .items{margin-top:8px;border-top:1px solid #ccc;padding-top:6px}
-        .total{margin-top:8px;font-weight:bold;font-size:14px}
-        .date{margin-top:4px;font-size:11px;color:#666}
-        @media print{body{padding:0}.ticket{margin-bottom:8mm}}
+        /* Étiquette 100 × 150 mm (4 × 6 pouces) — une commande par page */
+        @page{size:100mm 150mm;margin:0}
+        *{box-sizing:border-box}
+        body{font-family:Arial,Helvetica,sans-serif;margin:0;padding:0;color:#111;background:#fff}
+        .ticket{width:100mm;height:150mm;padding:7mm 7mm 6mm;display:flex;flex-direction:column;overflow:hidden;page-break-after:always;break-after:page;border:1px solid #999}
+        .ticket:last-child{page-break-after:auto;break-after:auto}
+        .head{display:flex;justify-content:space-between;align-items:baseline;border-bottom:2px solid #111;padding-bottom:3mm;margin-bottom:4mm}
+        .brand{font-weight:bold;font-size:15px;letter-spacing:1.5px}
+        .oid{font-family:monospace;font-size:14px;font-weight:bold}
+        .label{font-size:9px;text-transform:uppercase;letter-spacing:2px;color:#666;margin:0 0 1.5mm}
+        .dest{border-bottom:1px solid #bbb;padding-bottom:4mm;margin-bottom:4mm}
+        h2{font-size:22px;margin:0 0 2mm;line-height:1.15}
+        .line{margin:1.2mm 0;font-size:12px;line-height:1.35}
+        .line.big{font-size:15px}
+        .items{flex:1;overflow:hidden}
+        .foot{border-top:2px solid #111;padding-top:3mm;margin-top:auto}
+        .total{margin:0;font-weight:bold;font-size:17px}
+        .date{margin:1.5mm 0 0;font-size:10px;color:#666}
+        @media screen{body{padding:16px;background:#eee}.ticket{margin:0 auto 14px;background:#fff;box-shadow:0 1px 6px rgba(0,0,0,.2)}}
+        @media print{.ticket{border:none}}
     </style></head><body>${ordersToPrint.map(ticketHtml).join("")}</body></html>`);
     w.document.close();
     w.focus();

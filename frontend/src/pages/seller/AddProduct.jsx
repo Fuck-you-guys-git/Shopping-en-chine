@@ -12,7 +12,7 @@ import { Switch } from "@/components/ui/switch";
 import { useSeller } from "@/context/SellerContext";
 import { productsAPI } from "@/lib/api";
 import { categories, subcategoriesByCategory } from "@/data/products";
-import { formatPrice } from "@/components/ProductCard";
+import { formatCfa as formatPrice } from "@/lib/locale";
 import { COLOR_PALETTE } from "@/lib/colors";
 import { toast } from "sonner";
 
