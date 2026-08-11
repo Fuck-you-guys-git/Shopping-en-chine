@@ -7,7 +7,7 @@
  * - t(fr) : renvoie la traduction anglaise si la langue est "en".
  */
 
-export const RATES = { XOF: 1, EUR: 800, USD: 750 };
+export const RATES = { XOF: 1, EUR: 1260, USD: 1000 };
 
 export const LOCALE_PRESETS = [
     { id: "sn", flag: "🇸🇳", lang: "fr", currency: "XOF", label: "Afrique · FCFA", short: "FR · F CFA" },
@@ -321,6 +321,8 @@ const EN = {
     "Voir la boutique": "View shop",
     "Votre commande": "Your order",
     "Le montant est débité en F CFA :": "The amount is charged in F CFA:",
+    "Vous payez par carte dans votre devise :": "You pay by card in your currency:",
+    "Mobile Money : le montant est débité en F CFA :": "Mobile Money: the amount is charged in F CFA:",
     "Retour au récapitulatif": "Back to summary",
     // Écrans de statut paiement
     "Votre commande est confirmée 🎉": "Your order is confirmed 🎉",

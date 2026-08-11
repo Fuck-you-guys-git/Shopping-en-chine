@@ -174,6 +174,7 @@ export default function Checkout() {
             const res = await stripeAPI.checkout({
                 origin_url: window.location.origin,
                 locale: getLocale().lang, // formulaire Stripe en fr ou en
+                currency: getLocale().currency, // le client paie dans SA devise (XOF / EUR / USD)
                 customer: {
                     name: `${buyer.firstName} ${buyer.lastName}`,
                     email: buyer.email,
@@ -639,8 +640,8 @@ export default function Checkout() {
                                         {t("Paiement sécurisé via Stripe · Chiffrement bout-en-bout")}
                                     </div>
                                     {getLocale().currency !== "XOF" && (
-                                        <p className="text-[11px] text-muted-foreground" data-testid="stripe-xof-note">
-                                            {t("Le montant est débité en F CFA :")} <span className="font-medium text-foreground">{formatXof(total)}</span>
+                                        <p className="text-[11px] text-muted-foreground" data-testid="stripe-currency-note">
+                                            {t("Vous payez par carte dans votre devise :")} <span className="font-medium text-foreground">{formatPrice(total)}</span>
                                         </p>
                                     )}
                                     <div className="flex gap-2 pt-2">
@@ -711,6 +712,11 @@ export default function Checkout() {
                                         <ShieldCheck className="h-4 w-4 text-success" />
                                         {t("Paiement sécurisé via Paxity · Chiffrement bout-en-bout")}
                                     </div>
+                                    {getLocale().currency !== "XOF" && (
+                                        <p className="text-[11px] text-muted-foreground" data-testid="paxity-xof-note">
+                                            {t("Mobile Money : le montant est débité en F CFA :")} <span className="font-medium text-foreground">{formatXof(total)}</span>
+                                        </p>
+                                    )}
 
                                     <div className="flex gap-2 pt-2">
                                         <Button type="button" variant="outline" onClick={() => setStep(2)} className="rounded-full h-11 px-6">{t("Retour")}</Button>
@@ -768,7 +774,7 @@ export default function Checkout() {
                         )}
                         {getLocale().currency !== "XOF" && (
                             <p className="text-[11px] text-muted-foreground text-right" data-testid="checkout-xof-note">
-                                {t("Le montant est débité en F CFA :")} {formatXof(total)}
+                                {formatXof(total)}
                             </p>
                         )}
                     </div>

@@ -29,6 +29,10 @@ STRIPE_WEBHOOK_SECRET = os.environ.get("STRIPE_WEBHOOK_SECRET", "")
 
 router = APIRouter(tags=["stripe"])
 
+# Taux commerciaux fixés par le marchand (devise principale : F CFA)
+# 1 USD = 1000 F CFA · 1 EUR = 1260 F CFA
+RATES_XOF = {"XOF": 1.0, "USD": 1000.0, "EUR": 1260.0}
+
 
 def _db(request: Request):
     return request.app.state.db
@@ -53,16 +57,25 @@ class StripeCheckoutRequest(BaseModel):
     customer: StripeCustomer
     items: list[StripeItem] = Field(min_length=1)
     locale: Optional[str] = "fr"  # langue du formulaire Stripe (fr/en)
+    currency: Optional[str] = "XOF"  # devise de PAIEMENT du client : XOF, EUR ou USD
 
 
 @router.post("/payments/stripe/checkout")
 async def create_stripe_checkout(payload: StripeCheckoutRequest, request: Request):
     db = _db(request)
 
+    # Devise de paiement : le client européen paie en EUR, l'américain en USD,
+    # les autres en F CFA. Les prix restent définis en F CFA (devise principale).
+    cur = (payload.currency or "XOF").upper()
+    if cur not in RATES_XOF:
+        cur = "XOF"
+    rate = RATES_XOF[cur]
+
     # Server-side pricing from the catalog
     line_items = []
     order_items = []
-    amount = 0
+    amount = 0          # total en F CFA (devise principale, stocké en base)
+    charged_minor = 0   # total débité, en unité mineure de la devise (centimes ou francs)
     for it in payload.items:
         product = await db.products.find_one({"id": it.product_id}, {"_id": 0})
         if not product:
@@ -71,16 +84,22 @@ async def create_stripe_checkout(payload: StripeCheckoutRequest, request: Reques
         amount += price * it.qty
         item_name = f"{product['name']} — Taille {it.size}" if it.size else product["name"]
         order_items.append({"product_id": it.product_id, "name": item_name, "price": price, "qty": it.qty})
+        if cur == "XOF":
+            unit_amount = price  # XOF : zéro décimale, francs entiers
+        else:
+            unit_amount = int(round(price / rate * 100))  # EUR/USD : centimes
+        charged_minor += unit_amount * it.qty
         line_items.append({
             "price_data": {
-                "currency": "xof",  # zero-decimal: whole francs
+                "currency": cur.lower(),
                 "product_data": {"name": item_name},
-                "unit_amount": price,
+                "unit_amount": unit_amount,
             },
             "quantity": it.qty,
         })
     if amount <= 0:
         raise HTTPException(status_code=400, detail="Montant invalide.")
+    charged_amount = charged_minor if cur == "XOF" else round(charged_minor / 100, 2)
 
     order_id = await next_order_number(db)
     now = datetime.now(timezone.utc).isoformat()
@@ -112,6 +131,8 @@ async def create_stripe_checkout(payload: StripeCheckoutRequest, request: Reques
         "items": order_items,
         "amount": amount,
         "currency": "XOF",
+        "charged_currency": cur,
+        "charged_amount": charged_amount,
         "status": "pending",
         "payment_method": "CARD",
         "stripe_session_id": session.id,
@@ -124,6 +145,8 @@ async def create_stripe_checkout(payload: StripeCheckoutRequest, request: Reques
         "order_id": order_id,
         "amount": amount,
         "currency": "xof",
+        "charged_currency": cur,
+        "charged_amount": charged_amount,
         "status": "initiated",
         "payment_status": "pending",
         "created_at": now,
