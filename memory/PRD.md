@@ -391,3 +391,8 @@ Payments were failing with a **DNS error** because `backend/paxity_router.py` ha
 ## Update — Feb 2026 (Texte livraison repliable via flèche)
 - Le texte explicatif du mode de livraison n'apparaît PLUS automatiquement à la sélection : caché par défaut, affiché uniquement au clic sur le bouton flèche (data-testid delivery-{id}-toggle), re-clic pour refermer. Sélection (carte) et détails (flèche) sont deux boutons distincts (state expanded local à DeliveryOptions).
 - Testé : 0 texte avant clic → 1 après clic → 0 après re-clic.
+
+## Update — Feb 2026 (Mode de livraison visible dashboard + ticket)
+- SellerContext mapOrder expose deliveryMode (o.delivery_mode, défaut standard). Orders.jsx : badge STANDARD (gris) / EXPRESS (ambre) sous le n° de commande de chaque ligne (data-testid order-delivery-{id}) + badge dans le dialog détail (order-detail-delivery).
+- Ticket d'impression : encadré noir gras sous l'entête « Livraison : STANDARD (15–20 jours ouvrés) » ou « EXPRESS (5–7 jours ouvrés) » (classe .ship).
+- Vérifié par screenshot (dashboard + ticket).

@@ -36,6 +36,7 @@ const mapOrder = (o, productsById) => ({
         image: productsById[it.product_id]?.image || null,
     })),
     total: o.amount || 0,
+    deliveryMode: o.delivery_mode === "express" ? "express" : "standard",
     payment: PAYMENT_LABELS[o.status] ? o.status : "pending",
     status: STATUSES.includes(o.tracking_step) ? o.tracking_step : "ordered",
     createdAt: Date.parse(o.created_at) || Date.now(),

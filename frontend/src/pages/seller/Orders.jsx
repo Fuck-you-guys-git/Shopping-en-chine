@@ -31,6 +31,7 @@ const ticketHtml = (o) => {
             <span class="brand">SHOPPING EN CHINE</span>
             <span class="meta">Commande ${esc(orderNo(o.id))}<br/>${esc(dateStr)}</span>
         </div>
+        <p class="ship">Livraison : ${o.deliveryMode === "express" ? "EXPRESS (5–7 jours ouvrés)" : "STANDARD (15–20 jours ouvrés)"}</p>
         <div class="cols">
             <div class="col">
                 <p class="label">Expédier à</p>
@@ -78,7 +79,8 @@ const printTickets = (ordersToPrint) => {
         p{margin:0}
         .ticket{width:100mm;height:150mm;padding:6mm;display:flex;flex-direction:column;overflow:hidden;page-break-after:always;break-after:page;border:1px solid #999;color:#000}
         .ticket:last-child{page-break-after:auto;break-after:auto}
-        .top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:5mm}
+        .top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:3mm}
+        .ship{font-size:13px;font-weight:900;border:2px solid #000;display:inline-block;padding:1.2mm 3mm;margin-bottom:4mm}
         .brand{font-weight:900;font-size:19px;letter-spacing:.5px}
         .meta{font-size:12px;font-weight:bold;text-align:right;line-height:1.4}
         .cols{display:flex;gap:5mm}
@@ -273,7 +275,15 @@ export default function Orders() {
                                     </p>
                                 </div>
                             </button>
-                            <div className="col-span-2 hidden md:block text-xs font-mono text-muted-foreground truncate">{orderNo(o.id)}</div>
+                            <div className="col-span-2 hidden md:block min-w-0">
+                                <p className="text-xs font-mono text-muted-foreground truncate">{orderNo(o.id)}</p>
+                                <span
+                                    className={`inline-flex mt-1 text-[10px] font-semibold px-2 py-0.5 rounded-full uppercase tracking-wide ${o.deliveryMode === "express" ? "bg-amber-100 text-amber-700" : "bg-muted text-muted-foreground"}`}
+                                    data-testid={`order-delivery-${o.id}`}
+                                >
+                                    {o.deliveryMode === "express" ? "Express" : "Standard"}
+                                </span>
+                            </div>
                             <div className="col-span-2 hidden md:block">
                                 <span className={`inline-flex text-xs font-medium px-2 py-0.5 rounded-full ${PAYMENT_LABELS[o.payment].color}`}>
                                     {PAYMENT_LABELS[o.payment].label}
@@ -320,9 +330,17 @@ export default function Orders() {
                                         )}
                                         {selected.email && <p className="text-xs text-muted-foreground truncate">{selected.email}</p>}
                                     </div>
-                                    <span className={`text-xs font-medium px-2.5 py-1 rounded-full shrink-0 ${PAYMENT_LABELS[selected.payment].color}`}>
-                                        {PAYMENT_LABELS[selected.payment].label}
-                                    </span>
+                                    <div className="flex flex-col items-end gap-1.5 shrink-0">
+                                        <span className={`text-xs font-medium px-2.5 py-1 rounded-full ${PAYMENT_LABELS[selected.payment].color}`}>
+                                            {PAYMENT_LABELS[selected.payment].label}
+                                        </span>
+                                        <span
+                                            className={`text-[10px] font-semibold px-2 py-0.5 rounded-full uppercase tracking-wide ${selected.deliveryMode === "express" ? "bg-amber-100 text-amber-700" : "bg-muted text-muted-foreground"}`}
+                                            data-testid="order-detail-delivery"
+                                        >
+                                            Livraison {selected.deliveryMode === "express" ? "Express" : "Standard"}
+                                        </span>
+                                    </div>
                                 </div>
 
                                 {/* Progress */}
