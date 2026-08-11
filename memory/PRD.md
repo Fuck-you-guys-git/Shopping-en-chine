@@ -356,3 +356,7 @@ Payments were failing with a **DNS error** because `backend/paxity_router.py` ha
 - L'utilisateur a fourni une photo de référence (packing slip Shopify) : le ticket 100×150mm est refait à l'identique — marque en haut gauche, « Commande #X + date » en haut droite, 2 colonnes EXPÉDIER À / FACTURER À (client + adresse + Sénégal + tél), tableau ARTICLES/QUANTITÉ (« 1 sur 1 »), traits noirs épais, pied de page centré « Merci pour votre achat ! » + SHOPPING EN CHINE + sicap mbao, 17000 Dakar, Sénégal + balatoumata414@gmail.com + shoppingenchine.com.
 - Écriture GRANDE ET NOIRE (font-weight 900/bold partout, #000). PAS de prix sur le ticket (conforme à la référence). fmtF supprimé (inutilisé).
 - Vérifié par capture du popup d'impression.
+
+## Update — Feb 2026 (Barème v4 — ACTUEL)
+- NOUVEAU BARÈME (remplace 13€/15$) : produit à 9 000 F CFA = 28 € = 32 $. RATES = {EUR: 9000/28 ≈ 321.43, USD: 9000/32 = 281.25} dans locale.js + stripe_router.py.
+- Vérifié : 1500 F → 4,67 € / $5.33 (affichage équivalents + charged_amount en base identiques). Historique taux : 800/750 → 1260/1000 → 692/600 → ACTUEL 9000/28 et 9000/32.

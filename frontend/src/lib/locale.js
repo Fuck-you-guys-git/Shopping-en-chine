@@ -7,9 +7,9 @@
  * - t(fr) : renvoie la traduction anglaise si la langue est "en".
  */
 
-// Barème fixé par le marchand : un produit à 9 000 F CFA vaut 13 € et 15 $.
-// => prix EUR = prix CFA ÷ 692,31 (9000/13) · prix USD = prix CFA ÷ 600 (9000/15)
-export const RATES = { XOF: 1, EUR: 9000 / 13, USD: 600 };
+// Barème fixé par le marchand : un produit à 9 000 F CFA vaut 28 € et 32 $.
+// => prix EUR = prix CFA ÷ 321,43 (9000/28) · prix USD = prix CFA ÷ 281,25 (9000/32)
+export const RATES = { XOF: 1, EUR: 9000 / 28, USD: 9000 / 32 };
 
 export const LOCALE_PRESETS = [
     { id: "sn", flag: "🇸🇳", lang: "fr", currency: "XOF", label: "Afrique · FCFA", short: "FR · F CFA" },
