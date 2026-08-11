@@ -1,0 +1,32 @@
+{
+  "summary": "Backend-only email_service tests for the reported bug (customer did not receive order confirmation). Created /app/backend/tests/test_email_service.py with 5 pytest tests, all PASSED. Confirmed Resend TEST MODE is the root cause: sends to the account owner (bafatoumata414@gmail.com) succeed and flip customer_email_sent / confirmation_email_sent, but sends to any third-party address are rejected by Resend and the customer_email_sent flag is correctly released back to False so retries remain possible. Idempotency is enforced by the atomic find_one_and_update on both maybe_send_customer_confirmation and maybe_send_order_confirmation. HTML rendering sanity checks (SHOPPING EN CHINE branding, 'Total payé', formatted amount '9 000 F CFA') also passed. Only 2 real emails were delivered (both to the owner) as instructed. Test orders 9991/9992 inserted directly into MongoDB and deleted in teardown_class.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_email_service.py",
+    "/app/test_reports/pytest/iter25_email.xml"
+  ],
+  "action_items": [
+    "PRODUCTION BLOCKER (not a code bug): verify a sending domain on Resend (resend.com/domains) and switch SENDER_EMAIL from onboarding@resend.dev to an address on that verified domain. Until then, Resend will keep rejecting every recipient except bafatoumata414@gmail.com — which is exactly why real customers are not receiving the confirmation email. The email trigger code path is correct and working."
+  ],
+  "critical_code_review_comments": [
+    "email_service.maybe_send_order_confirmation does NOT release confirmation_email_sent on failure symmetrically with maybe_send_customer_confirmation — actually it DOES (line ~112). Confirmed both helpers release the flag on failure so retries via webhook/poll race remain safe.",
+    "Footer contact email in _wrap is 'balatoumata414@gmail.com' but MERCHANT_EMAIL is 'bafatoumata414@gmail.com' (bala vs bafa). Likely a typo in the customer-facing template — worth confirming with owner."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_email_service.py"
+  ],
+  "success_rate": {"backend": "100%", "frontend": "not tested (backend-only request)"},
+  "seed_data_creation": "Inserted orders id='9991' (customer email = MERCHANT_EMAIL) and id='9992' (customer email = someone.else@example.com) into db.orders during the test class; both deleted in teardown_class.",
+  "should_call_test_agent_after_fix": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "email_service tests live in /app/backend/tests/test_email_service.py and use asyncio.new_event_loop() per class (do NOT use pytest-asyncio — it conflicts with the xdist/loadscope setup in pytest.ini and produces AssertionError in fixture finalizers). Resend remains in test mode; any test that sends a customer email to a non-owner address MUST expect False, not True. Keep total real emails per run <=3.",
+  "rca_of_the_issue": "Resend account is in test mode with SENDER_EMAIL=onboarding@resend.dev. Resend's API only accepts recipients equal to the account owner's verified email until a sending domain is verified. The backend code correctly calls maybe_send_customer_confirmation on every successful Stripe/Paxity payment, catches the Resend rejection, logs it, and releases the customer_email_sent flag so a later retry is possible — but no retry path exists in prod because the underlying restriction only lifts once the domain is verified. Fix: verify shoppingenchine.com (or any owned domain) at resend.com/domains, then set SENDER_EMAIL to noreply@<verified-domain>. No application code change needed."
+}

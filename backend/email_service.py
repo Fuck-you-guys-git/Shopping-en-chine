@@ -125,12 +125,24 @@ FRONTEND_URL = os.environ.get("FRONTEND_URL", "").rstrip("/")
 
 def _wrap(inner: str) -> str:
     return f"""
-    <table width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;margin:0 auto;font-family:Arial,Helvetica,sans-serif;background:#faf7f2;border-radius:12px;overflow:hidden;">
-        <tr><td style="background:#1d1d1d;padding:20px 24px;">
-            <span style="color:#ffffff;font-size:18px;font-weight:bold;">Shopping en Chine</span>
+    <div style="background:#f4f1ec;padding:24px 12px;font-family:Georgia,'Times New Roman',serif;">
+    <table width="100%" cellpadding="0" cellspacing="0" style="max-width:600px;margin:0 auto;background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 2px 12px rgba(0,0,0,.08);">
+        <tr><td style="background:#1d1d1d;padding:28px 32px;text-align:center;">
+            <div style="color:#ffffff;font-size:22px;font-weight:bold;letter-spacing:2px;">SHOPPING EN CHINE</div>
+            <div style="color:#c8a97a;font-size:12px;letter-spacing:3px;margin-top:6px;text-transform:uppercase;">La Chine à portée de main</div>
         </td></tr>
-        <tr><td style="padding:24px;">{inner}</td></tr>
+        <tr><td style="padding:32px;">{inner}</td></tr>
+        <tr><td style="background:#faf7f2;padding:24px 32px;text-align:center;border-top:1px solid #eee;">
+            <p style="margin:0 0 6px;font-size:13px;color:#1d1d1d;font-weight:bold;">Shopping en Chine</p>
+            <p style="margin:0;font-size:12px;color:#888;line-height:1.7;">
+                sicap mbao, 17000 Dakar, Sénégal<br/>
+                <a href="mailto:balatoumata414@gmail.com" style="color:#c64c3a;text-decoration:none;">balatoumata414@gmail.com</a>
+                &nbsp;·&nbsp; <a href="https://shoppingenchine.com" style="color:#c64c3a;text-decoration:none;">shoppingenchine.com</a>
+            </p>
+            <p style="margin:12px 0 0;font-size:11px;color:#bbb;">Merci de votre confiance ✦ Service client 7j/7</p>
+        </td></tr>
     </table>
+    </div>
     """
 
 
@@ -177,18 +189,36 @@ async def maybe_send_customer_confirmation(db: AsyncIOMotorDatabase, order_id: s
         ", ".join(filter(None, [c.get("address"), c.get("city")])),
     ]))
     inner = f"""
-        <h1 style="margin:0 0 6px;font-size:20px;color:#1d1d1d;">Merci pour votre commande 🎉</h1>
-        <p style="margin:0 0 16px;font-size:14px;color:#555;">
-            Votre paiement est confirmé. Numéro de commande : <strong>{_order_no(order.get('id'))}</strong><br/>
-            Livraison Chine → Dakar sous 10 à 20 jours.
-        </p>
-        <table width="100%" style="background:#fff;border-radius:8px;">{rows}
-            <tr><td colspan="2" style="padding:10px;font-weight:bold;color:#1d1d1d;">Total payé</td>
-            <td style="padding:10px;font-weight:bold;color:#c64c3a;text-align:right;">{_fmt_price(order.get('amount', 0))}</td></tr>
+        <div style="text-align:center;">
+            <div style="display:inline-block;background:#e8f5e9;color:#2e7d32;border-radius:99px;padding:8px 20px;font-size:13px;font-weight:bold;">✓ Paiement confirmé</div>
+            <h1 style="margin:18px 0 8px;font-size:26px;color:#1d1d1d;">Merci pour votre commande !</h1>
+            <p style="margin:0 0 4px;font-size:15px;color:#666;">Commande <strong style="color:#c64c3a;">{_order_no(order.get('id'))}</strong></p>
+            <p style="margin:0 0 24px;font-size:13px;color:#999;">Nous préparons votre colis pour l'expédition depuis la Chine.</p>
+        </div>
+        <table width="100%" cellpadding="0" cellspacing="0" style="background:#faf7f2;border-radius:12px;overflow:hidden;">
+            <tr>
+                <td style="padding:12px 16px;font-size:11px;font-weight:bold;color:#999;text-transform:uppercase;letter-spacing:1px;border-bottom:2px solid #eee;">Article</td>
+                <td style="padding:12px 16px;font-size:11px;font-weight:bold;color:#999;text-transform:uppercase;letter-spacing:1px;border-bottom:2px solid #eee;text-align:center;">Qté</td>
+                <td style="padding:12px 16px;font-size:11px;font-weight:bold;color:#999;text-transform:uppercase;letter-spacing:1px;border-bottom:2px solid #eee;text-align:right;">Prix</td>
+            </tr>
+            {rows}
+            <tr>
+                <td colspan="2" style="padding:14px 16px;font-size:16px;font-weight:bold;color:#1d1d1d;border-top:2px solid #1d1d1d;">Total payé</td>
+                <td style="padding:14px 16px;font-size:18px;font-weight:bold;color:#c64c3a;text-align:right;border-top:2px solid #1d1d1d;">{_fmt_price(order.get('amount', 0))}</td>
+            </tr>
         </table>
-        <h2 style="margin:18px 0 6px;font-size:15px;color:#1d1d1d;">Adresse de livraison</h2>
-        <p style="margin:0;font-size:14px;color:#555;line-height:1.6;">{delivery_lines or '—'}</p>
-        {f'<p style="margin:18px 0 0;"><a href="{track_link}" style="display:inline-block;background:#c64c3a;color:#fff;padding:10px 20px;border-radius:99px;text-decoration:none;font-size:14px;">Suivre ma commande</a></p>' if track_link else ''}
+        <table width="100%" cellpadding="0" cellspacing="0" style="margin-top:20px;">
+            <tr>
+                <td style="background:#faf7f2;border-radius:12px;padding:16px 20px;vertical-align:top;">
+                    <p style="margin:0 0 8px;font-size:11px;font-weight:bold;color:#999;text-transform:uppercase;letter-spacing:1px;">📍 Adresse de livraison</p>
+                    <p style="margin:0;font-size:14px;color:#333;line-height:1.7;">{delivery_lines or '—'}</p>
+                </td>
+            </tr>
+        </table>
+        <p style="margin:20px 0 0;font-size:13px;color:#777;text-align:center;">
+            🚚 Livraison estimée sous <strong>15 à 20 jours ouvrés</strong>. Vous serez informé(e) à chaque étape du trajet.
+        </p>
+        {f'<p style="margin:22px 0 0;text-align:center;"><a href="{track_link}" style="display:inline-block;background:#c64c3a;color:#ffffff;padding:14px 34px;border-radius:99px;text-decoration:none;font-size:15px;font-weight:bold;">Suivre ma commande</a></p>' if track_link else ''}
     """
     ok = await _send(to, f"Commande confirmée — {_order_no(order.get('id'))}", _wrap(inner), "customer-confirm")
     if not ok:
