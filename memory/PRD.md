@@ -387,3 +387,7 @@ Payments were failing with a **DNS error** because `backend/paxity_router.py` ha
 - CA_MODES : « Livraison Chine-Canada » 15-20 j ouvrés · 20 $/kg (rateXof = 20×9000/32 = 5625 F). Texte identique Europe (générique « dans votre pays », sans New York). getDeliveryModes(): USD + country==='CA' → CA_MODES, sinon US_MODES. Canadiens paient en USD (déjà le cas via bucket reste-du-monde du geo_router).
 - NOTE : le message utilisateur disait titre « 20$/kg » mais calcul « x 18$ » — uniformisé à 20 $ (signalé à l'utilisateur).
 - Vérifié par screenshot IP 24.48.0.1 (Canada) : « China-Canada shipping · $20/kg », calcul « Package weight (in kg) × $20 », texte EN complet.
+
+## Update — Feb 2026 (Texte livraison repliable via flèche)
+- Le texte explicatif du mode de livraison n'apparaît PLUS automatiquement à la sélection : caché par défaut, affiché uniquement au clic sur le bouton flèche (data-testid delivery-{id}-toggle), re-clic pour refermer. Sélection (carte) et détails (flèche) sont deux boutons distincts (state expanded local à DeliveryOptions).
+- Testé : 0 texte avant clic → 1 après clic → 0 après re-clic.

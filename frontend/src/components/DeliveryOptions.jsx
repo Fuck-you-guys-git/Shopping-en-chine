@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Truck, Zap, Check, ChevronDown } from "lucide-react";
 import { formatMoney, getLocale, t } from "@/lib/locale";
 
@@ -165,33 +166,46 @@ const Line = ({ line }) => {
 
 export const DeliveryOptions = ({ value, onChange }) => {
     const modes = getDeliveryModes();
+    // Le texte explicatif ne s'affiche QUE si le client appuie sur la petite flèche
+    const [expanded, setExpanded] = useState(null);
     return (
         <div className="space-y-3">
             {modes.map((m) => {
                 const selected = value === m.id;
+                const open = expanded === m.id;
                 return (
                     <div
                         key={m.id}
                         className={`border rounded-xl overflow-hidden transition-colors ${selected ? "border-primary ring-1 ring-primary/30 bg-primary/[0.03]" : "border-border"}`}
                     >
-                        <button
-                            type="button"
-                            data-testid={`delivery-${m.id}-btn`}
-                            onClick={() => onChange(m.id)}
-                            className="w-full flex items-center gap-4 p-4 text-left"
-                        >
-                            <span className={`h-9 w-9 rounded-full flex items-center justify-center shrink-0 ${selected ? "bg-primary text-primary-foreground" : "bg-muted text-foreground"}`}>
-                                {selected ? <Check className="h-4 w-4" /> : <m.icon className="h-4 w-4" />}
-                            </span>
-                            <span className="flex-1 min-w-0">
-                                <span className="block font-medium leading-tight">{t(m.title)}</span>
-                                <span className="block text-xs text-muted-foreground mt-0.5">
-                                    {t(m.delay)} · <span className="font-semibold text-primary">{formatMoney(m.rateXof)}/kg</span>
+                        <div className="w-full flex items-center gap-4 p-4">
+                            <button
+                                type="button"
+                                data-testid={`delivery-${m.id}-btn`}
+                                onClick={() => onChange(m.id)}
+                                className="flex items-center gap-4 flex-1 min-w-0 text-left"
+                            >
+                                <span className={`h-9 w-9 rounded-full flex items-center justify-center shrink-0 ${selected ? "bg-primary text-primary-foreground" : "bg-muted text-foreground"}`}>
+                                    {selected ? <Check className="h-4 w-4" /> : <m.icon className="h-4 w-4" />}
                                 </span>
-                            </span>
-                            <ChevronDown className={`h-4 w-4 text-muted-foreground shrink-0 transition-transform ${selected ? "rotate-180" : ""}`} />
-                        </button>
-                        {selected && (
+                                <span className="flex-1 min-w-0">
+                                    <span className="block font-medium leading-tight">{t(m.title)}</span>
+                                    <span className="block text-xs text-muted-foreground mt-0.5">
+                                        {t(m.delay)} · <span className="font-semibold text-primary">{formatMoney(m.rateXof)}/kg</span>
+                                    </span>
+                                </span>
+                            </button>
+                            <button
+                                type="button"
+                                data-testid={`delivery-${m.id}-toggle`}
+                                aria-label={t("Voir les détails")}
+                                onClick={() => setExpanded(open ? null : m.id)}
+                                className="h-9 w-9 rounded-full border border-border flex items-center justify-center shrink-0 hover:border-primary hover:text-primary transition-colors"
+                            >
+                                <ChevronDown className={`h-4 w-4 transition-transform ${open ? "rotate-180" : ""}`} />
+                            </button>
+                        </div>
+                        {open && (
                             <div
                                 data-testid={`delivery-${m.id}-details`}
                                 className="px-4 pb-4 pt-1 text-sm text-muted-foreground leading-relaxed space-y-2 border-t border-border/60"
