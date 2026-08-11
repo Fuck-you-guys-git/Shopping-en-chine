@@ -351,3 +351,8 @@ Payments were failing with a **DNS error** because `backend/paxity_router.py` ha
 - BARÈME FINAL (défini par exemples utilisateur) : produit à 9 000 F CFA = 13 € = 15 $. Donc RATES = {EUR: 9000/13 ≈ 692.31, USD: 600}. Appliqué frontend (locale.js) + backend (stripe_router.py RATES_XOF) → le client paie réellement ce montant par carte (ex 1500 F → 2,17 € / $2.50, vérifié en base charged_amount).
 - LES CLIENTS EUROPE/USA NE VOIENT PLUS AUCUN PRIX EN F CFA : formatEquivalents retourne "" hors mode XOF (rendu conditionnel dans ProductCard, ProductDetail, CartDrawer, Cart) ; notes « débité en F CFA » supprimées du checkout (checkout-xof-note, paxity-xof-note supprimés). Vérifié par scan regex de la page produit en mode EUR : zéro occurrence de F CFA. En mode XOF les équivalents « ≈ 2,17 € · $2.50 » restent affichés.
 - Historique des taux (ne pas réutiliser) : 800/750 → 1000/1260 → FINAL 692.31 (EUR) / 600 (USD).
+
+## Update — Feb 2026 (Ticket style bon de livraison Shopify)
+- L'utilisateur a fourni une photo de référence (packing slip Shopify) : le ticket 100×150mm est refait à l'identique — marque en haut gauche, « Commande #X + date » en haut droite, 2 colonnes EXPÉDIER À / FACTURER À (client + adresse + Sénégal + tél), tableau ARTICLES/QUANTITÉ (« 1 sur 1 »), traits noirs épais, pied de page centré « Merci pour votre achat ! » + SHOPPING EN CHINE + sicap mbao, 17000 Dakar, Sénégal + balatoumata414@gmail.com + shoppingenchine.com.
+- Écriture GRANDE ET NOIRE (font-weight 900/bold partout, #000). PAS de prix sur le ticket (conforme à la référence). fmtF supprimé (inutilisé).
+- Vérifié par capture du popup d'impression.
