@@ -13,6 +13,7 @@ import { formatMoney, getLocale, t } from "@/lib/locale";
 
 const EU_RATE_XOF = 13 * (9000 / 28); // 13 €/kg exprimé en F CFA -> 13 € pile en mode EUR
 const US_RATE_XOF = 18 * (9000 / 32); // 18 $/kg exprimé en F CFA -> $18 pile en mode USD
+const CA_RATE_XOF = 20 * (9000 / 32); // 20 $/kg (Canada) -> $20 pile en mode USD
 
 const AFRICA_MODES = [
     {
@@ -105,10 +106,33 @@ const US_MODES = [
     },
 ];
 
+const CA_MODES = [
+    {
+        id: "standard",
+        icon: Truck,
+        title: "Livraison Chine-Canada",
+        delay: "15 à 20 jours ouvrés",
+        rateXof: CA_RATE_XOF,
+        lines: [
+            { p: "Une option pensée pour vous permettre de recevoir votre commande en toute sérénité." },
+            { p: "En cas de perte du colis ou de retenue par les services douaniers, vous bénéficiez d'un remboursement intégral, conformément aux conditions de cette option." },
+            { p: "Délai estimatif : 15 à 20 jours ouvrés." },
+            { p: "Après votre commande, votre colis est pesé afin de déterminer vos frais de livraison." },
+            { p: "Le calcul est simple :" },
+            { calc: CA_RATE_XOF },
+            { p: "Le montant obtenu correspond à vos frais de livraison." },
+            { p: "Une fois votre colis prêt à être expédié, nous vous communiquerons le montant exact de vos frais de livraison afin de finaliser votre paiement via un lien sécurisé que vous recevrez." },
+            { bullets: ["payer vos frais de livraison avant l'expédition"] },
+            { p: "Les frais de livraison sont calculés uniquement lorsque le colis est pesé et prêt à être expédié." },
+            { p: "Dès l'arrivée de votre colis dans votre pays, notre assistante vous contactera pour organiser sa réception, soit par livraison (ces frais restent à votre charge), soit par remise en main propre." },
+        ],
+    },
+];
+
 export const getDeliveryModes = () => {
-    const cur = getLocale().currency;
-    if (cur === "EUR") return EU_MODES;
-    if (cur === "USD") return US_MODES;
+    const { currency, country } = getLocale();
+    if (currency === "EUR") return EU_MODES;
+    if (currency === "USD") return country === "CA" ? CA_MODES : US_MODES;
     return AFRICA_MODES;
 };
 

@@ -381,3 +381,9 @@ Payments were failing with a **DNS error** because `backend/paxity_router.py` ha
 ## Update — Feb 2026 (Livraison USA : option unique 18 $/kg)
 - US_MODES ajouté dans DeliveryOptions.jsx : « Livraison Chine-USA » 15-20 j ouvrés · 18 $/kg (rateXof = 18×9000/32 = 5062,5 F → $18 pile en USD), texte identique à l'Europe mais « jusqu'à New York » / « à New York ». getDeliveryModes(): XOF→2 options Dakar, EUR→Chine-Europe 13 €/kg, USD→Chine-USA 18 $/kg.
 - Traductions EN ajoutées. Vérifié par screenshot IP 8.8.8.8 : « China-USA shipping · $18/kg », texte anglais complet.
+
+## Update — Feb 2026 (Livraison Canada : 20 $/kg + détection pays)
+- LocaleContext + locale.js stockent maintenant le country_code retourné par /api/geo (current = {lang, currency, country}).
+- CA_MODES : « Livraison Chine-Canada » 15-20 j ouvrés · 20 $/kg (rateXof = 20×9000/32 = 5625 F). Texte identique Europe (générique « dans votre pays », sans New York). getDeliveryModes(): USD + country==='CA' → CA_MODES, sinon US_MODES. Canadiens paient en USD (déjà le cas via bucket reste-du-monde du geo_router).
+- NOTE : le message utilisateur disait titre « 20$/kg » mais calcul « x 18$ » — uniformisé à 20 $ (signalé à l'utilisateur).
+- Vérifié par screenshot IP 24.48.0.1 (Canada) : « China-Canada shipping · $20/kg », calcul « Package weight (in kg) × $20 », texte EN complet.

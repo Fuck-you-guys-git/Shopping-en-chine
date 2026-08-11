@@ -13,17 +13,17 @@ const BACKEND = process.env.REACT_APP_BACKEND_URL;
 const LocaleContext = createContext(null);
 
 export const LocaleProvider = ({ children }) => {
-    const [locale, setLocaleState] = useState({ lang: "fr", currency: "XOF" });
+    const [locale, setLocaleState] = useState({ lang: "fr", currency: "XOF", country: null });
     // Synchroniser l'état module AVANT le premier rendu des enfants
-    setLocaleValues(locale.lang, locale.currency);
+    setLocaleValues(locale.lang, locale.currency, locale.country);
 
     // Détection IP à chaque chargement du site
     useEffect(() => {
         axios.get(`${BACKEND}/api/geo`, { timeout: 6000 })
             .then(({ data }) => {
                 if (data?.lang && data?.currency) {
-                    setLocaleValues(data.lang, data.currency);
-                    setLocaleState({ lang: data.lang, currency: data.currency });
+                    setLocaleValues(data.lang, data.currency, data.country_code || null);
+                    setLocaleState({ lang: data.lang, currency: data.currency, country: data.country_code || null });
                 }
             })
             .catch(() => { /* défaut FR/XOF conservé */ });

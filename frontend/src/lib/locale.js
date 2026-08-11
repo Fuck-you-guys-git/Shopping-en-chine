@@ -18,10 +18,10 @@ export const LOCALE_PRESETS = [
 ];
 
 // État module (mis à jour par LocaleContext AVANT chaque re-render)
-let current = { lang: "fr", currency: "XOF" };
+let current = { lang: "fr", currency: "XOF", country: null };
 export const getLocale = () => current;
-export const setLocaleValues = (lang, currency) => {
-    current = { lang, currency };
+export const setLocaleValues = (lang, currency, country = null) => {
+    current = { lang, currency, country };
 };
 
 /** Formate un montant F CFA dans la devise d'affichage courante. */
@@ -319,6 +319,7 @@ const EN = {
     // Option internationale (Europe/USA)
     "Livraison Chine-Europe": "China-Europe shipping",
     "Livraison Chine-USA": "China-USA shipping",
+    "Livraison Chine-Canada": "China-Canada shipping",
     "Le montant obtenu correspond à vos frais de livraison jusqu'à New York.": "The resulting amount is your shipping cost to New York.",
     "Dès l'arrivée de votre colis à New York, notre assistante vous contactera pour organiser sa réception, soit par livraison (ces frais restent à votre charge), soit par remise en main propre.":
         "As soon as your package arrives in New York, our assistant will contact you to arrange its reception, either by delivery (these costs remain at your expense) or by hand delivery.",
