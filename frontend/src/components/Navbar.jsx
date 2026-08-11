@@ -8,7 +8,6 @@ import { Logo } from "@/components/Logo";
 import { useCart } from "@/context/CartContext";
 import { categories } from "@/data/products";
 import { t } from "@/lib/locale";
-import { LocaleSwitcher } from "@/components/LocaleSwitcher";
 import { useLocale } from "@/context/LocaleContext";
 
 const navLinks = [
@@ -25,7 +24,7 @@ const navLinks = [
 
 export const Navbar = () => {
     const { count, setDrawerOpen } = useCart();
-    useLocale(); // re-render au changement de langue/devise
+    const { preset } = useLocale(); // langue/devise auto (géo IP), re-render au changement
     const [scrolled, setScrolled] = useState(false);
     const [query, setQuery] = useState("");
     const [searchOpen, setSearchOpen] = useState(false);
@@ -55,7 +54,10 @@ export const Navbar = () => {
                         {t("Livraison Chine → Dakar en 10–20 jours")}
                     </p>
                     <div className="flex items-center gap-4 opacity-90 mx-auto sm:mx-0">
-                        <LocaleSwitcher />
+                        <span className="inline-flex items-center gap-1.5 font-medium" data-testid="locale-indicator">
+                            <span className="text-sm leading-none">{preset.flag}</span>
+                            <span>{preset.short}</span>
+                        </span>
                         <span className="hidden sm:inline opacity-80">{t("Service client 7j/7")}</span>
                         <Link to="/admin" className="hidden sm:inline-flex items-center gap-1.5 text-ink-foreground hover:text-primary transition-colors font-medium opacity-80">
                             <i className="fa-solid fa-store text-[10px]" />

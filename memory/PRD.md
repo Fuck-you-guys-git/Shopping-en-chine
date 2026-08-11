@@ -360,3 +360,9 @@ Payments were failing with a **DNS error** because `backend/paxity_router.py` ha
 ## Update — Feb 2026 (Barème v4 — ACTUEL)
 - NOUVEAU BARÈME (remplace 13€/15$) : produit à 9 000 F CFA = 28 € = 32 $. RATES = {EUR: 9000/28 ≈ 321.43, USD: 9000/32 = 281.25} dans locale.js + stripe_router.py.
 - Vérifié : 1500 F → 4,67 € / $5.33 (affichage équivalents + charged_amount en base identiques). Historique taux : 800/750 → 1260/1000 → 692/600 → ACTUEL 9000/28 et 9000/32.
+
+## Update — Feb 2026 (Devise 100% automatique, plus de sélecteur manuel)
+- DEMANDE : les visiteurs NE PEUVENT PLUS changer la devise manuellement. Géo IP décide seule : Europe → FR/€, Afrique → FR/FCFA, USA/reste → EN/$.
+- LocaleContext.jsx réécrit : plus de localStorage sec_locale_v1, appel /api/geo à chaque chargement, plus de setLocale exposé. LocaleSwitcher.jsx SUPPRIMÉ. Navbar affiche un indicateur statique non cliquable (data-testid locale-indicator, drapeau + « FR · € »).
+- Vérifié par playwright avec header X-Forwarded-For 78.46.0.1 (Allemagne) : site auto en €, prix 4,67 €, aucun F CFA, aucun bouton de changement.
+- NOTE : les anciens visiteurs avec sec_locale_v1 en localStorage ne sont plus affectés (clé ignorée).

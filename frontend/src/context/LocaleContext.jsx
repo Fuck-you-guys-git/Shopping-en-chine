@@ -3,55 +3,36 @@ import axios from "axios";
 import { LOCALE_PRESETS, setLocaleValues } from "@/lib/locale";
 
 /*
- * Langue + devise du site :
- * 1. Choix manuel (sélecteur drapeaux) → persisté dans localStorage.
- * 2. Sinon, détection automatique par IP via GET /api/geo :
- *    Europe → FR + EUR · Afrique → FR + FCFA · USA/reste → EN + USD.
+ * Langue + devise 100% AUTOMATIQUES par géolocalisation IP (GET /api/geo) :
+ *   Europe → FR + EUR · Afrique → FR + FCFA · USA/reste → EN + USD.
+ * Le visiteur NE PEUT PAS changer manuellement (demande du marchand).
+ * Défaut avant réponse géo : FR + FCFA.
  */
-const STORAGE_KEY = "sec_locale_v1";
 const BACKEND = process.env.REACT_APP_BACKEND_URL;
 
 const LocaleContext = createContext(null);
 
-const readStored = () => {
-    try {
-        const raw = localStorage.getItem(STORAGE_KEY);
-        if (!raw) return null;
-        const v = JSON.parse(raw);
-        if (v && ["fr", "en"].includes(v.lang) && ["XOF", "EUR", "USD"].includes(v.currency)) return v;
-    } catch { /* ignore */ }
-    return null;
-};
-
 export const LocaleProvider = ({ children }) => {
-    const stored = readStored();
-    const [locale, setLocaleState] = useState(stored || { lang: "fr", currency: "XOF" });
+    const [locale, setLocaleState] = useState({ lang: "fr", currency: "XOF" });
     // Synchroniser l'état module AVANT le premier rendu des enfants
     setLocaleValues(locale.lang, locale.currency);
 
-    const setLocale = (lang, currency, persist = true) => {
-        setLocaleValues(lang, currency);
-        setLocaleState({ lang, currency });
-        if (persist) {
-            try { localStorage.setItem(STORAGE_KEY, JSON.stringify({ lang, currency })); } catch { /* ignore */ }
-        }
-    };
-
-    // Détection IP au premier chargement (uniquement si aucun choix mémorisé)
+    // Détection IP à chaque chargement du site
     useEffect(() => {
-        if (stored) return;
         axios.get(`${BACKEND}/api/geo`, { timeout: 6000 })
             .then(({ data }) => {
-                if (data?.lang && data?.currency) setLocale(data.lang, data.currency, false);
+                if (data?.lang && data?.currency) {
+                    setLocaleValues(data.lang, data.currency);
+                    setLocaleState({ lang: data.lang, currency: data.currency });
+                }
             })
             .catch(() => { /* défaut FR/XOF conservé */ });
-        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
     const preset = LOCALE_PRESETS.find((p) => p.lang === locale.lang && p.currency === locale.currency) || LOCALE_PRESETS[0];
 
     return (
-        <LocaleContext.Provider value={{ ...locale, preset, setLocale }}>
+        <LocaleContext.Provider value={{ ...locale, preset }}>
             {children}
         </LocaleContext.Provider>
     );
