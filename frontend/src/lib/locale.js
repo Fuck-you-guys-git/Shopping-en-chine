@@ -7,7 +7,9 @@
  * - t(fr) : renvoie la traduction anglaise si la langue est "en".
  */
 
-export const RATES = { XOF: 1, EUR: 1260, USD: 1000 };
+// Barème fixé par le marchand : un produit à 9 000 F CFA vaut 13 € et 15 $.
+// => prix EUR = prix CFA ÷ 692,31 (9000/13) · prix USD = prix CFA ÷ 600 (9000/15)
+export const RATES = { XOF: 1, EUR: 9000 / 13, USD: 600 };
 
 export const LOCALE_PRESETS = [
     { id: "sn", flag: "🇸🇳", lang: "fr", currency: "XOF", label: "Afrique · FCFA", short: "FR · F CFA" },
@@ -54,16 +56,16 @@ export const formatCfa = (xof) =>
     `${new Intl.NumberFormat("fr-FR", { maximumFractionDigits: 0 }).format(Math.round(Number(xof) || 0))} F`;
 
 /**
- * Équivalents dans les autres devises, calculés depuis le F CFA (devise principale).
- * - Mode FCFA  -> "≈ 11,25 € · $12"   (le client africain voit les conversions)
- * - Mode EUR/USD -> "9 000 F CFA"     (rappel de la devise principale)
+ * Équivalents dans les autres devises (uniquement pour les clients en F CFA).
+ * - Mode FCFA  -> "≈ 13 € · $15"  (le client africain voit les conversions)
+ * - Mode EUR/USD -> "" : les clients Europe/USA ne voient JAMAIS de prix en F CFA.
  */
 export const formatEquivalents = (xof) => {
     const v = Number(xof) || 0;
     if (current.currency === "XOF") {
         return `≈ ${fmtCurrency(v / RATES.EUR, "fr-FR", "EUR")} · ${fmtCurrency(v / RATES.USD, "en-US", "USD")}`;
     }
-    return formatXof(v);
+    return "";
 };
 
 // ---------------------------------------------------------------------------

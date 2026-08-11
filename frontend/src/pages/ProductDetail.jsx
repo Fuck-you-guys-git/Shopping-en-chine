@@ -252,9 +252,11 @@ export default function ProductDetail() {
                                 </>
                             )}
                         </div>
-                        <p className="mt-1.5 text-xs text-muted-foreground" data-testid="product-detail-equivalents">
-                            {formatEquivalents(product.price)}
-                        </p>
+                        {formatEquivalents(product.price) && (
+                            <p className="mt-1.5 text-xs text-muted-foreground" data-testid="product-detail-equivalents">
+                                {formatEquivalents(product.price)}
+                            </p>
+                        )}
 
                         {product.description && product.description !== "Description à compléter." && (
                             <p className="mt-6 text-muted-foreground leading-relaxed">{product.description}</p>

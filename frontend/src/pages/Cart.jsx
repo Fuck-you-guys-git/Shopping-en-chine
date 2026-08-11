@@ -121,7 +121,9 @@ export default function Cart() {
                             <span className="font-medium">{t("Total TTC")}</span>
                             <span className="font-display text-3xl font-semibold">{formatPrice(total)}</span>
                         </div>
-                        <p className="text-[11px] text-muted-foreground text-right -mt-3">{formatEquivalents(total)}</p>
+                        {formatEquivalents(total) && (
+                            <p className="text-[11px] text-muted-foreground text-right -mt-3">{formatEquivalents(total)}</p>
+                        )}
                         <Button asChild size="lg" className="w-full bg-ink text-ink-foreground hover:bg-ink/90 rounded-full h-12">
                             <Link to="/commande">{t("Passer commande")}</Link>
                         </Button>

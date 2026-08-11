@@ -16,7 +16,7 @@ import { paxityDirectPayin, paxityDirectAvailable } from "@/lib/paxityDirect";
 import { OrderSummary } from "@/components/OrderSummary";
 import { StripeEmbedded } from "@/components/StripeEmbedded";
 import { orderNo } from "@/lib/utils";
-import { t, getLocale, formatXof, formatEquivalents } from "@/lib/locale";
+import { t, getLocale, formatEquivalents } from "@/lib/locale";
 
 const OPERATOR_META = {
     "orange-money": { label: "Orange Money", color: "#FF7900", bg: "bg-[#FF7900]/10" },
@@ -712,11 +712,6 @@ export default function Checkout() {
                                         <ShieldCheck className="h-4 w-4 text-success" />
                                         {t("Paiement sécurisé via Paxity · Chiffrement bout-en-bout")}
                                     </div>
-                                    {getLocale().currency !== "XOF" && (
-                                        <p className="text-[11px] text-muted-foreground" data-testid="paxity-xof-note">
-                                            {t("Mobile Money : le montant est débité en F CFA :")} <span className="font-medium text-foreground">{formatXof(total)}</span>
-                                        </p>
-                                    )}
 
                                     <div className="flex gap-2 pt-2">
                                         <Button type="button" variant="outline" onClick={() => setStep(2)} className="rounded-full h-11 px-6">{t("Retour")}</Button>
@@ -771,11 +766,6 @@ export default function Checkout() {
                         </div>
                         {getLocale().currency === "XOF" && (
                             <p className="text-[11px] text-muted-foreground text-right" data-testid="checkout-equivalents">{formatEquivalents(total)}</p>
-                        )}
-                        {getLocale().currency !== "XOF" && (
-                            <p className="text-[11px] text-muted-foreground text-right" data-testid="checkout-xof-note">
-                                {formatXof(total)}
-                            </p>
                         )}
                     </div>
                 </aside>

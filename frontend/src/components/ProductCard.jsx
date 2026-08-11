@@ -59,9 +59,11 @@ export const ProductCard = ({ product, index = 0 }) => {
                         </span>
                     )}
                 </div>
-                <p className="mt-0.5 text-[11px] text-muted-foreground" data-testid="product-card-equivalents">
-                    {formatEquivalents(product.price)}
-                </p>
+                {formatEquivalents(product.price) && (
+                    <p className="mt-0.5 text-[11px] text-muted-foreground" data-testid="product-card-equivalents">
+                        {formatEquivalents(product.price)}
+                    </p>
+                )}
                 <Button
                     onClick={handleAdd}
                     data-testid="product-card-add-btn"

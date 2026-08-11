@@ -83,7 +83,9 @@ export const CartDrawer = () => {
                                 <span className="font-medium">{t("Total")}</span>
                                 <span className="font-display text-2xl font-semibold">{formatPrice(total)}</span>
                             </div>
-                            <p className="text-[11px] text-muted-foreground text-right -mt-2">{formatEquivalents(total)}</p>
+                            {formatEquivalents(total) && (
+                                <p className="text-[11px] text-muted-foreground text-right -mt-2">{formatEquivalents(total)}</p>
+                            )}
                             <Button asChild size="lg" className="w-full bg-ink text-ink-foreground hover:bg-ink/90 rounded-full h-12">
                                 <Link to="/commande" onClick={() => setDrawerOpen(false)}>{t("Passer commande")}</Link>
                             </Button>
