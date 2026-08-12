@@ -533,3 +533,8 @@ Payments were failing with a **DNS error** because `backend/paxity_router.py` ha
 - FIX : ticketHtml pagine les articles → 6 sur l'étiquette 1 (avec adresses complètes), 7 par étiquette suivante (en-tête compact : Commande # · Page i/n · nom client), pied de page uniquement sur la dernière, mention « Suite des articles sur l'étiquette suivante → » (.more italique 12px). En-tête indique « Articles (N) » total quand multi-pages.
 - Commande démo #9911 (Awa Ndiaye, 11 articles, EXPRESS, 114000 F, status success) laissée dans la DB PREVIEW pour que le user teste l'impression. La supprimer plus tard si demandé (db.orders id="9911").
 - Vérifié e2e via dashboard réel : 2 .ticket générés, page 1 = 6 articles, page 2 = 5 articles + footer, rien de coupé.
+
+## Update — Feb 2026 (Ticket : tout sur UNE seule étiquette, densité auto)
+- Le user a refusé la pagination multi-étiquettes : TOUT doit tenir sur la même feuille.
+- FIX : pagination supprimée, remplacée par densité automatique : classe .ticket--dense (7-12 articles, item-name 12px, variante inline à côté du nom) et .ticket--ultra (13+, 10.5px). ≤6 articles = tailles confortables inchangées. En-tête indique « Articles (N) ».
+- Vérifié e2e avec la commande #9911 (11 articles) : 1 seule étiquette, footer bottom (616px) < ticket bottom (645px), rien de coupé, tout lisible.

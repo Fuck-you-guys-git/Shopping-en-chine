@@ -38,30 +38,15 @@ const ticketHtml = (o) => {
             </div>`;
     };
 
-    // Beaucoup d'articles = plusieurs étiquettes : 6 sur la 1re (avec adresses),
-    // 7 par étiquette suivante ; pied de page sur la dernière uniquement.
-    const ITEMS_FIRST = 6, ITEMS_NEXT = 7;
-    const pages = [o.items.slice(0, ITEMS_FIRST)];
-    for (let i = ITEMS_FIRST; i < o.items.length; i += ITEMS_NEXT) pages.push(o.items.slice(i, i + ITEMS_NEXT));
+    // Beaucoup d'articles = tout sur LA MÊME étiquette : la mise en page se
+    // resserre automatiquement (dense >6 articles, ultra >12).
+    const density = o.items.length > 12 ? " ticket--ultra" : o.items.length > 6 ? " ticket--dense" : "";
 
-    const foot = `
-        <div class="rule"></div>
-        <div class="foot">
-            <p class="thanks">Merci pour votre achat !</p>
-            <p class="fbrand">SHOPPING EN CHINE</p>
-            <p class="fline">Guangzhou, 510000 Guangdong, Chine</p>
-            <p class="fline">serviceclients@shoppingenchine.com</p>
-            <p class="fline">shoppingenchine.com</p>
-        </div>`;
-
-    return pages.map((pageItems, idx) => {
-        const isFirst = idx === 0;
-        const isLast = idx === pages.length - 1;
-        const pageTag = pages.length > 1 ? ` · Page ${idx + 1}/${pages.length}` : "";
-        const header = isFirst ? `
+    return `
+    <div class="ticket${density}">
         <div class="top">
             <span class="brand">SHOPPING EN CHINE</span>
-            <span class="meta">Commande ${esc(orderNo(o.id))}${pageTag}<br/>${esc(dateStr)}</span>
+            <span class="meta">Commande ${esc(orderNo(o.id))}<br/>${esc(dateStr)}</span>
         </div>
         <p class="ship">Livraison : ${o.deliveryMode === "express" ? "EXPRESS (5–7 jours ouvrés)" : "STANDARD (15–20 jours ouvrés)"}</p>
         <div class="cols">
@@ -76,23 +61,21 @@ const ticketHtml = (o) => {
                 <p class="who">${esc(o.customer)}</p>
                 ${addr.map((l) => `<p class="addr">${esc(l)}</p>`).join("")}
             </div>
-        </div>` : `
-        <div class="top">
-            <span class="brand">SHOPPING EN CHINE</span>
-            <span class="meta">Commande ${esc(orderNo(o.id))}${pageTag}<br/>${esc(o.customer)}</span>
-        </div>`;
-        return `
-    <div class="ticket">
-        ${header}
+        </div>
         <div class="rule"></div>
         <div class="items">
-            <div class="items-head"><span>Articles${pages.length > 1 ? ` (${o.items.length})` : ""}</span><span>Quantité</span></div>
-            ${pageItems.map(itemRow).join("")}
-            ${!isLast ? `<p class="more">Suite des articles sur l'étiquette suivante →</p>` : ""}
+            <div class="items-head"><span>Articles (${o.items.length})</span><span>Quantité</span></div>
+            ${o.items.map(itemRow).join("")}
         </div>
-        ${isLast ? foot : ""}
+        <div class="rule"></div>
+        <div class="foot">
+            <p class="thanks">Merci pour votre achat !</p>
+            <p class="fbrand">SHOPPING EN CHINE</p>
+            <p class="fline">Guangzhou, 510000 Guangdong, Chine</p>
+            <p class="fline">serviceclients@shoppingenchine.com</p>
+            <p class="fline">shoppingenchine.com</p>
+        </div>
     </div>`;
-    }).join("");
 };
 
 const printTickets = (ordersToPrint) => {
@@ -127,7 +110,42 @@ const printTickets = (ordersToPrint) => {
         .item-name{font-size:15px;font-weight:700;line-height:1.3}
         .item-var{font-size:13px;font-weight:400;line-height:1.3}
         .item-qty{font-size:13px;font-weight:600;white-space:nowrap;margin-left:auto}
-        .more{font-size:12px;font-style:italic;margin-top:2mm}
+        /* Mode DENSE (7-12 articles) : tout tient sur la même étiquette */
+        .ticket--dense .brand{font-size:16px}
+        .ticket--dense .meta{font-size:11px}
+        .ticket--dense .top{margin-bottom:2mm}
+        .ticket--dense .ship{font-size:10.5px;margin-bottom:2mm}
+        .ticket--dense .label{font-size:10px;margin-bottom:.5mm}
+        .ticket--dense .who{font-size:13px}
+        .ticket--dense .addr{font-size:11.5px;line-height:1.3}
+        .ticket--dense .rule{margin:2mm 0 1.5mm}
+        .ticket--dense .items-head{font-size:10px;margin-bottom:1.5mm}
+        .ticket--dense .item{margin-bottom:1.2mm;gap:2mm}
+        .ticket--dense .item-txt{flex-direction:row;align-items:baseline;gap:4px;flex-wrap:wrap}
+        .ticket--dense .item-name{font-size:12px}
+        .ticket--dense .item-var{font-size:10.5px}
+        .ticket--dense .item-qty{font-size:11px}
+        .ticket--dense .thanks{font-size:11px;margin-bottom:1mm}
+        .ticket--dense .fbrand{font-size:11px}
+        .ticket--dense .fline{font-size:10px;line-height:1.35}
+        /* Mode ULTRA (13+ articles) */
+        .ticket--ultra .brand{font-size:14px}
+        .ticket--ultra .meta{font-size:10px}
+        .ticket--ultra .top{margin-bottom:1.5mm}
+        .ticket--ultra .ship{font-size:9.5px;margin-bottom:1.5mm}
+        .ticket--ultra .label{font-size:9px;margin-bottom:.5mm}
+        .ticket--ultra .who{font-size:11.5px}
+        .ticket--ultra .addr{font-size:10.5px;line-height:1.25}
+        .ticket--ultra .rule{margin:1.5mm 0 1mm}
+        .ticket--ultra .items-head{font-size:9px;margin-bottom:1mm}
+        .ticket--ultra .item{margin-bottom:.8mm;gap:2mm}
+        .ticket--ultra .item-txt{flex-direction:row;align-items:baseline;gap:3px;flex-wrap:wrap}
+        .ticket--ultra .item-name{font-size:10.5px}
+        .ticket--ultra .item-var{font-size:9.5px}
+        .ticket--ultra .item-qty{font-size:9.5px}
+        .ticket--ultra .thanks{font-size:10px;margin-bottom:.5mm}
+        .ticket--ultra .fbrand{font-size:10px}
+        .ticket--ultra .fline{font-size:9px;line-height:1.3}
         .foot{text-align:center;margin-top:1mm}
         .thanks{font-size:14px;font-weight:400;margin-bottom:2mm}
         .fbrand{font-size:14px;font-weight:800;letter-spacing:.5px;margin-bottom:.5mm}
