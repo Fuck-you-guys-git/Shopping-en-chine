@@ -88,7 +88,12 @@ async def create_stripe_checkout(payload: StripeCheckoutRequest, request: Reques
         if cur == "XOF":
             unit_amount = price  # XOF : zéro décimale, francs entiers
         else:
-            unit_amount = int(round(price / rate * 100))  # EUR/USD : centimes
+            # Prix EUR/USD saisi par le vendeur prioritaire, sinon conversion au barème
+            explicit = product.get("priceEur") if cur == "EUR" else product.get("priceUsd")
+            if explicit and float(explicit) > 0:
+                unit_amount = int(round(float(explicit) * 100))  # centimes
+            else:
+                unit_amount = int(round(price / rate * 100))  # EUR/USD : centimes
         charged_minor += unit_amount * it.qty
         line_items.append({
             "price_data": {

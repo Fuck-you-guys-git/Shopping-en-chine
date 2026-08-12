@@ -46,6 +46,8 @@ export default function AddProduct() {
         subcategory: "",
         price: "",
         oldPrice: "",
+        priceEur: "",
+        priceUsd: "",
         description: "",
         searchKeywords: "",
         badge: "",
@@ -69,6 +71,8 @@ export default function AddProduct() {
                 subcategory: p.subcategory || "",
                 price: String(p.price ?? ""),
                 oldPrice: p.oldPrice ? String(p.oldPrice) : "",
+                priceEur: p.priceEur ? String(p.priceEur) : "",
+                priceUsd: p.priceUsd ? String(p.priceUsd) : "",
                 description: p.description === "Description à compléter." ? "" : (p.description || ""),
                 searchKeywords: (p.keywords || []).join(", "),
                 badge: p.badge || "",
@@ -185,6 +189,8 @@ export default function AddProduct() {
             subcategory: form.subcategory && subcategoriesByCategory[form.category] ? form.subcategory : undefined,
             price: Number(form.price),
             oldPrice: form.oldPrice ? Number(form.oldPrice) : undefined,
+            priceEur: form.priceEur ? Number(form.priceEur) : null,
+            priceUsd: form.priceUsd ? Number(form.priceUsd) : null,
             description: form.description || "",
             image: mainImage,
             images: photos.length ? photos : [mainImage],
@@ -334,7 +340,7 @@ export default function AddProduct() {
 
                 <div className="bg-card rounded-2xl p-5 md:p-6 shadow-card border border-border/50">
                     <h3 className="font-display text-lg font-medium mb-1">Prix</h3>
-                    <p className="text-xs text-muted-foreground mb-5">Prix en francs CFA (F).</p>
+                    <p className="text-xs text-muted-foreground mb-5">Prix en francs CFA (F), et si vous le souhaitez vos propres prix en euros et en dollars.</p>
                     <div className="grid sm:grid-cols-2 gap-4">
                         <div className="space-y-1.5">
                             <Label htmlFor="price">Prix de vente *</Label>
@@ -350,7 +356,26 @@ export default function AddProduct() {
                                 <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">F</span>
                             </div>
                         </div>
+                        <div className="space-y-1.5">
+                            <Label htmlFor="priceEur">Prix en euros (optionnel)</Label>
+                            <div className="relative">
+                                <Input id="priceEur" data-testid="price-eur-input" type="number" min="0" step="0.5" value={form.priceEur} onChange={(e) => set("priceEur", e.target.value)} className="pr-10" />
+                                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">€</span>
+                            </div>
+                            <p className="text-[11px] text-muted-foreground">Affiché et débité pour les clients d&apos;Europe.</p>
+                        </div>
+                        <div className="space-y-1.5">
+                            <Label htmlFor="priceUsd">Prix en dollars (optionnel)</Label>
+                            <div className="relative">
+                                <Input id="priceUsd" data-testid="price-usd-input" type="number" min="0" step="0.5" value={form.priceUsd} onChange={(e) => set("priceUsd", e.target.value)} className="pr-10" />
+                                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">$</span>
+                            </div>
+                            <p className="text-[11px] text-muted-foreground">Affiché et débité pour les clients USA / Canada.</p>
+                        </div>
                     </div>
+                    <p className="mt-4 text-xs text-muted-foreground">
+                        Si vous laissez vide, la conversion automatique s&apos;applique : 9 000 F = 28 € = 32 $.
+                    </p>
                 </div>
 
                 <div className="bg-card rounded-2xl p-5 md:p-6 shadow-card border border-border/50">
@@ -597,6 +622,13 @@ export default function AddProduct() {
                             <span className="font-display text-lg font-semibold">{form.price ? formatPrice(Number(form.price)) : "0 F"}</span>
                             {form.oldPrice && <span className="text-xs text-muted-foreground line-through">{formatPrice(Number(form.oldPrice))}</span>}
                         </div>
+                        {(form.priceEur || form.priceUsd) && (
+                            <p className="text-xs text-muted-foreground mt-1" data-testid="preview-multi-currency">
+                                {form.priceEur && <>Europe : <span className="font-medium text-foreground">{form.priceEur} €</span></>}
+                                {form.priceEur && form.priceUsd && " · "}
+                                {form.priceUsd && <>USA/Canada : <span className="font-medium text-foreground">${form.priceUsd}</span></>}
+                            </p>
+                        )}
                     </div>
 
                     <div className="flex flex-col gap-2">

@@ -155,6 +155,10 @@ class ProductPayload(BaseModel):
     keywords: Optional[list[str]] = None
     price: float = Field(gt=0)
     oldPrice: Optional[float] = None
+    # Prix affichés/débités pour l'Europe et les USA/Canada.
+    # Facultatifs : à défaut, conversion automatique (9000 F = 28 EUR = 32 USD).
+    priceEur: Optional[float] = Field(default=None, gt=0)
+    priceUsd: Optional[float] = Field(default=None, gt=0)
     badge: Optional[str] = None
     image: str = ""
     description: str = ""

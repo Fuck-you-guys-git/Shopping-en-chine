@@ -5,16 +5,13 @@ import { Separator } from "@/components/ui/separator";
 import { Input } from "@/components/ui/input";
 import { useState } from "react";
 import { useCart } from "@/context/CartContext";
-import { formatPrice } from "@/components/ProductCard";
 import { toast } from "sonner";
-import { t, formatEquivalents } from "@/lib/locale";
+import { t, unitAmount, fmtAmount, cartDisplayTotal } from "@/lib/locale";
 
 export default function Cart() {
     const { items, updateQty, removeItem, subtotal, clear } = useCart();
     const [promo, setPromo] = useState("");
     const [discount, setDiscount] = useState(0);
-    const shipping = 0;
-    const total = Math.max(0, subtotal + shipping - discount);
 
     const applyPromo = (e) => {
         e.preventDefault();
@@ -72,15 +69,15 @@ export default function Cart() {
                                 </div>
                                 <div className="mt-auto flex items-center justify-between pt-3">
                                     <div className="inline-flex items-center border rounded-full">
-                                        <button onClick={() => updateQty(item.line, item.qty - 1)} className="h-8 w-8 flex items-center justify-center">
+                                        <button data-testid={`cart-qty-minus-${item.line}`} onClick={() => updateQty(item.line, item.qty - 1)} className="h-8 w-8 flex items-center justify-center">
                                             <Minus className="h-3.5 w-3.5" />
                                         </button>
                                         <span className="w-9 text-center text-sm font-medium">{item.qty}</span>
-                                        <button onClick={() => updateQty(item.line, item.qty + 1)} className="h-8 w-8 flex items-center justify-center">
+                                        <button data-testid={`cart-qty-plus-${item.line}`} onClick={() => updateQty(item.line, item.qty + 1)} className="h-8 w-8 flex items-center justify-center">
                                             <Plus className="h-3.5 w-3.5" />
                                         </button>
                                     </div>
-                                    <span className="font-display text-xl font-semibold">{formatPrice(item.price * item.qty)}</span>
+                                    <span className="font-display text-xl font-semibold">{fmtAmount(unitAmount(item) * item.qty)}</span>
                                 </div>
                             </div>
                         </div>
@@ -103,12 +100,12 @@ export default function Cart() {
                         <div className="space-y-2 text-sm">
                             <div className="flex justify-between">
                                 <span className="text-muted-foreground">{t("Sous-total")}</span>
-                                <span>{formatPrice(subtotal)}</span>
+                                <span>{fmtAmount(cartDisplayTotal(items))}</span>
                             </div>
                             {discount > 0 && (
                                 <div className="flex justify-between text-success">
                                     <span>{t("Réduction (−10%)")}</span>
-                                    <span>−{formatPrice(discount)}</span>
+                                    <span>−{fmtAmount(cartDisplayTotal(items) * 0.1)}</span>
                                 </div>
                             )}
                             <div className="flex justify-between">
@@ -119,11 +116,8 @@ export default function Cart() {
                         <Separator />
                         <div className="flex justify-between items-baseline">
                             <span className="font-medium">{t("Total TTC")}</span>
-                            <span className="font-display text-3xl font-semibold">{formatPrice(total)}</span>
+                            <span className="font-display text-3xl font-semibold">{fmtAmount(cartDisplayTotal(items) * (discount > 0 ? 0.9 : 1))}</span>
                         </div>
-                        {formatEquivalents(total) && (
-                            <p className="text-[11px] text-muted-foreground text-right -mt-3">{formatEquivalents(total)}</p>
-                        )}
                         <Button asChild size="lg" className="w-full bg-ink text-ink-foreground hover:bg-ink/90 rounded-full h-12">
                             <Link to="/commande">{t("Passer commande")}</Link>
                         </Button>

@@ -456,3 +456,11 @@ Payments were failing with a **DNS error** because `backend/paxity_router.py` ha
 - Checkout.jsx : Select « État » (US) / « Province » (CA) affiché uniquement si STATES[buyer.country] existe (data-testid state-select / state-option-Xxx avec espaces→tirets). buyer.state reset au changement de pays, requis dans buyerValid() pour US/CA, inclus dans l'adresse envoyée (address, zip, state, pays).
 - Traductions ajoutées : État/State, Province, Choisissez votre état/province.
 - Testé par screenshot : US auto-détecté → champ État (New York OK) ; Canada → Province (Quebec OK, indicatif 🇨🇦 +1) ; Sénégal → champ masqué.
+
+## Update — Feb 2026 (Prix EUR/USD par produit — Dashboard vendeur)
+- BACKEND : ProductPayload (products_router.py) + priceEur/priceUsd Optional[float] gt=0 (null accepté pour effacer). stripe_router.py : unit_amount = prix explicite vendeur (priceEur/priceUsd × 100 centimes) prioritaire, sinon conversion barème fixe.
+- FRONTEND helpers (locale.js) : unitAmount(p) (priorité priceEur/priceUsd sinon RATES), fmtAmount(v), formatProductMoney(p), cartDisplayTotal(items). formatEquivalents SUPPRIMÉ partout (mort).
+- Affichages migrés vers helpers : ProductCard, ProductDetail, SearchSuggestions, CartDrawer, Cart, Checkout (récap + boutons Payer). Paxity reste 100% XOF (inchangé). Le panier (localStorage sec_cart_v1) stocke le produit slim complet → priceEur/priceUsd suivent automatiquement ; les articles ajoutés AVANT la feature n'ont pas ces champs (fallback conversion, OK).
+- DASHBOARD : AddProduct.jsx → 2 champs optionnels « Prix en euros » (price-eur-input) / « Prix en dollars » (price-usd-input), aide « 9 000 F = 28 € = 32 $ si vide », aperçu live (preview-multi-currency), pré-remplissage en édition, envoi null si vide.
+- data-testid ajoutés : cart-qty-plus-{line} / cart-qty-minus-{line} sur /panier.
+- TESTÉ (iteration_27.json) : backend 5/5 (persist, Stripe EUR 25.0, USD x2 60.0, fallback 32.0), frontend ~95% (form+preview+édition+affichage $30+panier $60 OK). Faux positif qty→checkout re-vérifié par main agent : OK ($60 partout). Commandes QA pending nettoyées de la DB. Fichier test : /app/backend/tests/test_multicurrency_iter27.py.

@@ -17,7 +17,7 @@ import { OrderSummary } from "@/components/OrderSummary";
 import { StripeEmbedded } from "@/components/StripeEmbedded";
 import { DeliveryOptions } from "@/components/DeliveryOptions";
 import { orderNo } from "@/lib/utils";
-import { t, getLocale } from "@/lib/locale";
+import { t, getLocale, unitAmount, fmtAmount, cartDisplayTotal } from "@/lib/locale";
 import { COUNTRIES, findCountry, countryName, STATES } from "@/lib/countries";
 
 const OPERATOR_META = {
@@ -682,7 +682,7 @@ export default function Checkout() {
                                     </div>
                                     {getLocale().currency !== "XOF" && (
                                         <p className="text-[11px] text-muted-foreground" data-testid="stripe-currency-note">
-                                            {t("Vous payez par carte dans votre devise :")} <span className="font-medium text-foreground">{formatPrice(total)}</span>
+                                            {t("Vous payez par carte dans votre devise :")} <span className="font-medium text-foreground">{fmtAmount(cartDisplayTotal(items))}</span>
                                         </p>
                                     )}
                                     <div className="flex gap-2 pt-2">
@@ -697,7 +697,7 @@ export default function Checkout() {
                                             {processing ? (
                                                 <><Loader2 className="h-4 w-4 animate-spin" /> {t("Chargement…")}</>
                                             ) : (
-                                                <>{t("Payer par carte")} {formatPrice(total)}</>
+                                                <>{t("Payer par carte")} {fmtAmount(cartDisplayTotal(items))}</>
                                             )}
                                         </Button>
                                     </div>
@@ -790,19 +790,19 @@ export default function Checkout() {
                                         <p className="text-sm font-medium truncate">{it.name}</p>
                                         {it.size && <p className="text-xs text-muted-foreground">{t("Taille")} {it.size}</p>}
                                     </div>
-                                    <span className="text-sm font-medium">{formatPrice(it.price * it.qty)}</span>
+                                    <span className="text-sm font-medium">{fmtAmount(unitAmount(it) * it.qty)}</span>
                                 </div>
                             ))}
                         </div>
                         <Separator />
                         <div className="space-y-2 text-sm">
-                            <div className="flex justify-between"><span className="text-muted-foreground">{t("Sous-total")}</span><span>{formatPrice(subtotal)}</span></div>
+                            <div className="flex justify-between"><span className="text-muted-foreground">{t("Sous-total")}</span><span>{fmtAmount(cartDisplayTotal(items))}</span></div>
                             <div className="flex justify-between"><span className="text-muted-foreground">{t("Livraison Chine → Monde entier")}</span><span className="text-muted-foreground">{t("10–20 jours")}</span></div>
                         </div>
                         <Separator />
                         <div className="flex justify-between items-baseline">
                             <span className="font-medium">{t("Total")}</span>
-                            <span className="font-display text-2xl font-semibold">{formatPrice(total)}</span>
+                            <span className="font-display text-2xl font-semibold">{fmtAmount(cartDisplayTotal(items))}</span>
                         </div>
                     </div>
                 </aside>

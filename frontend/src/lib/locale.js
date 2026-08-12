@@ -56,6 +56,37 @@ export const formatCfa = (xof) =>
     `${new Intl.NumberFormat("fr-FR", { maximumFractionDigits: 0 }).format(Math.round(Number(xof) || 0))} F`;
 
 /**
+ * Prix unitaire d'un produit/article dans la devise d'affichage courante.
+ * Priorité au prix EUR/USD saisi par le vendeur (priceEur / priceUsd),
+ * sinon conversion automatique au barème fixe.
+ */
+export const unitAmount = (p) => {
+    if (current.currency === "EUR") {
+        const e = Number(p?.priceEur);
+        return e > 0 ? e : (Number(p?.price) || 0) / RATES.EUR;
+    }
+    if (current.currency === "USD") {
+        const u = Number(p?.priceUsd);
+        return u > 0 ? u : (Number(p?.price) || 0) / RATES.USD;
+    }
+    return Number(p?.price) || 0;
+};
+
+/** Formate un montant déjà exprimé dans la devise d'affichage courante. */
+export const fmtAmount = (v) => {
+    if (current.currency === "EUR") return fmtCurrency(v, "fr-FR", "EUR");
+    if (current.currency === "USD") return fmtCurrency(v, "en-US", "USD");
+    return `${new Intl.NumberFormat("fr-FR", { maximumFractionDigits: 0 }).format(Math.round(v))} F`;
+};
+
+/** Prix d'un produit formaté (tient compte des prix EUR/USD du vendeur). */
+export const formatProductMoney = (p) => fmtAmount(unitAmount(p));
+
+/** Total du panier dans la devise d'affichage (prix vendeur prioritaires). */
+export const cartDisplayTotal = (items) =>
+    (items || []).reduce((s, i) => s + unitAmount(i) * (i.qty || 1), 0);
+
+/**
  * Équivalents devises : DÉSACTIVÉ à la demande du marchand.
  * - Mode FCFA -> "" : les clients africains ne voient QUE le prix en F CFA.
  * - Mode EUR/USD -> "" : les clients Europe/USA ne voient JAMAIS de prix en F CFA.

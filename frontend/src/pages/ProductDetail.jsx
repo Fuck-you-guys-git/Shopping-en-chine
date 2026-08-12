@@ -14,7 +14,7 @@ import { productsAPI } from "@/lib/api";
 import { toast } from "sonner";
 import { usePageTitle } from "@/hooks/usePageTitle";
 import { colorName } from "@/lib/colors";
-import { t, formatEquivalents } from "@/lib/locale";
+import { t, formatProductMoney } from "@/lib/locale";
 
 // Tailles S–XL : uniquement vêtements & chaussures (pas lunettes, sacs, bijoux, montres, jouets…)
 const NON_APPAREL_SUBS = new Set([
@@ -242,7 +242,7 @@ export default function ProductDetail() {
                         </h1>
 
                         <div className="mt-4 flex items-baseline gap-3 flex-wrap">
-                            <span className="font-display text-xl sm:text-2xl font-semibold">{formatPrice(product.price)}</span>
+                            <span className="font-display text-xl sm:text-2xl font-semibold">{formatProductMoney(product)}</span>
                             {product.oldPrice && (
                                 <>
                                     <span className="text-base text-muted-foreground line-through">{formatPrice(product.oldPrice)}</span>
@@ -252,11 +252,6 @@ export default function ProductDetail() {
                                 </>
                             )}
                         </div>
-                        {formatEquivalents(product.price) && (
-                            <p className="mt-1.5 text-xs text-muted-foreground" data-testid="product-detail-equivalents">
-                                {formatEquivalents(product.price)}
-                            </p>
-                        )}
 
                         {product.description && product.description !== "Description à compléter." && (
                             <p className="mt-6 text-muted-foreground leading-relaxed">{product.description}</p>

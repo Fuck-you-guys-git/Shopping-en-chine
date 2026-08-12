@@ -4,15 +4,12 @@ import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { Minus, Plus, Trash2, ShoppingBag } from "lucide-react";
 import { useCart } from "@/context/CartContext";
-import { formatPrice } from "@/components/ProductCard";
-import { t, formatEquivalents } from "@/lib/locale";
+import { t, unitAmount, fmtAmount, cartDisplayTotal } from "@/lib/locale";
 import { useLocale } from "@/context/LocaleContext";
 
 export const CartDrawer = () => {
-    const { items, drawerOpen, setDrawerOpen, updateQty, removeItem, subtotal, count } = useCart();
+    const { items, drawerOpen, setDrawerOpen, updateQty, removeItem, count } = useCart();
     useLocale(); // re-render au changement de langue/devise
-    const shipping = 0;
-    const total = subtotal + shipping;
 
     return (
         <Sheet open={drawerOpen} onOpenChange={setDrawerOpen}>
@@ -62,7 +59,7 @@ export const CartDrawer = () => {
                                                     <Plus className="h-3 w-3" />
                                                 </button>
                                             </div>
-                                            <span className="font-display font-semibold">{formatPrice(item.price * item.qty)}</span>
+                                            <span className="font-display font-semibold">{fmtAmount(unitAmount(item) * item.qty)}</span>
                                         </div>
                                     </div>
                                 </div>
@@ -72,7 +69,7 @@ export const CartDrawer = () => {
                         <div className="border-t px-6 py-5 space-y-3 bg-muted/30">
                             <div className="flex justify-between text-sm text-muted-foreground">
                                 <span>{t("Sous-total")}</span>
-                                <span>{formatPrice(subtotal)}</span>
+                                <span>{fmtAmount(cartDisplayTotal(items))}</span>
                             </div>
                             <div className="flex justify-between text-sm text-muted-foreground">
                                 <span>{t("Livraison Chine → Monde entier")}</span>
@@ -81,11 +78,8 @@ export const CartDrawer = () => {
                             <Separator />
                             <div className="flex justify-between items-baseline">
                                 <span className="font-medium">{t("Total")}</span>
-                                <span className="font-display text-2xl font-semibold">{formatPrice(total)}</span>
+                                <span className="font-display text-2xl font-semibold">{fmtAmount(cartDisplayTotal(items))}</span>
                             </div>
-                            {formatEquivalents(total) && (
-                                <p className="text-[11px] text-muted-foreground text-right -mt-2">{formatEquivalents(total)}</p>
-                            )}
                             <Button asChild size="lg" className="w-full bg-ink text-ink-foreground hover:bg-ink/90 rounded-full h-12">
                                 <Link to="/commande" onClick={() => setDrawerOpen(false)}>{t("Passer commande")}</Link>
                             </Button>

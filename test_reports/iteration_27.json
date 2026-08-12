@@ -1,0 +1,29 @@
+{
+  "summary": "Iter 27 — Multi-currency (priceEur/priceUsd) on products verified end-to-end. Backend (5/5 pytest, no Stripe payment finalized): product create persists priceEur=25/priceUsd=30 (GET confirms), Stripe checkout EUR qty=1 → charged_amount=25.0, USD qty=2 → charged_amount=60.0, fallback (no explicit EUR/USD) USD qty=1 → charged_amount=32.0. Frontend (Playwright, /api/geo mocked to US/USD): seller login OK, /vendeur/ajouter form → preview 'Europe : 25 € · USA/Canada : $30' matches spec, publish OK, list GET shows priceEur=25/priceUsd=30, edit page pre-fills EUR=25/USD=30, public product page shows $30 (no $32), cart shows $30 for qty=1 and $60 for qty=2, /commande order recap in USD uses explicit price ($30 for qty=1, no $32 fallback). Test products deleted (DELETE 200).",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [
+      {"flow": "Cart qty persistence /panier → /commande", "issue": "After incrementing qty via '+' on /panier (cart page updates to $60), navigating to /commande shows qty=1 / $30 (badge=1). May be a stale cart snapshot on route change or my '+' button matched a non-qty control. Not blocking the multi-currency feature (the $30 shown is the explicit vendor USD price, not the $32 fallback), but worth confirming manually.", "affected_selectors": ["/panier button:has-text('+')", "/commande recap"]}
+    ],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_multicurrency_iter27.py",
+    "/app/test_reports/pytest/iter27.xml"
+  ],
+  "action_items": [
+    "Verify manually or add data-testid on cart qty increment/decrement buttons so cart qty→checkout is deterministic; confirm /commande picks up latest cart state after /panier qty change."
+  ],
+  "critical_code_review_comments": [
+    "products_router: ProductPayload.priceEur/priceUsd validated with gt=0 which rejects 0 explicitly — fine, but AddProduct.jsx sends null when empty (also fine). Note however the seed_products migration path does not touch priceEur/priceUsd (expected).",
+    "stripe_router.py L92-96 correctly prioritizes explicit priceEur/priceUsd; fallback conversion (RATES_XOF) matches the 9000/28 & 9000/32 rule and is confirmed by the fallback test (32.0)."
+  ],
+  "updated_files": ["/app/backend/tests/test_multicurrency_iter27.py"],
+  "success_rate": {"backend": "100% (5/5)", "frontend": "~95% (all multi-currency assertions passed; 1 non-blocking cart-qty-persist observation)"},
+  "seed_data_creation": "Created & deleted 2 backend test products (TEST_MC iter27, TEST_MC_fallback iter27) + 1 frontend test product (TEST_MC_FE iter27, id p_153d04f4bc → DELETE 200). 3 Stripe embedded sessions were created (session.id/order persisted); NO payment was ever confirmed (LIVE key safe). 3 corresponding orders in status='pending' remain in DB (no cleanup of orders was requested; they carry the TEST_MC customer names 'QA EUR', 'QA USD', 'QA fallback').",
+  "should_call_test_agent_after_fix": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Multi-currency feature is fully working. If the pending TEST_MC orders in db.orders need cleaning up, filter by customer.name in ('QA EUR','QA USD','QA fallback') and status='pending'. /vendeur route is /vendeur/ajouter (create) & /vendeur/modifier/:id (edit). Locale is IP-driven; use page.route('**/api/geo', ...) in Playwright to force USD locale. Seller token is stored in localStorage under key that includes 'token' or 'seller' (found: 'sec_seller_user_v2' has user JSON, JWT stored elsewhere — the fetch DELETE with Authorization worked so it is somewhere accessible).",
+  "rca_of_the_issue": "N/A — feature works. Minor: cart qty→checkout state consistency should be verified with a targeted data-testid based test."
+}

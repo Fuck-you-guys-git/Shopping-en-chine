@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import { ArrowRight, SearchX } from "lucide-react";
 import { useCatalog } from "@/context/CatalogContext";
 import { productMatchesQuery } from "@/lib/search";
-import { formatMoney, t } from "@/lib/locale";
+import { formatProductMoney, t } from "@/lib/locale";
 
 /**
  * Suggestions instantanées sous la barre de recherche.
@@ -55,7 +55,7 @@ export const SearchSuggestions = ({ query, open, onPick, className = "" }) => {
                                         <span className="block text-sm font-medium truncate">{p.name}</span>
                                         <span className="block text-xs text-muted-foreground truncate">{t(categoryLabel(p.category))}</span>
                                     </span>
-                                    <span className="shrink-0 text-sm font-semibold text-primary">{formatMoney(p.price)}</span>
+                                    <span className="shrink-0 text-sm font-semibold text-primary">{formatProductMoney(p)}</span>
                                 </Link>
                             </li>
                         ))}
