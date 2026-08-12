@@ -45,7 +45,7 @@ export const ComingSoon = ({ onUnlock }) => {
                 Bientôt disponible
             </h1>
             <p className="mt-4 text-sm sm:text-base opacity-70 max-w-md">
-                Notre boutique ouvre très bientôt. Livraison Chine → Dakar en 10–20 jours,
+                Notre boutique ouvre très bientôt. Livraison de la Chine vers le monde entier en 10–20 jours,
                 paiement Wave, Orange Money et carte bancaire.
             </p>
 

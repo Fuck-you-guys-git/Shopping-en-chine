@@ -31,7 +31,7 @@ export default function Products() {
     const activeCategory = categories.find((c) => c.id === categoryId);
     usePageTitle(
         activeSub ? activeSub.name : activeCategory ? activeCategory.name : "Boutique",
-        "Livraison Chine → Dakar en 10 à 20 jours. Paiement Mobile Money et carte bancaire.",
+        "Livraison de la Chine vers le monde entier en 10 à 20 jours. Paiement Mobile Money et carte bancaire.",
     );
 
     const toggleCat = (id) =>

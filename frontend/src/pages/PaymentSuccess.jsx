@@ -63,7 +63,7 @@ export default function PaymentSuccess() {
                         <CheckCircle2 className="h-10 w-10" />
                     </div>
                     <h1 className="font-display text-3xl mb-2" data-testid="stripe-order-confirmed-title">{t("Votre commande est confirmée 🎉")}</h1>
-                    <p className="text-muted-foreground text-sm mb-2">{t("Merci pour votre achat ! Livraison Chine → Dakar sous 10 à 20 jours.")}</p>
+                    <p className="text-muted-foreground text-sm mb-2">{t("Merci pour votre achat ! Livraison de la Chine vers le monde entier sous 10 à 20 jours.")}</p>
                     {orderId && <p className="font-mono text-sm mb-6">{t("N° de commande :")} <strong>{orderNo(orderId)}</strong></p>}
                     {orderId && <OrderSummary orderId={orderId} />}
                     <div className="flex flex-col sm:flex-row gap-3 justify-center mt-8">

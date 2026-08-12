@@ -750,7 +750,7 @@ export default function Checkout() {
                         <Separator />
                         <div className="space-y-2 text-sm">
                             <div className="flex justify-between"><span className="text-muted-foreground">{t("Sous-total")}</span><span>{formatPrice(subtotal)}</span></div>
-                            <div className="flex justify-between"><span className="text-muted-foreground">{t("Livraison Chine → Dakar")}</span><span className="text-muted-foreground">{t("10–20 jours")}</span></div>
+                            <div className="flex justify-between"><span className="text-muted-foreground">{t("Livraison Chine → Monde entier")}</span><span className="text-muted-foreground">{t("10–20 jours")}</span></div>
                         </div>
                         <Separator />
                         <div className="flex justify-between items-baseline">

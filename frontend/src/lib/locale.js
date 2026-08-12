@@ -67,7 +67,7 @@ export const formatEquivalents = () => "";
 // ---------------------------------------------------------------------------
 const EN = {
     // Navbar / topbar
-    "Livraison Chine → Dakar en 10–20 jours": "China → Dakar delivery in 10–20 days",
+    "Livraison de la Chine vers le monde entier · 10–20 jours": "Worldwide delivery from China · 10–20 days",
     "Service client 7j/7": "Customer service 7/7",
     "Espace vendeur": "Seller area",
     "Accueil": "Home",
@@ -126,8 +126,8 @@ const EN = {
     "Ajouté au panier": "Added to cart",
     "Ajouté aux favoris ♥": "Added to favorites ♥",
     // Footer
-    "Livraison Chine → Dakar en 10–20 jours · Paiement Mobile Money (Wave, Orange Money, MTN). Tout ce dont vous avez besoin, simple à trouver.":
-        "China → Dakar delivery in 10–20 days · Mobile Money payment (Wave, Orange Money, MTN). Everything you need, easy to find.",
+    "Livraison de la Chine vers le monde entier en 10–20 jours · Paiement Mobile Money (Wave, Orange Money, MTN) et carte bancaire. Tout ce dont vous avez besoin, simple à trouver.":
+        "Worldwide delivery from China in 10–20 days · Mobile Money (Wave, Orange Money, MTN) and card payment. Everything you need, easy to find.",
     "votre@email.com": "your@email.com",
     "−10% offert": "Get −10%",
     "Bienvenue chez Shopping en Chine ✦": "Welcome to Shopping en Chine ✦",
@@ -156,7 +156,7 @@ const EN = {
     "Explorer la boutique": "Explore the shop",
     "Taille": "Size",
     "Sous-total": "Subtotal",
-    "Livraison Chine → Dakar": "China → Dakar delivery",
+    "Livraison Chine → Monde entier": "China → Worldwide delivery",
     "10–20 jours": "10–20 days",
     "Total": "Total",
     "Passer commande": "Checkout",
@@ -180,7 +180,7 @@ const EN = {
     "Récapitulatif": "Summary",
     // Home
     "Tout, plus simple.": "Everything, made simple.",
-    "Livraison Chine → Dakar en 10–20 jours · Paiement Mobile Money": "China → Dakar delivery in 10–20 days · Mobile Money payment",
+    "Livraison de la Chine vers le monde entier en 10–20 jours · Paiement 100 % sécurisé": "Worldwide delivery from China in 10–20 days · 100% secure payment",
     "Chercher": "Search",
     "Tout voir": "View all",
     "Produits populaires": "Popular products",
@@ -401,7 +401,7 @@ const EN = {
     // PaymentSuccess
     "Vérification du paiement…": "Verifying payment…",
     "Un instant, nous confirmons votre transaction.": "One moment, we are confirming your transaction.",
-    "Merci pour votre achat ! Livraison Chine → Dakar sous 10 à 20 jours.": "Thank you for your purchase! China → Dakar delivery in 10–20 days.",
+    "Merci pour votre achat ! Livraison de la Chine vers le monde entier sous 10 à 20 jours.": "Thank you for your purchase! Worldwide delivery from China in 10–20 days.",
     "N° de commande :": "Order no.:",
     "Vérification en cours": "Verification in progress",
     "Paiement non confirmé": "Payment not confirmed",
@@ -431,7 +431,7 @@ const EN = {
     "Import direct de Chine": "Direct import from China",
     "Nous sélectionnons et importons vos produits directement depuis les meilleurs fournisseurs chinois, sans intermédiaire.":
         "We select and import your products directly from the best Chinese suppliers, with no middleman.",
-    "Livraison Dakar en 10–20 jours": "Delivery in 10–20 days",
+    "Livraison mondiale en 10–20 jours": "Worldwide delivery in 10–20 days",
     "Suivi de colis en temps réel, de la commande jusqu'à votre porte : Commandé → Expédié → Douane → Livré.":
         "Real-time package tracking, from order to your door: Ordered → Shipped → Customs → Delivered.",
     "Paiement 100 % sécurisé": "100% secure payment",

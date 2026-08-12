@@ -51,7 +51,7 @@ export const Navbar = () => {
                 <div className="container mx-auto flex items-center justify-between py-2 px-5">
                     <p className="hidden sm:block opacity-80">
                         <i className="fa-solid fa-truck-fast mr-2" />
-                        {t("Livraison Chine → Dakar en 10–20 jours")}
+                        {t("Livraison de la Chine vers le monde entier · 10–20 jours")}
                     </p>
                     <div className="flex items-center gap-4 opacity-90 mx-auto sm:mx-0">
                         <span className="inline-flex items-center gap-1.5 font-medium" data-testid="locale-indicator">

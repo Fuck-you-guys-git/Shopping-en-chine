@@ -12,7 +12,7 @@ import { usePageTitle } from "@/hooks/usePageTitle";
 import { t } from "@/lib/locale";
 
 const benefits = [
-    { icon: Truck, title: "Livraison Chine → Dakar", desc: "En 10–20 jours" },
+    { icon: Truck, title: "Livraison Chine → Monde entier", desc: "En 10–20 jours" },
     { icon: ShieldCheck, title: "Paiement sécurisé", desc: "Mobile Money (Wave, Orange, MTN)" },
     { icon: HeadphonesIcon, title: "Service client", desc: "7 jours / 7, en français" },
 ];
@@ -40,7 +40,7 @@ export default function Home() {
                                 <span className="block italic text-primary text-xl sm:text-2xl md:text-3xl mt-1">{t("Tout, plus simple.")}</span>
                             </h1>
                             <p className="mt-2 text-sm md:text-base text-muted-foreground">
-                                {t("Livraison Chine → Dakar en 10–20 jours · Paiement Mobile Money")}
+                                {t("Livraison de la Chine vers le monde entier en 10–20 jours · Paiement 100 % sécurisé")}
                             </p>
                         </div>
                         <form onSubmit={onSearch} className="relative w-full md:w-96 shrink-0">

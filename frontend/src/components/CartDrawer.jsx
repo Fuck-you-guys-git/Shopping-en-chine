@@ -75,7 +75,7 @@ export const CartDrawer = () => {
                                 <span>{formatPrice(subtotal)}</span>
                             </div>
                             <div className="flex justify-between text-sm text-muted-foreground">
-                                <span>{t("Livraison Chine → Dakar")}</span>
+                                <span>{t("Livraison Chine → Monde entier")}</span>
                                 <span>{t("10–20 jours")}</span>
                             </div>
                             <Separator />

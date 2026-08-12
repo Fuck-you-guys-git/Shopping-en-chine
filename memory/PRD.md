@@ -416,3 +416,11 @@ Payments were failing with a **DNS error** because `backend/paxity_router.py` ha
 - formatEquivalents() (lib/locale.js) retourne désormais TOUJOURS "" : les clients en zone CFA ne voient plus la ligne « ≈ 24,89 € · $28.44 » sous les prix. Chaque région ne voit QUE sa devise (Afrique=F CFA, Europe=€, USA/Canada=$).
 - Checkout.jsx : bloc équivalents retiré du récapitulatif + import formatEquivalents supprimé (attention : ce bloc était déjà dans un conditionnel getLocale — une édition imbriquée avait cassé la compilation, corrigée).
 - Vérifié par screenshot /boutique : aucun symbole ≈, compilation OK.
+
+## Update — Feb 2026 (Branding « Livraison Chine → Monde entier »)
+- Tout le branding « Livraison Chine → Dakar » remplacé par une formulation internationale professionnelle :
+  - FR : « Livraison de la Chine vers le monde entier » (long) / « Livraison Chine → Monde entier » (court, récap panier/commande/fiche produit)
+  - EN : « Worldwide delivery from China » / « China → Worldwide delivery »
+- Fichiers modifiés : locale.js (clés FR + traductions EN), Navbar (topbar), Footer, Home (hero + bénéfices), CartDrawer, Cart, Checkout, ProductDetail, PaymentSuccess, ComingSoon, About (meta + feature), Products (meta), usePageTitle (titre par défaut), public/index.html (title + og:title + meta description).
+- CONSERVÉ volontairement : les options de livraison régionales Dakar (DeliveryOptions, économique/express Chine-Dakar, frais 2000 F Dakar), l'étape de suivi « En livraison à Dakar », et l'adresse physique Dakar dans l'email — ce sont des infos opérationnelles, pas du branding.
+- Vérifié par screenshot : topbar + hero affichent « Worldwide delivery from China » (EN auto par géoloc IP US du pod), aucun « Dakar » branding sur la home.
