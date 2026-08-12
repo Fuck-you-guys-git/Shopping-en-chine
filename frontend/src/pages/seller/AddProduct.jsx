@@ -367,7 +367,7 @@ export default function AddProduct() {
                         </div>
                     </div>
                     <p className="mt-4 text-xs text-muted-foreground">
-                        Si vous laissez vide, la conversion automatique s&apos;applique : 9 000 F = 28 € = 32 $.
+                        Si vous laissez vide, la conversion automatique s&apos;applique : 9 000 F = 17 € = 19 $.
                     </p>
                 </div>
 

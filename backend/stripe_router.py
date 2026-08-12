@@ -29,9 +29,9 @@ STRIPE_WEBHOOK_SECRET = os.environ.get("STRIPE_WEBHOOK_SECRET", "")
 
 router = APIRouter(tags=["stripe"])
 
-# Barème fixé par le marchand : un produit à 9000 F CFA vaut 28 EUR et 32 USD.
-# => EUR = CFA / (9000/28) ; USD = CFA / (9000/32)
-RATES_XOF = {"XOF": 1.0, "USD": 9000.0 / 32.0, "EUR": 9000.0 / 28.0}
+# Barème fixé par le marchand : un produit à 9000 F CFA vaut 17 EUR et 19 USD.
+# => EUR = CFA / (9000/17) ; USD = CFA / (9000/19)
+RATES_XOF = {"XOF": 1.0, "USD": 9000.0 / 19.0, "EUR": 9000.0 / 17.0}
 
 
 def _db(request: Request):

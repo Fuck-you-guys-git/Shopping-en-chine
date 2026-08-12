@@ -1,15 +1,15 @@
 /*
  * Langue + devise du site.
  * - Les prix du catalogue sont TOUJOURS en F CFA (XOF) côté serveur.
- * - L'affichage convertit : 1 EUR = 800 F CFA · 1 USD = 750 F CFA.
+ * - L'affichage convertit au barème : 9000 F CFA = 17 EUR = 19 USD.
  * - Le PAIEMENT reste débité en F CFA (Paxity + Stripe) — l'affichage
  *   en €/$ est indicatif pour les clients d'Europe / des USA.
  * - t(fr) : renvoie la traduction anglaise si la langue est "en".
  */
 
 // Barème fixé par le marchand : un produit à 9 000 F CFA vaut 28 € et 32 $.
-// => prix EUR = prix CFA ÷ 321,43 (9000/28) · prix USD = prix CFA ÷ 281,25 (9000/32)
-export const RATES = { XOF: 1, EUR: 9000 / 28, USD: 9000 / 32 };
+// => prix EUR = prix CFA ÷ 529,41 (9000/17) · prix USD = prix CFA ÷ 473,68 (9000/19)
+export const RATES = { XOF: 1, EUR: 9000 / 17, USD: 9000 / 19 };
 
 export const LOCALE_PRESETS = [
     { id: "sn", flag: "🇸🇳", lang: "fr", currency: "XOF", label: "Afrique · FCFA", short: "FR · F CFA" },

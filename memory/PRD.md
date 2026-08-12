@@ -469,3 +469,9 @@ Payments were failing with a **DNS error** because `backend/paxity_router.py` ha
 - AddProduct.jsx : champ UI « Prix barré (optionnel) » supprimé de la carte Prix. State/prefill/submit oldPrice CONSERVÉS volontairement (les produits existants avec oldPrice gardent leur prix barré en boutique et en édition).
 - Vérifié par screenshot connecté au dashboard : champ absent, EUR/USD présents.
 - NOTE testing : l'injection directe du token via urllib échoue (403 WAF) — se connecter via le formulaire /vendeur (Se connecter) dans Playwright.
+
+## Update — Feb 2026 (NOUVEAU TAUX DE CHANGE : 9000 F = 17 € = 19 $)
+- Ancien barème 9000 F = 28 € = 32 $ REMPLACÉ par 9000 F = 17 € = 19 $ (demande explicite du marchand).
+- Modifié : locale.js RATES (9000/17, 9000/19), stripe_router.py RATES_XOF, AddProduct.jsx texte d'aide, products_router.py commentaire, DeliveryOptions.jsx (EU_RATE_XOF/US_RATE_XOF/CA_RATE_XOF recalés pour afficher toujours 13 €/kg, $18/kg, $19-20/kg pile).
+- VALIDÉ : Stripe checkout 9000 F → charged 17.00 EUR / 19.00 USD exactement (curl + DB) ; boutique affiche $3.17 pour 1500 F (ancien $5.33). Commandes/produit QA nettoyés.
+- RAPPEL : ce barème NE s'applique QUE si le vendeur n'a pas mis de priceEur/priceUsd explicites sur le produit.

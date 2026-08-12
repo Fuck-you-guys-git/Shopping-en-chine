@@ -9,12 +9,12 @@ import { formatMoney, getLocale, t } from "@/lib/locale";
  * - Europe / USA : UNE SEULE option standard « Chine-Europe » 13 €/kg
  *   (15-20 j ouvrés) avec remboursement intégral en cas de perte/douane.
  * Cliquer sur un bouton le sélectionne ET affiche le texte explicatif complet.
- * Montants via formatMoney (€/$ automatique). 13 €/kg = 4178,57 F (barème 9000 F = 28 €).
+ * Montants via formatMoney (€/$ automatique). Barème : 9000 F = 17 € = 19 $.
  */
 
-const EU_RATE_XOF = 13 * (9000 / 28); // 13 €/kg exprimé en F CFA -> 13 € pile en mode EUR
-const US_RATE_XOF = 18 * (9000 / 32); // 18 $/kg exprimé en F CFA -> $18 pile en mode USD
-const CA_RATE_XOF = 20 * (9000 / 32); // 20 $/kg (Canada) -> $20 pile en mode USD
+const EU_RATE_XOF = 13 * (9000 / 17); // 13 €/kg exprimé en F CFA -> 13 € pile en mode EUR
+const US_RATE_XOF = 18 * (9000 / 19); // 18 $/kg exprimé en F CFA -> $18 pile en mode USD
+const CA_RATE_XOF = 20 * (9000 / 19); // 20 $/kg (Canada) -> $20 pile en mode USD
 
 const AFRICA_MODES = [
     {
