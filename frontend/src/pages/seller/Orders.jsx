@@ -25,14 +25,11 @@ const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<
 const ticketHtml = (o) => {
     const addr = [o.address, o.city].filter(Boolean);
     const dateStr = new Date(o.createdAt).toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" });
-    const absImg = (u) => (u ? (u.startsWith("http") ? u : `${window.location.origin}${u}`) : null);
     const itemRow = (it) => {
         const [nm, ...rest] = String(it.name || "").split(" — ");
         const variant = rest.join(" — ");
-        const img = absImg(it.image);
         return `
             <div class="item">
-                ${img ? `<img class="item-img" src="${esc(img)}" alt=""/>` : `<span class="item-img item-img--ph"></span>`}
                 <span class="item-txt">
                     <span class="item-name">${esc(nm)}</span>
                     ${variant ? `<span class="item-var">${esc(variant)}</span>` : ""}
@@ -102,16 +99,13 @@ const printTickets = (ordersToPrint) => {
         .who{font-size:15px;font-weight:700;line-height:1.3}
         .addr{font-size:14px;font-weight:400;line-height:1.35}
         .rule{border-top:1.5px solid #000;margin:3mm 0 2.5mm}
-        .items{flex:1 1 auto}
         .items-head{display:flex;justify-content:space-between;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:1px;margin-bottom:2mm}
         .item{display:flex;align-items:center;gap:3mm;margin-bottom:2mm}
-        .item-img{width:11mm;height:11mm;object-fit:cover;border-radius:1mm;flex:none;background:#eee}
-        .item-img--ph{display:inline-block}
         .item-txt{flex:1;min-width:0;display:flex;flex-direction:column}
         .item-name{font-size:15px;font-weight:700;line-height:1.3}
         .item-var{font-size:13px;font-weight:400;line-height:1.3}
         .item-qty{font-size:13px;font-weight:600;white-space:nowrap;margin-left:auto}
-        .foot{text-align:center;margin-top:auto}
+        .foot{text-align:center;margin-top:1mm}
         .thanks{font-size:14px;font-weight:400;margin-bottom:2mm}
         .fbrand{font-size:14px;font-weight:800;letter-spacing:.5px;margin-bottom:.5mm}
         .fline{font-size:13px;font-weight:400;line-height:1.45}
@@ -122,11 +116,7 @@ const printTickets = (ordersToPrint) => {
     ${ordersToPrint.map(ticketHtml).join("")}</body></html>`);
     w.document.close();
     w.focus();
-    // Attendre le chargement des miniatures produits avant d'imprimer
-    let printed = false;
-    const doPrint = () => { if (!printed) { printed = true; w.print(); } };
-    w.addEventListener("load", () => setTimeout(doPrint, 200));
-    setTimeout(doPrint, 2000); // filet de sécurité
+    setTimeout(() => w.print(), 400);
     return true;
 };
 

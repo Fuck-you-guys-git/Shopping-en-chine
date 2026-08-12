@@ -520,3 +520,10 @@ Payments were failing with a **DNS error** because `backend/paxity_router.py` ha
   - Typo affinée : brand 20px/800, ship ligne discrète uppercase (plus de gros cadre), who 15px, addr 14px normal, item 15px, foot centré 13-14px, règles 1.5px.
   - .items{flex:1 1 auto} SANS min-height:0 (min-height:0 laissait la zone se compresser → chevauchement du footer ; sans, le pire cas = footer coupé proprement par overflow:hidden du ticket).
 - Testé : sample avec adresses longues + 2 articles à variantes = tout tient sur 1 étiquette 142mm, footer complet visible.
+
+## Update — Feb 2026 (Ticket compact + suppression miniatures)
+- Miniatures produits SUPPRIMÉES du ticket (demande user « pourquoi je vois la photo... supprime-le ») — item = nom + variante + qty seulement. absImg/attente-images retirés (retour setTimeout 400ms).
+- Layout compact : .items sans flex:1, .foot sans margin-top:auto → le pied de page vient JUSTE APRÈS les articles (comme la photo de référence), plus de grand vide avec 1 seul article. Le ticket garde height:142mm fixe (1 étiquette).
+- Téléphone : <meta name="format-detection" content="telephone=no"> + a{color:inherit;text-decoration:none} → plus de lien bleu souligné sur iOS/Safari.
+- BUG RÉCURRENT : 2e corruption de fin de fichier par search_replace (Orders.jsx lignes dupliquées après }) — supprimées via sed. TOUJOURS lint après édition de gros fichiers JSX.
+- Vérifié par screenshot : ticket compact, sans photo, téléphone noir.
