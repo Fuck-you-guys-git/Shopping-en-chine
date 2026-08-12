@@ -464,3 +464,8 @@ Payments were failing with a **DNS error** because `backend/paxity_router.py` ha
 - DASHBOARD : AddProduct.jsx → 2 champs optionnels « Prix en euros » (price-eur-input) / « Prix en dollars » (price-usd-input), aide « 9 000 F = 28 € = 32 $ si vide », aperçu live (preview-multi-currency), pré-remplissage en édition, envoi null si vide.
 - data-testid ajoutés : cart-qty-plus-{line} / cart-qty-minus-{line} sur /panier.
 - TESTÉ (iteration_27.json) : backend 5/5 (persist, Stripe EUR 25.0, USD x2 60.0, fallback 32.0), frontend ~95% (form+preview+édition+affichage $30+panier $60 OK). Faux positif qty→checkout re-vérifié par main agent : OK ($60 partout). Commandes QA pending nettoyées de la DB. Fichier test : /app/backend/tests/test_multicurrency_iter27.py.
+
+## Update — Feb 2026 (Suppression champ « Prix barré » du Dashboard)
+- AddProduct.jsx : champ UI « Prix barré (optionnel) » supprimé de la carte Prix. State/prefill/submit oldPrice CONSERVÉS volontairement (les produits existants avec oldPrice gardent leur prix barré en boutique et en édition).
+- Vérifié par screenshot connecté au dashboard : champ absent, EUR/USD présents.
+- NOTE testing : l'injection directe du token via urllib échoue (403 WAF) — se connecter via le formulaire /vendeur (Se connecter) dans Playwright.
