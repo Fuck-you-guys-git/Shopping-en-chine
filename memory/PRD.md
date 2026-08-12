@@ -436,3 +436,9 @@ Payments were failing with a **DNS error** because `backend/paxity_router.py` ha
 - CAUSE : le bouton « Payer maintenant » (écran d'attente Paxity, Checkout.jsx ~399) avait target="_blank" → la page de paiement Paxity s'ouvrait dans un NOUVEL onglet. Au retour de l'app Wave/OM, le navigateur mobile raffichait cet onglet Paxity orphelin (perçu comme « une nouvelle fenêtre Paxity s'ouvre ») au lieu de la boutique.
 - FIX : target="_blank" retiré → paiement dans le MÊME onglet. Le site est déjà conçu pour ça : la transaction pending est persistée dans localStorage (clé sec_pending_paxity_tx_v1) et restaurée au rechargement de /commande, avec polling auto (3,5s + visibilitychange/focus) jusqu'à confirmation.
 - Vérifié par screenshot : pending screen restauré depuis localStorage, attribut target absent du lien.
+
+## Update — Feb 2026 (Nettoyage étape Paiement)
+- Supprimé le badge « PAXITY PRODUCTION » à côté du titre « Paiement » (Checkout.jsx step 3, span paxityConfig.environment).
+- Supprimé le bandeau indigo « Paiement par carte sécurisé (Visa, Mastercard) / Payez directement sur le site, sans redirection » du panneau carte Stripe.
+- Conservé : la ligne discrète « Paiement sécurisé via Stripe/Paxity · Chiffrement bout-en-bout » (réassurance).
+- Vérifié par screenshot e2e (adresse → livraison → paiement, boutons « Continue » type=button, PAS de submit ; attention le footer newsletter a aussi un bouton submit qui piège les sélecteurs génériques).

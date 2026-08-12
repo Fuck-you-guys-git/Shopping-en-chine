@@ -544,11 +544,6 @@ export default function Checkout() {
                         <div className="space-y-5 bg-card p-6 md:p-8 rounded-2xl shadow-card">
                             <div className="flex items-center justify-between">
                                 <h2 className="font-display text-2xl">{t("Paiement")}</h2>
-                                {paxityConfig && (
-                                    <span className={`inline-flex items-center gap-1.5 text-[10px] uppercase tracking-widest font-semibold px-2 py-1 rounded-full ${paxityConfig.configured ? "bg-success/15 text-success" : "bg-amber-100 text-amber-700"}`}>
-                                        <ShieldCheck className="h-3 w-3" /> Paxity {paxityConfig.environment}
-                                    </span>
-                                )}
                             </div>
 
                             {paxityConfig && !paxityConfig.configured && (
@@ -625,13 +620,6 @@ export default function Checkout() {
                             {/* Card payment (Stripe) */}
                             {paymentMethod === "CARD" && (
                                 <div className="space-y-4" data-testid="stripe-card-panel">
-                                    <div className="flex gap-3 p-4 rounded-xl bg-indigo-50 border border-indigo-200 text-sm text-indigo-900">
-                                        <CreditCard className="h-5 w-5 shrink-0 mt-0.5" />
-                                        <div>
-                                            <p className="font-medium">{t("Paiement par carte sécurisé (Visa, Mastercard)")}</p>
-                                            <p className="text-xs mt-1 opacity-80">{t("Payez directement sur le site, sans redirection.")}</p>
-                                        </div>
-                                    </div>
                                     <div className="flex items-center gap-2 text-xs text-muted-foreground">
                                         <ShieldCheck className="h-4 w-4 text-success" />
                                         {t("Paiement sécurisé via Stripe · Chiffrement bout-en-bout")}
