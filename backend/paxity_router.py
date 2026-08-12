@@ -78,6 +78,21 @@ PAXITY_MAX_RETRIES = int(os.environ.get("PAXITY_MAX_RETRIES", "3"))
 # Instant Payment Notification callback URL Paxity will POST to when a
 # transaction status changes. Should point to /api/paxity/webhook of this app.
 PAXITY_IPN_URL = os.environ.get("PAXITY_IPN_URL", "")
+
+
+def _public_ipn_url(request: Request) -> str:
+    """
+    Dérive l'URL publique du webhook depuis la requête entrante.
+    Fonctionne en preview ET en production sans configuration :
+    le host vu par le client (shoppingenchine.com / *.preview.emergentagent.com)
+    devient l'endpoint IPN. PAXITY_IPN_URL (.env) reste prioritaire si défini.
+    """
+    host = request.headers.get("x-forwarded-host") or request.headers.get("host") or ""
+    host = host.split(",")[0].strip()
+    if not host or host.startswith(("localhost", "127.", "0.0.0.0", "10.", "192.168.")):
+        return ""
+    proto = (request.headers.get("x-forwarded-proto") or "https").split(",")[0].strip()
+    return f"{proto}://{host}/api/paxity/webhook"
 # Relative API paths on PAXITY_BASE_URL
 PAXITY_PAYIN_PATH = "/transaction/pay-in-mobile"
 PAXITY_BALANCE_PATH = "/paxity/balance"
@@ -496,8 +511,9 @@ async def create_payin(payload: PaxityPayinRequest, request: Request, bg: Backgr
         "description": payload.description,
         "idClient": order_id,
     }
-    if PAXITY_IPN_URL:
-        body["ipn"] = PAXITY_IPN_URL
+    ipn_url = PAXITY_IPN_URL or _public_ipn_url(request)
+    if ipn_url:
+        body["ipn"] = ipn_url
     # Drop keys that resolved to None (e.g. country for CARD) so we send a clean payload
     body = {k: v for k, v in body.items() if v is not None}
 
@@ -580,6 +596,10 @@ async def create_payin(payload: PaxityPayinRequest, request: Request, bg: Backgr
         if tx.status == "success":
             await maybe_send_order_confirmation(db, order_id)
             await maybe_send_customer_confirmation(db, order_id)
+        elif tx.status == "pending":
+            # Filet de sécurité : confirmation côté serveur même si le client
+            # ne revient jamais de Wave/OM (page paxity.io fermée).
+            asyncio.create_task(_watch_pending_tx(db, tx.id))
     except Exception:
         logger.exception("[Paxity] Mongo write failed on success path")
 
@@ -614,35 +634,7 @@ async def check_status(transaction_id: str, request: Request):
     # Live refresh: while pending, query Paxity for the real status so a
     # customer returning from Wave/Orange sees the confirmation immediately,
     # without needing the merchant webhook to be configured.
-    if tx.get("status") == "pending" and tx.get("paxity_transaction_id") and PAXITY_CONFIGURED:
-        try:
-            async with httpx.AsyncClient(timeout=12.0) as client:
-                r = await client.get(
-                    f"{PAXITY_BASE_URL}{PAXITY_PAYIN_PATH}/{tx['paxity_transaction_id']}",
-                    headers=_headers(),
-                )
-            if r.status_code == 200:
-                root = _payload_root(r.json())
-                fresh = _map_status(root.get("status"))
-                if fresh != tx["status"]:
-                    now = datetime.now(timezone.utc).isoformat()
-                    await db.paxity_transactions.update_one(
-                        {"id": transaction_id},
-                        {"$set": {"status": fresh, "updated_at": now}},
-                    )
-                    await db.orders.update_one(
-                        {"id": tx["order_id"]}, {"$set": {"status": fresh}}
-                    )
-                    tx["status"] = fresh
-                    tx["updated_at"] = now
-                    logger.info(
-                        f"[Paxity] Status refreshed tx={transaction_id} -> {fresh}"
-                    )
-                    if fresh == "success":
-                        await maybe_send_order_confirmation(db, tx["order_id"])
-                        await maybe_send_customer_confirmation(db, tx["order_id"])
-        except Exception:
-            logger.warning("[Paxity] Live status refresh failed", exc_info=True)
+    await _refresh_pending_tx(db, tx)
 
     return {
         "transaction_id": tx["id"],
@@ -652,6 +644,64 @@ async def check_status(transaction_id: str, request: Request):
         "currency": tx.get("currency", PAXITY_DEFAULT_CURRENCY),
         "updated_at": tx.get("updated_at"),
     }
+
+
+async def _refresh_pending_tx(db: AsyncIOMotorDatabase, tx: dict) -> str:
+    """
+    Interroge Paxity pour le vrai statut d'une transaction pending,
+    met à jour transaction + commande et envoie les emails de confirmation.
+    Mutate `tx` en place et retourne le statut (possiblement rafraîchi).
+    """
+    if tx.get("status") != "pending" or not tx.get("paxity_transaction_id") or not PAXITY_CONFIGURED:
+        return tx.get("status", "pending")
+    try:
+        async with httpx.AsyncClient(timeout=12.0) as client:
+            r = await client.get(
+                f"{PAXITY_BASE_URL}{PAXITY_PAYIN_PATH}/{tx['paxity_transaction_id']}",
+                headers=_headers(),
+            )
+        if r.status_code == 200:
+            root = _payload_root(r.json())
+            fresh = _map_status(root.get("status"))
+            if fresh != tx["status"]:
+                now = datetime.now(timezone.utc).isoformat()
+                await db.paxity_transactions.update_one(
+                    {"id": tx["id"]},
+                    {"$set": {"status": fresh, "updated_at": now}},
+                )
+                await db.orders.update_one(
+                    {"id": tx["order_id"]}, {"$set": {"status": fresh}}
+                )
+                tx["status"] = fresh
+                tx["updated_at"] = now
+                logger.info(f"[Paxity] Status refreshed tx={tx['id']} -> {fresh}")
+                if fresh == "success":
+                    await maybe_send_order_confirmation(db, tx["order_id"])
+                    await maybe_send_customer_confirmation(db, tx["order_id"])
+    except Exception:
+        logger.warning("[Paxity] Live status refresh failed", exc_info=True)
+    return tx.get("status", "pending")
+
+
+async def _watch_pending_tx(db: AsyncIOMotorDatabase, tx_id: str):
+    """
+    Filet de sécurité serveur : après un paiement Wave/OM, le client peut ne
+    jamais revenir sur le site (bloqué/fermé sur la page de retour paxity.io).
+    Cette tâche vérifie le statut auprès de Paxity toutes les 20 s pendant
+    15 minutes : la commande est confirmée et les emails partent même sans
+    retour navigateur ni IPN.
+    """
+    for _ in range(45):
+        await asyncio.sleep(20)
+        try:
+            tx = await db.paxity_transactions.find_one({"id": tx_id}, {"_id": 0})
+            if not tx or tx.get("status") != "pending":
+                return
+            if await _refresh_pending_tx(db, tx) != "pending":
+                return
+        except Exception:
+            logger.warning(f"[Paxity] Watcher error tx={tx_id}", exc_info=True)
+    logger.info(f"[Paxity] Watcher timeout tx={tx_id} (toujours pending après 15 min)")
 
 
 @router.post("/webhook")
@@ -693,11 +743,17 @@ async def paxity_webhook(request: Request):
 
     if tx_query:
         result = await db.paxity_transactions.update_one(tx_query, {"$set": update})
-        if result.matched_count and order_id:
-            await db.orders.update_one({"id": order_id}, {"$set": {"status": normalized}})
-            if normalized == "success":
-                await maybe_send_order_confirmation(db, order_id)
-                await maybe_send_customer_confirmation(db, order_id)
+        # L'IPN Paxity peut ne pas contenir idClient : retrouver l'order_id
+        # depuis la transaction pour toujours mettre à jour la commande.
+        if result.matched_count:
+            if not order_id:
+                tx_doc = await db.paxity_transactions.find_one(tx_query, {"_id": 0, "order_id": 1})
+                order_id = (tx_doc or {}).get("order_id")
+            if order_id:
+                await db.orders.update_one({"id": order_id}, {"$set": {"status": normalized}})
+                if normalized == "success":
+                    await maybe_send_order_confirmation(db, order_id)
+                    await maybe_send_customer_confirmation(db, order_id)
 
     return {"received": True}
 

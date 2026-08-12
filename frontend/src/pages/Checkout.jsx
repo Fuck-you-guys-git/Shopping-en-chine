@@ -404,6 +404,9 @@ export default function Checkout() {
                     <p className="text-muted-foreground mb-2">
                         {t("Ouvrez l'application")} <span className="font-semibold text-foreground">{transaction.operator_label || operatorIconMeta.label}</span> {t("sur votre téléphone et validez la transaction.")}
                     </p>
+                    <p className="text-xs text-muted-foreground mb-2" data-testid="paxity-return-hint">
+                        {t("Après validation, revenez sur cette page : votre confirmation s'affichera automatiquement et vous recevrez un email. Vous pouvez fermer la page de paiement.")}
+                    </p>
                     {transaction.payment_link && (
                         <div className="my-6 space-y-4">
                             <Button

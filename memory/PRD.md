@@ -483,3 +483,13 @@ Payments were failing with a **DNS error** because `backend/paxity_router.py` ha
 - Adresse société changée : « sicap mbao, 17000 Dakar, Sénégal » → « Guangzhou, 510000 Guangdong, Chine » (ticket + footer email_service.py).
 - « Sénégal » codé en dur retiré des blocs Expédier à / Facturer à (le pays du client est maintenant dans l'adresse via le sélecteur pays).
 - Vérifié par screenshot d'un aperçu HTML du ticket (fichier temporaire supprimé).
+
+## Update — Feb 2026 (DEEP FIX retour Wave/OM — IPN + watcher serveur)
+- ENQUÊTE : la fenêtre paxity.io au retour de Wave est la page de retour de la session checkout Wave (pay.wave.com/c/cos-...) créée PAR Paxity — URL de retour non modifiable (doc API officielle vérifiée : champs payin = amount, country, currency, phoneNumber, prefixPhone, paymentMethod, codeOtp, description, idClient, ipn — AUCUN redirect/successUrl).
+- ROOT CAUSE côté nous : PAXITY_IPN_URL="" (vide) dans .env → le champ ipn n'était JAMAIS envoyé → 0 IPN reçus en base → confirmation 100% dépendante du navigateur client.
+- FIX 1 : _public_ipn_url(request) dans paxity_router.py — dérive l'URL webhook du host public (x-forwarded-host/proto) → https://shoppingenchine.com/api/paxity/webhook en prod, URL preview en preview, "" en local. PAXITY_IPN_URL (.env) reste prioritaire si défini.
+- FIX 2 : webhook — si l'IPN ne contient pas idClient, lookup de l'order_id via la transaction (avant : commande jamais mise à jour). Testé via curl IPN FAILED sans idClient → tx + order passés à failed.
+- FIX 3 : _watch_pending_tx (filet de sécurité) — après chaque payin pending, tâche asyncio qui interroge Paxity toutes les 20s pendant 15 min : commande confirmée + emails envoyés MÊME si le client ne revient jamais. Partage _refresh_pending_tx avec GET /status (refactor).
+- FIX 4 : écran d'attente Checkout — message « Après validation, revenez sur cette page... vous pouvez fermer la page de paiement » (data-testid paxity-return-hint) + traduction EN.
+- TESTS : /app/backend/tests/test_paxity_return_fixes.py (4 passed). Payin réel 100 F créé → log confirme 'ipn': URL preview envoyée → stoppé via webhook FAILED → nettoyé de la DB.
+- ATTENTION ÉDITIONS : paxity_router.py a subi une corruption de fin de fichier lors d'un search_replace (bloc dupliqué « }) ... return order ») — réparée. Toujours vérifier ast.parse après édits sur ce fichier.

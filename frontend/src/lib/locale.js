@@ -247,6 +247,7 @@ const EN = {
     "Voir tous les résultats": "See all results",
     "Pays": "Country",
     "Choisissez votre pays": "Choose your country",
+    "Après validation, revenez sur cette page : votre confirmation s'affichera automatiquement et vous recevrez un email. Vous pouvez fermer la page de paiement.": "After confirming, come back to this page: your confirmation will appear automatically and you will receive an email. You can close the payment page.",
     "État": "State",
     "Province": "Province",
     "Choisissez votre état": "Choose your state",
