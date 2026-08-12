@@ -493,3 +493,10 @@ Payments were failing with a **DNS error** because `backend/paxity_router.py` ha
 - FIX 4 : écran d'attente Checkout — message « Après validation, revenez sur cette page... vous pouvez fermer la page de paiement » (data-testid paxity-return-hint) + traduction EN.
 - TESTS : /app/backend/tests/test_paxity_return_fixes.py (4 passed). Payin réel 100 F créé → log confirme 'ipn': URL preview envoyée → stoppé via webhook FAILED → nettoyé de la DB.
 - ATTENTION ÉDITIONS : paxity_router.py a subi une corruption de fin de fichier lors d'un search_replace (bloc dupliqué « }) ... return order ») — réparée. Toujours vérifier ast.parse après édits sur ce fichier.
+
+## Update — Feb 2026 (Ticket : retour au format fixe 1 étiquette)
+- REGRESSION CONSTATÉE (photo user) : .ticket en 100vw/100vh débordait sur 2 étiquettes (vh en print = viewport driver, pas la page @page). 
+- FIX FINAL : .ticket{width:100mm;height:149mm;overflow:hidden} (149mm = marge de sécurité anti-retombée) + @page 100mm 150mm margin 0. Grandes polices conservées (brand 25px, who 20px, item 19px), foot en bas via margin-top:auto.
+- Ajout bandeau .print-hint (visible à l'écran, display:none à l'impression) : « Papier 100×150 mm · Échelle 100% · Marges Aucune » — le décalage/moitié vide de la 1re photo venait du driver qui réduisait la page (échelle auto).
+- Vérifié via émulation media print : hauteur ticket exactement 563px (=149mm) → 1 page par ticket garanti ; hint masqué en print.
+- LEÇON : ne JAMAIS utiliser vw/vh dans les documents à imprimer sur étiquettes ; toujours des mm fixes < taille @page.

@@ -75,10 +75,11 @@ const printTickets = (ordersToPrint) => {
            TOUTE la feuille et rester centré quelle que soit l'imprimante. */
         @page{size:100mm 150mm;margin:0}
         *{box-sizing:border-box}
-        html,body{width:100%;height:100%}
         body{font-family:Arial,Helvetica,sans-serif;margin:0;padding:0;color:#000;background:#fff}
         p{margin:0}
-        .ticket{width:100vw;height:100vh;padding:5mm 6mm;display:flex;flex-direction:column;overflow:hidden;page-break-after:always;break-after:page;border:1px solid #999;color:#000}
+        /* 1 ticket = EXACTEMENT 1 étiquette 100x150mm (149mm + overflow:hidden
+           = aucune retombée possible sur l'étiquette suivante). */
+        .ticket{width:100mm;height:149mm;padding:5mm;display:flex;flex-direction:column;overflow:hidden;page-break-after:always;break-after:page;border:1px solid #999;color:#000}
         .ticket:last-child{page-break-after:auto;break-after:auto}
         .top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:3mm}
         .ship{font-size:18px;font-weight:900;border:2.5px solid #000;display:inline-block;padding:1.5mm 3mm;margin-bottom:4mm}
@@ -99,9 +100,11 @@ const printTickets = (ordersToPrint) => {
         .thanks{font-size:17px;font-weight:bold;margin-bottom:2.5mm}
         .fbrand{font-size:17px;font-weight:900;letter-spacing:.5px;margin-bottom:1mm}
         .fline{font-size:15px;font-weight:bold;line-height:1.45}
-        @media screen{body{padding:16px;background:#eee}.ticket{width:100mm;height:150mm;margin:0 auto 14px;background:#fff;box-shadow:0 1px 6px rgba(0,0,0,.2)}}
-        @media print{.ticket{border:none}}
-    </style></head><body>${ordersToPrint.map(ticketHtml).join("")}</body></html>`);
+        @media screen{body{padding:16px;background:#eee}.ticket{margin:0 auto 14px;background:#fff;box-shadow:0 1px 6px rgba(0,0,0,.2)}.print-hint{display:block;max-width:100mm;margin:0 auto 12px;padding:10px 14px;background:#fff8e1;border:1px solid #e0c36a;border-radius:8px;font-size:13px;line-height:1.5}}
+        @media print{.ticket{border:none}.print-hint{display:none}}
+    </style></head><body>
+    <div class="print-hint"><b>Réglages d'impression :</b> Papier/étiquette <b>100 × 150 mm (4×6")</b> · Échelle <b>100%</b> (pas « Ajuster à la page ») · Marges <b>Aucune</b>.</div>
+    ${ordersToPrint.map(ticketHtml).join("")}</body></html>`);
     w.document.close();
     w.focus();
     setTimeout(() => w.print(), 400);
