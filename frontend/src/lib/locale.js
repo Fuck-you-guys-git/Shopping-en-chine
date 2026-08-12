@@ -214,6 +214,8 @@ const EN = {
     "Tout": "All",
     "Effacer tout": "Clear all",
     "Voir tous les résultats": "See all results",
+    "Pays": "Country",
+    "Choisissez votre pays": "Choose your country",
     "Aucun produit trouvé": "No products found",
     "Essayez d'ajuster vos filtres.": "Try adjusting your filters.",
     "Réinitialiser les filtres": "Reset filters",

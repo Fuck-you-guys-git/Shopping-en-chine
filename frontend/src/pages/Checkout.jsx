@@ -6,6 +6,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import { useCart } from "@/context/CartContext";
 import { formatPrice } from "@/components/ProductCard";
@@ -17,6 +18,7 @@ import { StripeEmbedded } from "@/components/StripeEmbedded";
 import { DeliveryOptions } from "@/components/DeliveryOptions";
 import { orderNo } from "@/lib/utils";
 import { t, getLocale } from "@/lib/locale";
+import { COUNTRIES, findCountry, countryName } from "@/lib/countries";
 
 const OPERATOR_META = {
     "orange-money": { label: "Orange Money", color: "#FF7900", bg: "bg-[#FF7900]/10" },
@@ -39,15 +41,28 @@ export default function Checkout() {
     const shipping = 0;
     const total = subtotal + shipping;
 
-    const [buyer, setBuyer] = useState({
-        firstName: "", lastName: "", email: "",
-        phone: "", address: "", zip: "", city: "",
+    const [buyer, setBuyer] = useState(() => {
+        // Pays pré-sélectionné depuis la géolocalisation IP (si connu)
+        const detected = findCountry(getLocale().country);
+        return {
+            firstName: "", lastName: "", email: "",
+            phone: "", address: "", zip: "", city: "",
+            country: detected ? detected.code : "SN",
+        };
     });
+
+    const selectedCountry = findCountry(buyer.country);
 
     const [paxityConfig, setPaxityConfig] = useState(null);
     const [paxityError, setPaxityError] = useState(null);
     const [paymentMethod, setPaymentMethod] = useState("");
-    const [prefix, setPrefix] = useState("221");
+    const [prefix, setPrefix] = useState(() => findCountry(getLocale().country)?.dial || "221");
+
+    const changeCountry = (code) => {
+        setBuyer((b) => ({ ...b, country: code }));
+        const c = findCountry(code);
+        if (c) setPrefix(c.dial); // indicatif appliqué automatiquement
+    };
     const [otp, setOtp] = useState("");
 
     const [processing, setProcessing] = useState(false);
@@ -84,10 +99,10 @@ export default function Checkout() {
         paxityAPI.getConfig()
             .then((cfg) => {
                 setPaxityConfig(cfg);
-                // Pre-select first available method
+                // Pre-select first available method (sans écraser
+                // l'indicatif déduit du pays choisi par le client)
                 if (cfg.methods && cfg.methods.length > 0) {
                     setPaymentMethod(cfg.methods[0].code);
-                    setPrefix(cfg.methods[0].prefix !== "*" ? cfg.methods[0].prefix : "221");
                 }
             })
             .catch(() => setPaxityError("Impossible de contacter le service de paiement."));
@@ -182,7 +197,7 @@ export default function Checkout() {
                     email: buyer.email,
                     city: buyer.city,
                     phone: buyer.phone ? `+${prefix} ${buyer.phone}` : undefined,
-                    address: [buyer.address, buyer.zip].filter(Boolean).join(", ") || undefined,
+                    address: [buyer.address, buyer.zip, selectedCountry ? countryName(selectedCountry) : null].filter(Boolean).join(", ") || undefined,
                 },
                 items: items.map((it) => ({ product_id: it.id, qty: it.qty, size: it.size || undefined })),
             });
@@ -254,7 +269,7 @@ export default function Checkout() {
                     email: buyer.email,
                     city: buyer.city,
                     phone: `+${prefix} ${buyer.phone}`,
-                    address: [buyer.address, buyer.zip].filter(Boolean).join(", ") || undefined,
+                    address: [buyer.address, buyer.zip, selectedCountry ? countryName(selectedCountry) : null].filter(Boolean).join(", ") || undefined,
                 },
                 items: items.map((it) => ({
                     product_id: it.id,
@@ -514,7 +529,30 @@ export default function Checkout() {
                                 <div className="space-y-1.5 sm:col-span-2"><Label>{t("Adresse")}</Label><Input required value={buyer.address} onChange={(e) => setBuyer({ ...buyer, address: e.target.value })} /></div>
                                 <div className="space-y-1.5"><Label>{t("Code postal")}</Label><Input value={buyer.zip} onChange={(e) => setBuyer({ ...buyer, zip: e.target.value })} /></div>
                                 <div className="space-y-1.5"><Label>{t("Ville")}</Label><Input required value={buyer.city} onChange={(e) => setBuyer({ ...buyer, city: e.target.value })} /></div>
-                                <div className="space-y-1.5 sm:col-span-2"><Label>{t("Téléphone")}</Label><Input required type="tel" value={buyer.phone} onChange={(e) => setBuyer({ ...buyer, phone: e.target.value })} /></div>
+                                <div className="space-y-1.5 sm:col-span-2">
+                                    <Label>{t("Pays")}</Label>
+                                    <Select value={buyer.country} onValueChange={changeCountry}>
+                                        <SelectTrigger data-testid="country-select">
+                                            <SelectValue placeholder={t("Choisissez votre pays")} />
+                                        </SelectTrigger>
+                                        <SelectContent className="max-h-[300px]">
+                                            {COUNTRIES.map((c) => (
+                                                <SelectItem key={c.code} value={c.code} data-testid={`country-option-${c.code}`}>
+                                                    {c.flag} {countryName(c)} (+{c.dial})
+                                                </SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                                <div className="space-y-1.5 sm:col-span-2">
+                                    <Label>{t("Téléphone")}</Label>
+                                    <div className="flex">
+                                        <span data-testid="phone-prefix" className="inline-flex items-center gap-1 px-3 rounded-l-md border border-r-0 border-input bg-muted/60 text-sm text-foreground whitespace-nowrap">
+                                            {selectedCountry?.flag} +{prefix}
+                                        </span>
+                                        <Input required type="tel" value={buyer.phone} onChange={(e) => setBuyer({ ...buyer, phone: e.target.value })} className="rounded-l-none" data-testid="phone-input" />
+                                    </div>
+                                </div>
                             </div>
                             <Button
                                 type="button"

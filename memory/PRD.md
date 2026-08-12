@@ -442,3 +442,11 @@ Payments were failing with a **DNS error** because `backend/paxity_router.py` ha
 - Supprimé le bandeau indigo « Paiement par carte sécurisé (Visa, Mastercard) / Payez directement sur le site, sans redirection » du panneau carte Stripe.
 - Conservé : la ligne discrète « Paiement sécurisé via Stripe/Paxity · Chiffrement bout-en-bout » (réassurance).
 - Vérifié par screenshot e2e (adresse → livraison → paiement, boutons « Continue » type=button, PAS de submit ; attention le footer newsletter a aussi un bouton submit qui piège les sélecteurs génériques).
+
+## Update — Feb 2026 (Sélecteur de pays + indicatif automatique au checkout)
+- Nouveau fichier /app/frontend/src/lib/countries.js : 33 pays (Afrique/Europe/US/CA) avec {code ISO2, fr, en, dial, flag} + findCountry() + countryName() (nom selon langue).
+- Checkout.jsx : champ « Pays » (shadcn Select, data-testid country-select / country-option-XX) dans le formulaire d'adresse. changeCountry() → setPrefix(dial) automatiquement. Pays pré-sélectionné depuis la géoloc IP (getLocale().country), défaut SN.
+- Téléphone : badge indicatif non éditable « 🇸🇳 +221 » (data-testid phone-prefix) accolé à gauche de l'input.
+- L'ancien setPrefix() dans le fetch paxityConfig SUPPRIMÉ (il écrasait l'indicatif du pays). Le choix d'un opérateur mobile money spécifique (étape paiement) peut toujours ajuster le prefix (comportement voulu).
+- Le nom du pays est ajouté à l'adresse envoyée dans les payloads Stripe & Paxity (visible sur ticket vendeur).
+- Testé par screenshot : init 🇺🇸 +1 (IP pod US) → France +33 → Sénégal +221. Traductions "Pays"/"Choisissez votre pays" ajoutées.
