@@ -213,6 +213,7 @@ const EN = {
     "Prix décroissant": "Price: high to low",
     "Tout": "All",
     "Effacer tout": "Clear all",
+    "Voir tous les résultats": "See all results",
     "Aucun produit trouvé": "No products found",
     "Essayez d'ajuster vos filtres.": "Try adjusting your filters.",
     "Réinitialiser les filtres": "Reset filters",

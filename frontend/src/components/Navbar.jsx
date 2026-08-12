@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Sheet, SheetContent, SheetTrigger, SheetTitle } from "@/components/ui/sheet";
 import { Logo } from "@/components/Logo";
+import { SearchSuggestions } from "@/components/SearchSuggestions";
 import { useCart } from "@/context/CartContext";
 import { categories } from "@/data/products";
 import { t } from "@/lib/locale";
@@ -28,6 +29,7 @@ export const Navbar = () => {
     const [scrolled, setScrolled] = useState(false);
     const [query, setQuery] = useState("");
     const [searchOpen, setSearchOpen] = useState(false);
+    const [sugOpen, setSugOpen] = useState(false);
     const [menuOpen, setMenuOpen] = useState(false);
     const navigate = useNavigate();
 
@@ -42,6 +44,13 @@ export const Navbar = () => {
         if (!query.trim()) return;
         navigate(`/boutique?q=${encodeURIComponent(query)}`);
         setSearchOpen(false);
+        setSugOpen(false);
+    };
+
+    const pickSuggestion = () => {
+        setSugOpen(false);
+        setSearchOpen(false);
+        setQuery("");
     };
 
     return (
@@ -167,10 +176,15 @@ export const Navbar = () => {
                                 <Search className="h-4 w-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
                                 <Input
                                     value={query}
-                                    onChange={(e) => setQuery(e.target.value)}
+                                    onChange={(e) => { setQuery(e.target.value); setSugOpen(true); }}
+                                    onFocus={() => setSugOpen(true)}
+                                    onBlur={() => setSugOpen(false)}
+                                    onKeyDown={(e) => e.key === "Escape" && setSugOpen(false)}
                                     placeholder={t("Rechercher...")}
+                                    data-testid="navbar-search-input"
                                     className="pl-9 h-9 w-[220px] bg-muted/50 border-transparent focus-visible:bg-background focus-visible:border-border"
                                 />
+                                <SearchSuggestions query={query} open={sugOpen} onPick={pickSuggestion} className="left-auto right-0 w-[360px]" />
                             </form>
                             <Button variant="ghost" size="icon" className="md:hidden" onClick={() => setSearchOpen(true)}>
                                 <Search className="h-5 w-5" />
@@ -206,13 +220,17 @@ export const Navbar = () => {
                                 <Input
                                     autoFocus
                                     value={query}
-                                    onChange={(e) => setQuery(e.target.value)}
+                                    onChange={(e) => { setQuery(e.target.value); setSugOpen(true); }}
+                                    onFocus={() => setSugOpen(true)}
+                                    onBlur={() => setSugOpen(false)}
                                     placeholder={t("Que cherchez-vous ?")}
+                                    data-testid="navbar-mobile-search-input"
                                     className="pl-9 pr-9 h-10 bg-muted/50"
                                 />
                                 <button type="button" onClick={() => setSearchOpen(false)} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground">
                                     <X className="h-4 w-4" />
                                 </button>
+                                <SearchSuggestions query={query} open={sugOpen} onPick={pickSuggestion} />
                             </form>
                         </div>
                     )}

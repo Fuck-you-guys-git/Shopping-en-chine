@@ -424,3 +424,10 @@ Payments were failing with a **DNS error** because `backend/paxity_router.py` ha
 - Fichiers modifiés : locale.js (clés FR + traductions EN), Navbar (topbar), Footer, Home (hero + bénéfices), CartDrawer, Cart, Checkout, ProductDetail, PaymentSuccess, ComingSoon, About (meta + feature), Products (meta), usePageTitle (titre par défaut), public/index.html (title + og:title + meta description).
 - CONSERVÉ volontairement : les options de livraison régionales Dakar (DeliveryOptions, économique/express Chine-Dakar, frais 2000 F Dakar), l'étape de suivi « En livraison à Dakar », et l'adresse physique Dakar dans l'email — ce sont des infos opérationnelles, pas du branding.
 - Vérifié par screenshot : topbar + hero affichent « Worldwide delivery from China » (EN auto par géoloc IP US du pod), aucun « Dakar » branding sur la home.
+
+## Update — Feb 2026 (Recherche instantanée / autocomplete)
+- Nouveau composant /app/frontend/src/components/SearchSuggestions.jsx : dropdown de suggestions 100% CLIENT-SIDE (catalogue déjà chargé via useCatalog + moteur productMatchesQuery de lib/search.js — pas de nouvel endpoint backend, zéro latence).
+- Affiche max 6 produits : miniature (p.image), nom, catégorie traduite, prix (formatMoney → devise du visiteur), + lien « Voir tous les résultats (N) » → /boutique?q=. État vide : « Aucun produit trouvé ».
+- Intégré à 3 endroits : Navbar desktop (dropdown 360px aligné droite, data-testid navbar-search-input), Navbar mobile overlay (navbar-mobile-search-input), hero Home (home-search-input). Ouverture au focus/saisie (≥2 caractères), fermeture au blur/Escape/clic.
+- ASTUCE UX : onMouseDown preventDefault sur le dropdown pour que le clic sur une suggestion parte AVANT le blur de l'input (sinon le menu se ferme et le clic est perdu).
+- Testé par screenshot : suggestion visible avec image+prix, clic → navigation fiche produit OK, requête sans résultat → message OK. Traduction EN ajoutée (« See all results »).

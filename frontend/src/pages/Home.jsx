@@ -9,6 +9,7 @@ import { useCatalog } from "@/context/CatalogContext";
 import { useNavigate } from "react-router-dom";
 import { useState } from "react";
 import { usePageTitle } from "@/hooks/usePageTitle";
+import { SearchSuggestions } from "@/components/SearchSuggestions";
 import { t } from "@/lib/locale";
 
 const benefits = [
@@ -22,10 +23,12 @@ export default function Home() {
     const { products } = useCatalog();
     usePageTitle(null, "Commandez vos produits directement de Chine, livrés à Dakar en 10 à 20 jours. Paiement Mobile Money et carte bancaire.");
     const [query, setQuery] = useState("");
+    const [sugOpen, setSugOpen] = useState(false);
 
     const onSearch = (e) => {
         e.preventDefault();
         if (query.trim()) navigate(`/boutique?q=${encodeURIComponent(query)}`);
+        setSugOpen(false);
     };
 
     return (
@@ -47,13 +50,18 @@ export default function Home() {
                             <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                             <Input
                                 value={query}
-                                onChange={(e) => setQuery(e.target.value)}
+                                onChange={(e) => { setQuery(e.target.value); setSugOpen(true); }}
+                                onFocus={() => setSugOpen(true)}
+                                onBlur={() => setSugOpen(false)}
+                                onKeyDown={(e) => e.key === "Escape" && setSugOpen(false)}
                                 placeholder={t("Que cherchez-vous ?")}
+                                data-testid="home-search-input"
                                 className="pl-11 h-12 rounded-full bg-background border-border shadow-soft"
                             />
                             <Button type="submit" size="sm" className="absolute right-1.5 top-1/2 -translate-y-1/2 rounded-full h-9 bg-primary hover:bg-primary/90">
                                 {t("Chercher")}
                             </Button>
+                            <SearchSuggestions query={query} open={sugOpen} onPick={() => { setSugOpen(false); setQuery(""); }} />
                         </form>
                     </div>
 
