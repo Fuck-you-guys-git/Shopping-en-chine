@@ -37,14 +37,12 @@ const ticketHtml = (o) => {
                 <p class="label">Expédier à</p>
                 <p class="who">${esc(o.customer)}</p>
                 ${addr.map((l) => `<p class="addr">${esc(l)}</p>`).join("")}
-                <p class="addr">Sénégal</p>
                 ${o.phone ? `<p class="addr">${esc(o.phone)}</p>` : ""}
             </div>
             <div class="col">
                 <p class="label">Facturer à</p>
                 <p class="who">${esc(o.customer)}</p>
                 ${addr.map((l) => `<p class="addr">${esc(l)}</p>`).join("")}
-                <p class="addr">Sénégal</p>
             </div>
         </div>
         <div class="rule"></div>
@@ -60,7 +58,7 @@ const ticketHtml = (o) => {
         <div class="foot">
             <p class="thanks">Merci pour votre achat !</p>
             <p class="fbrand">SHOPPING EN CHINE</p>
-            <p class="fline">sicap mbao, 17000 Dakar, Sénégal</p>
+            <p class="fline">Guangzhou, 510000 Guangdong, Chine</p>
             <p class="fline">serviceclients@shoppingenchine.com</p>
             <p class="fline">shoppingenchine.com</p>
         </div>
@@ -72,33 +70,36 @@ const printTickets = (ordersToPrint) => {
     const w = window.open("", "_blank");
     if (!w) return false;
     w.document.write(`<!doctype html><html><head><title>Tickets colis — Shopping en Chine</title><style>
-        /* Étiquette 100 × 150 mm (4 × 6 pouces) — une commande par page — écriture grande et noire */
+        /* Étiquette 100 × 150 mm (4 × 6 pouces) — une commande par page.
+           Le ticket occupe 100% de la page (100vw × 100vh) pour couvrir
+           TOUTE la feuille et rester centré quelle que soit l'imprimante. */
         @page{size:100mm 150mm;margin:0}
         *{box-sizing:border-box}
+        html,body{width:100%;height:100%}
         body{font-family:Arial,Helvetica,sans-serif;margin:0;padding:0;color:#000;background:#fff}
         p{margin:0}
-        .ticket{width:100mm;height:150mm;padding:6mm;display:flex;flex-direction:column;overflow:hidden;page-break-after:always;break-after:page;border:1px solid #999;color:#000}
+        .ticket{width:100vw;height:100vh;padding:5mm 6mm;display:flex;flex-direction:column;overflow:hidden;page-break-after:always;break-after:page;border:1px solid #999;color:#000}
         .ticket:last-child{page-break-after:auto;break-after:auto}
         .top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:3mm}
-        .ship{font-size:13px;font-weight:900;border:2px solid #000;display:inline-block;padding:1.2mm 3mm;margin-bottom:4mm}
-        .brand{font-weight:900;font-size:19px;letter-spacing:.5px}
-        .meta{font-size:12px;font-weight:bold;text-align:right;line-height:1.4}
+        .ship{font-size:18px;font-weight:900;border:2.5px solid #000;display:inline-block;padding:1.5mm 3mm;margin-bottom:4mm}
+        .brand{font-weight:900;font-size:25px;letter-spacing:.5px}
+        .meta{font-size:15px;font-weight:bold;text-align:right;line-height:1.4}
         .cols{display:flex;gap:5mm}
         .col{flex:1;min-width:0}
-        .label{font-size:11px;font-weight:900;text-transform:uppercase;letter-spacing:1px;margin-bottom:1.5mm}
-        .who{font-size:14px;font-weight:900;line-height:1.3}
-        .addr{font-size:13px;font-weight:bold;line-height:1.35}
-        .rule{border-top:2px solid #000;margin:4mm 0 3mm}
-        .items{flex:1;overflow:hidden}
-        .items-head{display:flex;justify-content:space-between;font-size:11px;font-weight:900;text-transform:uppercase;letter-spacing:1px;margin-bottom:2.5mm}
+        .label{font-size:14px;font-weight:900;text-transform:uppercase;letter-spacing:1px;margin-bottom:1.5mm}
+        .who{font-size:20px;font-weight:900;line-height:1.3}
+        .addr{font-size:17px;font-weight:bold;line-height:1.35}
+        .rule{border-top:2.5px solid #000;margin:4mm 0 3mm}
+        .items{flex:1 1 auto;min-height:0}
+        .items-head{display:flex;justify-content:space-between;font-size:14px;font-weight:900;text-transform:uppercase;letter-spacing:1px;margin-bottom:2.5mm}
         .item{display:flex;justify-content:space-between;gap:4mm;margin-bottom:2.5mm}
-        .item-name{font-size:14px;font-weight:900;line-height:1.3}
-        .item-qty{font-size:13px;font-weight:bold;white-space:nowrap}
+        .item-name{font-size:19px;font-weight:900;line-height:1.3}
+        .item-qty{font-size:17px;font-weight:bold;white-space:nowrap}
         .foot{text-align:center;margin-top:auto}
-        .thanks{font-size:13px;font-weight:bold;margin-bottom:2.5mm}
-        .fbrand{font-size:13px;font-weight:900;letter-spacing:.5px;margin-bottom:1mm}
-        .fline{font-size:11.5px;font-weight:bold;line-height:1.4}
-        @media screen{body{padding:16px;background:#eee}.ticket{margin:0 auto 14px;background:#fff;box-shadow:0 1px 6px rgba(0,0,0,.2)}}
+        .thanks{font-size:17px;font-weight:bold;margin-bottom:2.5mm}
+        .fbrand{font-size:17px;font-weight:900;letter-spacing:.5px;margin-bottom:1mm}
+        .fline{font-size:15px;font-weight:bold;line-height:1.45}
+        @media screen{body{padding:16px;background:#eee}.ticket{width:100mm;height:150mm;margin:0 auto 14px;background:#fff;box-shadow:0 1px 6px rgba(0,0,0,.2)}}
         @media print{.ticket{border:none}}
     </style></head><body>${ordersToPrint.map(ticketHtml).join("")}</body></html>`);
     w.document.close();

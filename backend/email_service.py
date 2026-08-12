@@ -135,7 +135,7 @@ def _wrap(inner: str) -> str:
         <tr><td style="background:#faf7f2;padding:24px 32px;text-align:center;border-top:1px solid #eee;">
             <p style="margin:0 0 6px;font-size:13px;color:#1d1d1d;font-weight:bold;">Shopping en Chine</p>
             <p style="margin:0;font-size:12px;color:#888;line-height:1.7;">
-                sicap mbao, 17000 Dakar, Sénégal<br/>
+                Guangzhou, 510000 Guangdong, Chine<br/>
                 <a href="mailto:serviceclients@shoppingenchine.com" style="color:#c64c3a;text-decoration:none;">serviceclients@shoppingenchine.com</a>
                 &nbsp;·&nbsp; <a href="https://shoppingenchine.com" style="color:#c64c3a;text-decoration:none;">shoppingenchine.com</a>
             </p>

@@ -475,3 +475,11 @@ Payments were failing with a **DNS error** because `backend/paxity_router.py` ha
 - Modifié : locale.js RATES (9000/17, 9000/19), stripe_router.py RATES_XOF, AddProduct.jsx texte d'aide, products_router.py commentaire, DeliveryOptions.jsx (EU_RATE_XOF/US_RATE_XOF/CA_RATE_XOF recalés pour afficher toujours 13 €/kg, $18/kg, $19-20/kg pile).
 - VALIDÉ : Stripe checkout 9000 F → charged 17.00 EUR / 19.00 USD exactement (curl + DB) ; boutique affiche $3.17 pour 1500 F (ancien $5.33). Commandes/produit QA nettoyés.
 - RAPPEL : ce barème NE s'applique QUE si le vendeur n'a pas mis de priceEur/priceUsd explicites sur le produit.
+
+## Update — Feb 2026 (Ticket 100x150 : plein format + adresse Guangzhou)
+- Orders.jsx printTickets : .ticket passe de taille fixe 100mm×150mm à 100vw×100vh en impression → couvre TOUTE la feuille et reste centré quelle que soit l'imprimante/le driver (la taille fixe causait le décalage et la moitié vide constatés sur photo). Aperçu écran reste 100mm×150mm.
+- Polices fortement agrandies : brand 25px, ship 18px, who 20px, addr 17px, item-name 19px, fline 15px, traits 2.5px.
+- .items{flex:1 1 auto;min-height:0} (l'ancien flex:1 + overflow:hidden coupait le nom d'article multi-lignes).
+- Adresse société changée : « sicap mbao, 17000 Dakar, Sénégal » → « Guangzhou, 510000 Guangdong, Chine » (ticket + footer email_service.py).
+- « Sénégal » codé en dur retiré des blocs Expédier à / Facturer à (le pays du client est maintenant dans l'adresse via le sélecteur pays).
+- Vérifié par screenshot d'un aperçu HTML du ticket (fichier temporaire supprimé).
