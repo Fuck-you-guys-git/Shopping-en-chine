@@ -450,3 +450,9 @@ Payments were failing with a **DNS error** because `backend/paxity_router.py` ha
 - L'ancien setPrefix() dans le fetch paxityConfig SUPPRIMÉ (il écrasait l'indicatif du pays). Le choix d'un opérateur mobile money spécifique (étape paiement) peut toujours ajuster le prefix (comportement voulu).
 - Le nom du pays est ajouté à l'adresse envoyée dans les payloads Stripe & Paxity (visible sur ticket vendeur).
 - Testé par screenshot : init 🇺🇸 +1 (IP pod US) → France +33 → Sénégal +221. Traductions "Pays"/"Choisissez votre pays" ajoutées.
+
+## Update — Feb 2026 (États US / Provinces Canada au checkout)
+- countries.js : export STATES = {US: [50 états + DC], CA: [13 provinces/territoires]}.
+- Checkout.jsx : Select « État » (US) / « Province » (CA) affiché uniquement si STATES[buyer.country] existe (data-testid state-select / state-option-Xxx avec espaces→tirets). buyer.state reset au changement de pays, requis dans buyerValid() pour US/CA, inclus dans l'adresse envoyée (address, zip, state, pays).
+- Traductions ajoutées : État/State, Province, Choisissez votre état/province.
+- Testé par screenshot : US auto-détecté → champ État (New York OK) ; Canada → Province (Quebec OK, indicatif 🇨🇦 +1) ; Sénégal → champ masqué.

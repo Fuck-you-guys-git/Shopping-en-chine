@@ -18,7 +18,7 @@ import { StripeEmbedded } from "@/components/StripeEmbedded";
 import { DeliveryOptions } from "@/components/DeliveryOptions";
 import { orderNo } from "@/lib/utils";
 import { t, getLocale } from "@/lib/locale";
-import { COUNTRIES, findCountry, countryName } from "@/lib/countries";
+import { COUNTRIES, findCountry, countryName, STATES } from "@/lib/countries";
 
 const OPERATOR_META = {
     "orange-money": { label: "Orange Money", color: "#FF7900", bg: "bg-[#FF7900]/10" },
@@ -46,7 +46,7 @@ export default function Checkout() {
         const detected = findCountry(getLocale().country);
         return {
             firstName: "", lastName: "", email: "",
-            phone: "", address: "", zip: "", city: "",
+            phone: "", address: "", zip: "", city: "", state: "",
             country: detected ? detected.code : "SN",
         };
     });
@@ -59,7 +59,7 @@ export default function Checkout() {
     const [prefix, setPrefix] = useState(() => findCountry(getLocale().country)?.dial || "221");
 
     const changeCountry = (code) => {
-        setBuyer((b) => ({ ...b, country: code }));
+        setBuyer((b) => ({ ...b, country: code, state: "" }));
         const c = findCountry(code);
         if (c) setPrefix(c.dial); // indicatif appliqué automatiquement
     };
@@ -179,7 +179,8 @@ export default function Checkout() {
     };
 
     const buyerValid = () =>
-        buyer.firstName && buyer.lastName && buyer.email && buyer.phone && buyer.address && buyer.city;
+        buyer.firstName && buyer.lastName && buyer.email && buyer.phone && buyer.address && buyer.city &&
+        (!STATES[buyer.country] || buyer.state);
 
     const selectedMethod = paxityConfig?.methods?.find((m) => m.code === paymentMethod);
     const operatorIconMeta = selectedMethod ? (OPERATOR_META[selectedMethod.icon] || OPERATOR_META.card) : OPERATOR_META.card;
@@ -197,7 +198,7 @@ export default function Checkout() {
                     email: buyer.email,
                     city: buyer.city,
                     phone: buyer.phone ? `+${prefix} ${buyer.phone}` : undefined,
-                    address: [buyer.address, buyer.zip, selectedCountry ? countryName(selectedCountry) : null].filter(Boolean).join(", ") || undefined,
+                    address: [buyer.address, buyer.zip, buyer.state, selectedCountry ? countryName(selectedCountry) : null].filter(Boolean).join(", ") || undefined,
                 },
                 items: items.map((it) => ({ product_id: it.id, qty: it.qty, size: it.size || undefined })),
             });
@@ -269,7 +270,7 @@ export default function Checkout() {
                     email: buyer.email,
                     city: buyer.city,
                     phone: `+${prefix} ${buyer.phone}`,
-                    address: [buyer.address, buyer.zip, selectedCountry ? countryName(selectedCountry) : null].filter(Boolean).join(", ") || undefined,
+                    address: [buyer.address, buyer.zip, buyer.state, selectedCountry ? countryName(selectedCountry) : null].filter(Boolean).join(", ") || undefined,
                 },
                 items: items.map((it) => ({
                     product_id: it.id,
@@ -544,6 +545,23 @@ export default function Checkout() {
                                         </SelectContent>
                                     </Select>
                                 </div>
+                                {STATES[buyer.country] && (
+                                    <div className="space-y-1.5 sm:col-span-2">
+                                        <Label>{buyer.country === "CA" ? t("Province") : t("État")}</Label>
+                                        <Select value={buyer.state} onValueChange={(s) => setBuyer({ ...buyer, state: s })}>
+                                            <SelectTrigger data-testid="state-select">
+                                                <SelectValue placeholder={buyer.country === "CA" ? t("Choisissez votre province") : t("Choisissez votre état")} />
+                                            </SelectTrigger>
+                                            <SelectContent className="max-h-[300px]">
+                                                {STATES[buyer.country].map((s) => (
+                                                    <SelectItem key={s} value={s} data-testid={`state-option-${s.replace(/\s+/g, "-")}`}>
+                                                        {s}
+                                                    </SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+                                )}
                                 <div className="space-y-1.5 sm:col-span-2">
                                     <Label>{t("Téléphone")}</Label>
                                     <div className="flex">
