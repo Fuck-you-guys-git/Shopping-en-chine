@@ -396,7 +396,10 @@ export default function Checkout() {
                                 className="rounded-full bg-ink text-ink-foreground hover:bg-ink/90"
                                 data-testid="paxity-payment-link-btn"
                             >
-                                <a href={transaction.payment_link} target="_blank" rel="noopener noreferrer">
+                                {/* Même onglet : au retour de l'app Wave/OM, le client
+                                    retombe sur la boutique (transaction restaurée via
+                                    localStorage) au lieu d'un onglet Paxity orphelin. */}
+                                <a href={transaction.payment_link}>
                                     {t("Payer maintenant")}
                                 </a>
                             </Button>

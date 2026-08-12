@@ -431,3 +431,8 @@ Payments were failing with a **DNS error** because `backend/paxity_router.py` ha
 - Intégré à 3 endroits : Navbar desktop (dropdown 360px aligné droite, data-testid navbar-search-input), Navbar mobile overlay (navbar-mobile-search-input), hero Home (home-search-input). Ouverture au focus/saisie (≥2 caractères), fermeture au blur/Escape/clic.
 - ASTUCE UX : onMouseDown preventDefault sur le dropdown pour que le clic sur une suggestion parte AVANT le blur de l'input (sinon le menu se ferme et le clic est perdu).
 - Testé par screenshot : suggestion visible avec image+prix, clic → navigation fiche produit OK, requête sans résultat → message OK. Traduction EN ajoutée (« See all results »).
+
+## Update — Feb 2026 (Bug : fenêtre Paxity qui se rouvre au retour Wave/OM)
+- CAUSE : le bouton « Payer maintenant » (écran d'attente Paxity, Checkout.jsx ~399) avait target="_blank" → la page de paiement Paxity s'ouvrait dans un NOUVEL onglet. Au retour de l'app Wave/OM, le navigateur mobile raffichait cet onglet Paxity orphelin (perçu comme « une nouvelle fenêtre Paxity s'ouvre ») au lieu de la boutique.
+- FIX : target="_blank" retiré → paiement dans le MÊME onglet. Le site est déjà conçu pour ça : la transaction pending est persistée dans localStorage (clé sec_pending_paxity_tx_v1) et restaurée au rechargement de /commande, avec polling auto (3,5s + visibilitychange/focus) jusqu'à confirmation.
+- Vérifié par screenshot : pending screen restauré depuis localStorage, attribut target absent du lien.
