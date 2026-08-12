@@ -538,3 +538,10 @@ Payments were failing with a **DNS error** because `backend/paxity_router.py` ha
 - Le user a refusé la pagination multi-étiquettes : TOUT doit tenir sur la même feuille.
 - FIX : pagination supprimée, remplacée par densité automatique : classe .ticket--dense (7-12 articles, item-name 12px, variante inline à côté du nom) et .ticket--ultra (13+, 10.5px). ≤6 articles = tailles confortables inchangées. En-tête indique « Articles (N) ».
 - Vérifié e2e avec la commande #9911 (11 articles) : 1 seule étiquette, footer bottom (616px) < ticket bottom (645px), rien de coupé, tout lisible.
+
+## Update — Feb 2026 (Fenêtre Paxity post-paiement — vérifié par testing agent, iteration_28)
+- Question user récurrente : « pourquoi après paiement Paxity une nouvelle fenêtre paxity s'ouvre au lieu de la confirmation » → RÉPONSE : page de retour hébergée par Paxity (Wave redirige vers paxity.io, non modifiable — doc API vérifiée). PARADE en place et TESTÉE : window.open nommé + closePayWindow() dès success/failed.
+- Renforcements : polling 2s (au lieu de 3,5s) pendant pending + useEffect complete→closePayWindow.
+- TESTÉ E2E (iteration_28.json, 100% pass) : clic Payer maintenant → fenêtre ouverte → webhook SUCCESS → fenêtre FERMÉE AUTO en ~1-2s + écran confirmation affiché + DB à jour. Seed qa_close_1 nettoyé.
+- Fixes mineurs testing agent : key={it.line || it.id} dans le récap Checkout, <img> conditionnel si image vide (Checkout + CartDrawer).
+- IMPORTANT pour le user : la prod shoppingenchine.com doit être REDÉPLOYÉE pour bénéficier de tout ça. Sur mobile, si l'onglet boutique est en arrière-plan, la fermeture peut prendre quelques secondes de plus (throttling navigateur).

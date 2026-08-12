@@ -122,6 +122,12 @@ export default function Checkout() {
         payWindowRef.current = null;
     };
 
+    // Sécurité : si l'écran de confirmation s'affiche par un autre chemin,
+    // fermer aussi la fenêtre de paiement Paxity restée ouverte.
+    useEffect(() => {
+        if (complete) closePayWindow();
+    }, [complete]);
+
     // Poll status while pending — vérifie immédiatement, puis toutes les 3,5s,
     // et dès que le client revient sur l'onglet (retour de l'app Wave/OM).
     useEffect(() => {
@@ -152,7 +158,9 @@ export default function Checkout() {
             }
         };
         checkNow();
-        const interval = setInterval(checkNow, 3500);
+        // Vérification rapide (2s) : dès que Paxity confirme, la fenêtre de
+        // paiement est fermée et la confirmation s'affiche ici.
+        const interval = setInterval(checkNow, 2000);
         const onVisible = () => {
             if (document.visibilityState === "visible") checkNow();
         };
@@ -797,9 +805,9 @@ export default function Checkout() {
                         <h3 className="font-display text-xl">{t("Votre commande")}</h3>
                         <div className="space-y-3 max-h-[280px] overflow-y-auto">
                             {items.map((it) => (
-                                <div key={it.id} className="flex gap-3">
+                                <div key={it.line || it.id} className="flex gap-3">
                                     <div className="relative h-14 w-14 rounded-lg overflow-hidden bg-muted shrink-0">
-                                        <img src={it.image} alt="" className="h-full w-full object-cover" />
+                                        {it.image ? <img src={it.image} alt="" className="h-full w-full object-cover" /> : null}
                                         <span className="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-ink text-ink-foreground text-[10px] font-medium flex items-center justify-center">{it.qty}</span>
                                     </div>
                                     <div className="flex-1 min-w-0">

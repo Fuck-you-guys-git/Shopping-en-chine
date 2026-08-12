@@ -37,7 +37,7 @@ export const CartDrawer = () => {
                             {items.map((item) => (
                                 <div key={item.line} className="flex gap-3">
                                     <Link to={`/produit/${item.id}`} onClick={() => setDrawerOpen(false)} className="h-24 w-20 shrink-0 rounded-lg overflow-hidden bg-muted">
-                                        <img src={item.image} alt={item.name} className="h-full w-full object-cover" />
+                                        {item.image ? <img src={item.image} alt={item.name} className="h-full w-full object-cover" /> : null}
                                     </Link>
                                     <div className="flex-1 flex flex-col">
                                         <div className="flex items-start justify-between gap-2">
