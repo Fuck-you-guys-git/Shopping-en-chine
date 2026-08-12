@@ -56,17 +56,11 @@ export const formatCfa = (xof) =>
     `${new Intl.NumberFormat("fr-FR", { maximumFractionDigits: 0 }).format(Math.round(Number(xof) || 0))} F`;
 
 /**
- * Équivalents dans les autres devises (uniquement pour les clients en F CFA).
- * - Mode FCFA  -> "≈ 13 € · $15"  (le client africain voit les conversions)
+ * Équivalents devises : DÉSACTIVÉ à la demande du marchand.
+ * - Mode FCFA -> "" : les clients africains ne voient QUE le prix en F CFA.
  * - Mode EUR/USD -> "" : les clients Europe/USA ne voient JAMAIS de prix en F CFA.
  */
-export const formatEquivalents = (xof) => {
-    const v = Number(xof) || 0;
-    if (current.currency === "XOF") {
-        return `≈ ${fmtCurrency(v / RATES.EUR, "fr-FR", "EUR")} · ${fmtCurrency(v / RATES.USD, "en-US", "USD")}`;
-    }
-    return "";
-};
+export const formatEquivalents = () => "";
 
 // ---------------------------------------------------------------------------
 // Dictionnaire FR -> EN (la clé est le texte français affiché)

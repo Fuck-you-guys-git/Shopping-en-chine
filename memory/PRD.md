@@ -411,3 +411,8 @@ Payments were failing with a **DNS error** because `backend/paxity_router.py` ha
 - Conservés (fonctionnels, pas des exemples) : barres de recherche, « Laissez vide si non requis » (OTP), newsletter footer, placeholders du dashboard vendeur (aides à la saisie produit).
 - Vérifié par screenshot sur /commande : 7 champs du formulaire sans placeholder.
 - RAPPEL ROUTE : la page de commande est /commande (PAS /checkout).
+
+## Update — Feb 2026 (Prix CFA uniquement pour l'Afrique)
+- formatEquivalents() (lib/locale.js) retourne désormais TOUJOURS "" : les clients en zone CFA ne voient plus la ligne « ≈ 24,89 € · $28.44 » sous les prix. Chaque région ne voit QUE sa devise (Afrique=F CFA, Europe=€, USA/Canada=$).
+- Checkout.jsx : bloc équivalents retiré du récapitulatif + import formatEquivalents supprimé (attention : ce bloc était déjà dans un conditionnel getLocale — une édition imbriquée avait cassé la compilation, corrigée).
+- Vérifié par screenshot /boutique : aucun symbole ≈, compilation OK.

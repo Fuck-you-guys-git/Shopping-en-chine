@@ -16,7 +16,7 @@ import { OrderSummary } from "@/components/OrderSummary";
 import { StripeEmbedded } from "@/components/StripeEmbedded";
 import { DeliveryOptions } from "@/components/DeliveryOptions";
 import { orderNo } from "@/lib/utils";
-import { t, getLocale, formatEquivalents } from "@/lib/locale";
+import { t, getLocale } from "@/lib/locale";
 
 const OPERATOR_META = {
     "orange-money": { label: "Orange Money", color: "#FF7900", bg: "bg-[#FF7900]/10" },
@@ -757,9 +757,6 @@ export default function Checkout() {
                             <span className="font-medium">{t("Total")}</span>
                             <span className="font-display text-2xl font-semibold">{formatPrice(total)}</span>
                         </div>
-                        {getLocale().currency === "XOF" && (
-                            <p className="text-[11px] text-muted-foreground text-right" data-testid="checkout-equivalents">{formatEquivalents(total)}</p>
-                        )}
                     </div>
                 </aside>
             </div>
