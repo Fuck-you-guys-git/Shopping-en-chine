@@ -61,7 +61,7 @@ const ticketHtml = (o) => {
             <p class="thanks">Merci pour votre achat !</p>
             <p class="fbrand">SHOPPING EN CHINE</p>
             <p class="fline">sicap mbao, 17000 Dakar, Sénégal</p>
-            <p class="fline">balatoumata414@gmail.com</p>
+            <p class="fline">serviceclients@shoppingenchine.com</p>
             <p class="fline">shoppingenchine.com</p>
         </div>
     </div>`;

@@ -81,7 +81,6 @@ export default function SellerLogin() {
                                     required
                                     value={email}
                                     onChange={(e) => setEmail(e.target.value)}
-                                    placeholder="vous@exemple.com"
                                     className="pl-10 h-11"
                                 />
                             </div>

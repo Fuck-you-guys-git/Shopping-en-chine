@@ -405,3 +405,9 @@ Payments were failing with a **DNS error** because `backend/paxity_router.py` ha
 ## Update — Feb 2026 (Nouvelle clé Resend)
 - Ancienne clé Resend remplacée. Nouveau compte Resend = commands@shoppingenchine.com (adresse owner détectée via l'erreur 403 test-mode). backend/.env : RESEND_API_KEY=re_HXY4... (nouvelle), MERCHANT_EMAIL=commands@shoppingenchine.com, SENDER_EMAIL=onboarding@resend.dev (test mode).
 - Envoi test réussi (id 3b1c9eb4...) vers commands@shoppingenchine.com. Domaine shoppingenchine.com PAS ENCORE vérifié sur ce compte → les clients ne reçoivent pas encore ; dès vérification sur resend.com/domains, passer SENDER_EMAIL=commandes@shoppingenchine.com (et mettre à jour les env vars de PRODUCTION : RESEND_API_KEY + MERCHANT_EMAIL + SENDER_EMAIL).
+
+## Update — Feb 2026 (Suppression des placeholders d'exemple)
+- Formulaire « Adresse de livraison » (Checkout.jsx) : suppression de TOUS les placeholders d'exemple (Marie, Dupont, marie@exemple.com, Rue quartier…, 10000, Dakar, 77 XXX XX XX) — champs vides désormais. Idem champ téléphone Paxity (77 XXX XX XX) et login vendeur (vous@exemple.com).
+- Conservés (fonctionnels, pas des exemples) : barres de recherche, « Laissez vide si non requis » (OTP), newsletter footer, placeholders du dashboard vendeur (aides à la saisie produit).
+- Vérifié par screenshot sur /commande : 7 champs du formulaire sans placeholder.
+- RAPPEL ROUTE : la page de commande est /commande (PAS /checkout).

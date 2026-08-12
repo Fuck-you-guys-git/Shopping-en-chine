@@ -136,7 +136,7 @@ def _wrap(inner: str) -> str:
             <p style="margin:0 0 6px;font-size:13px;color:#1d1d1d;font-weight:bold;">Shopping en Chine</p>
             <p style="margin:0;font-size:12px;color:#888;line-height:1.7;">
                 sicap mbao, 17000 Dakar, Sénégal<br/>
-                <a href="mailto:balatoumata414@gmail.com" style="color:#c64c3a;text-decoration:none;">balatoumata414@gmail.com</a>
+                <a href="mailto:serviceclients@shoppingenchine.com" style="color:#c64c3a;text-decoration:none;">serviceclients@shoppingenchine.com</a>
                 &nbsp;·&nbsp; <a href="https://shoppingenchine.com" style="color:#c64c3a;text-decoration:none;">shoppingenchine.com</a>
             </p>
             <p style="margin:12px 0 0;font-size:11px;color:#bbb;">Merci de votre confiance ✦ Service client 7j/7</p>

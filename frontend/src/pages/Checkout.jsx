@@ -505,13 +505,13 @@ export default function Checkout() {
                         <div className="space-y-5 bg-card p-6 md:p-8 rounded-2xl shadow-card">
                             <h2 className="font-display text-2xl">{t("Adresse de livraison")}</h2>
                             <div className="grid sm:grid-cols-2 gap-4">
-                                <div className="space-y-1.5"><Label>{t("Prénom")}</Label><Input required placeholder="Marie" value={buyer.firstName} onChange={(e) => setBuyer({ ...buyer, firstName: e.target.value })} /></div>
-                                <div className="space-y-1.5"><Label>{t("Nom")}</Label><Input required placeholder="Dupont" value={buyer.lastName} onChange={(e) => setBuyer({ ...buyer, lastName: e.target.value })} /></div>
-                                <div className="space-y-1.5 sm:col-span-2"><Label>Email</Label><Input required type="email" placeholder="marie@exemple.com" value={buyer.email} onChange={(e) => setBuyer({ ...buyer, email: e.target.value })} /></div>
-                                <div className="space-y-1.5 sm:col-span-2"><Label>{t("Adresse")}</Label><Input required placeholder="Rue, quartier…" value={buyer.address} onChange={(e) => setBuyer({ ...buyer, address: e.target.value })} /></div>
-                                <div className="space-y-1.5"><Label>{t("Code postal")}</Label><Input placeholder="10000" value={buyer.zip} onChange={(e) => setBuyer({ ...buyer, zip: e.target.value })} /></div>
-                                <div className="space-y-1.5"><Label>{t("Ville")}</Label><Input required placeholder="Dakar" value={buyer.city} onChange={(e) => setBuyer({ ...buyer, city: e.target.value })} /></div>
-                                <div className="space-y-1.5 sm:col-span-2"><Label>{t("Téléphone")}</Label><Input required type="tel" placeholder="77 XXX XX XX" value={buyer.phone} onChange={(e) => setBuyer({ ...buyer, phone: e.target.value })} /></div>
+                                <div className="space-y-1.5"><Label>{t("Prénom")}</Label><Input required value={buyer.firstName} onChange={(e) => setBuyer({ ...buyer, firstName: e.target.value })} /></div>
+                                <div className="space-y-1.5"><Label>{t("Nom")}</Label><Input required value={buyer.lastName} onChange={(e) => setBuyer({ ...buyer, lastName: e.target.value })} /></div>
+                                <div className="space-y-1.5 sm:col-span-2"><Label>Email</Label><Input required type="email" value={buyer.email} onChange={(e) => setBuyer({ ...buyer, email: e.target.value })} /></div>
+                                <div className="space-y-1.5 sm:col-span-2"><Label>{t("Adresse")}</Label><Input required value={buyer.address} onChange={(e) => setBuyer({ ...buyer, address: e.target.value })} /></div>
+                                <div className="space-y-1.5"><Label>{t("Code postal")}</Label><Input value={buyer.zip} onChange={(e) => setBuyer({ ...buyer, zip: e.target.value })} /></div>
+                                <div className="space-y-1.5"><Label>{t("Ville")}</Label><Input required value={buyer.city} onChange={(e) => setBuyer({ ...buyer, city: e.target.value })} /></div>
+                                <div className="space-y-1.5 sm:col-span-2"><Label>{t("Téléphone")}</Label><Input required type="tel" value={buyer.phone} onChange={(e) => setBuyer({ ...buyer, phone: e.target.value })} /></div>
                             </div>
                             <Button
                                 type="button"
@@ -673,7 +673,6 @@ export default function Checkout() {
                                             <Input
                                                 required
                                                 type="tel"
-                                                placeholder="77 XXX XX XX"
                                                 value={buyer.phone}
                                                 onChange={(e) => setBuyer({ ...buyer, phone: e.target.value })}
                                             />
