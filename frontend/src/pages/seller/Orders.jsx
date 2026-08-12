@@ -25,6 +25,21 @@ const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<
 const ticketHtml = (o) => {
     const addr = [o.address, o.city].filter(Boolean);
     const dateStr = new Date(o.createdAt).toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" });
+    const absImg = (u) => (u ? (u.startsWith("http") ? u : `${window.location.origin}${u}`) : null);
+    const itemRow = (it) => {
+        const [nm, ...rest] = String(it.name || "").split(" — ");
+        const variant = rest.join(" — ");
+        const img = absImg(it.image);
+        return `
+            <div class="item">
+                ${img ? `<img class="item-img" src="${esc(img)}" alt=""/>` : `<span class="item-img item-img--ph"></span>`}
+                <span class="item-txt">
+                    <span class="item-name">${esc(nm)}</span>
+                    ${variant ? `<span class="item-var">${esc(variant)}</span>` : ""}
+                </span>
+                <span class="item-qty">${it.qty} sur ${it.qty}</span>
+            </div>`;
+    };
     return `
     <div class="ticket">
         <div class="top">
@@ -48,11 +63,7 @@ const ticketHtml = (o) => {
         <div class="rule"></div>
         <div class="items">
             <div class="items-head"><span>Articles</span><span>Quantité</span></div>
-            ${o.items.map((it) => `
-                <div class="item">
-                    <span class="item-name">${esc(it.name)}</span>
-                    <span class="item-qty">${it.qty} sur ${it.qty}</span>
-                </div>`).join("")}
+            ${o.items.map(itemRow).join("")}
         </div>
         <div class="rule"></div>
         <div class="foot">
@@ -82,24 +93,28 @@ const printTickets = (ordersToPrint) => {
         .ticket{width:94mm;height:142mm;margin:4mm auto 0;padding:5mm;display:flex;flex-direction:column;overflow:hidden;page-break-after:always;break-after:page;border:1px solid #999;color:#000}
         .ticket:last-child{page-break-after:auto;break-after:auto}
         .top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:3mm}
-        .ship{font-size:18px;font-weight:900;border:2.5px solid #000;display:inline-block;padding:1.5mm 3mm;margin-bottom:4mm}
-        .brand{font-weight:900;font-size:25px;letter-spacing:.5px}
-        .meta{font-size:15px;font-weight:bold;text-align:right;line-height:1.4}
+        .ship{font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:.5px;margin-bottom:3mm}
+        .brand{font-weight:800;font-size:20px;letter-spacing:.5px}
+        .meta{font-size:12px;font-weight:500;text-align:right;line-height:1.4}
         .cols{display:flex;gap:5mm}
         .col{flex:1;min-width:0}
-        .label{font-size:14px;font-weight:900;text-transform:uppercase;letter-spacing:1px;margin-bottom:1.5mm}
-        .who{font-size:20px;font-weight:900;line-height:1.3}
-        .addr{font-size:17px;font-weight:bold;line-height:1.35}
-        .rule{border-top:2.5px solid #000;margin:4mm 0 3mm}
-        .items{flex:1 1 auto;min-height:0}
-        .items-head{display:flex;justify-content:space-between;font-size:14px;font-weight:900;text-transform:uppercase;letter-spacing:1px;margin-bottom:2.5mm}
-        .item{display:flex;justify-content:space-between;gap:4mm;margin-bottom:2.5mm}
-        .item-name{font-size:19px;font-weight:900;line-height:1.3}
-        .item-qty{font-size:17px;font-weight:bold;white-space:nowrap}
+        .label{font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:1px;margin-bottom:1mm}
+        .who{font-size:15px;font-weight:700;line-height:1.3}
+        .addr{font-size:14px;font-weight:400;line-height:1.35}
+        .rule{border-top:1.5px solid #000;margin:3mm 0 2.5mm}
+        .items{flex:1 1 auto}
+        .items-head{display:flex;justify-content:space-between;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:1px;margin-bottom:2mm}
+        .item{display:flex;align-items:center;gap:3mm;margin-bottom:2mm}
+        .item-img{width:11mm;height:11mm;object-fit:cover;border-radius:1mm;flex:none;background:#eee}
+        .item-img--ph{display:inline-block}
+        .item-txt{flex:1;min-width:0;display:flex;flex-direction:column}
+        .item-name{font-size:15px;font-weight:700;line-height:1.3}
+        .item-var{font-size:13px;font-weight:400;line-height:1.3}
+        .item-qty{font-size:13px;font-weight:600;white-space:nowrap;margin-left:auto}
         .foot{text-align:center;margin-top:auto}
-        .thanks{font-size:17px;font-weight:bold;margin-bottom:2.5mm}
-        .fbrand{font-size:17px;font-weight:900;letter-spacing:.5px;margin-bottom:1mm}
-        .fline{font-size:15px;font-weight:bold;line-height:1.45}
+        .thanks{font-size:14px;font-weight:400;margin-bottom:2mm}
+        .fbrand{font-size:14px;font-weight:800;letter-spacing:.5px;margin-bottom:.5mm}
+        .fline{font-size:13px;font-weight:400;line-height:1.45}
         @media screen{body{padding:16px;background:#eee}.ticket{margin:0 auto 14px;background:#fff;box-shadow:0 1px 6px rgba(0,0,0,.2)}.print-hint{display:block;max-width:100mm;margin:0 auto 12px;padding:10px 14px;background:#fff8e1;border:1px solid #e0c36a;border-radius:8px;font-size:13px;line-height:1.5}}
         @media print{.ticket{border:none}.print-hint{display:none}}
     </style></head><body>
@@ -107,7 +122,11 @@ const printTickets = (ordersToPrint) => {
     ${ordersToPrint.map(ticketHtml).join("")}</body></html>`);
     w.document.close();
     w.focus();
-    setTimeout(() => w.print(), 400);
+    // Attendre le chargement des miniatures produits avant d'imprimer
+    let printed = false;
+    const doPrint = () => { if (!printed) { printed = true; w.print(); } };
+    w.addEventListener("load", () => setTimeout(doPrint, 200));
+    setTimeout(doPrint, 2000); // filet de sécurité
     return true;
 };
 

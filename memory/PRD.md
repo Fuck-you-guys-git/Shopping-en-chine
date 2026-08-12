@@ -512,3 +512,11 @@ Payments were failing with a **DNS error** because `backend/paxity_router.py` ha
 - closePayWindow() appelé dès que le polling (checkNow) ou manualCheck détecte status success/failed → la fenêtre paxity.io se FERME AUTOMATIQUEMENT et le client retrouve la boutique avec sa confirmation.
 - Testé Playwright : clic → fenêtre ouverte (1→2 pages), fermeture par l'opener OK (2→1). QR code conservé.
 - Limite connue : si l'onglet boutique est en arrière-plan sur mobile, le polling peut être ralenti (throttling) → fermeture en léger différé ; le watcher serveur + IPN garantissent quand même la confirmation.
+
+## Update — Feb 2026 (Ticket redesigné façon photo de référence user)
+- ticketHtml (Orders.jsx) réécrit dans le style du ticket historique (photo oct. 2025) :
+  - MINIATURES produits : it.image déjà fourni par SellerContext.mapOrder (lookup productsById) ; URLs relatives converties en absolues (window.location.origin) car document.write dans window.open ; impression attend l'événement load (+ filet 2s) pour laisser charger les images.
+  - Nom d'article splitté sur " — " → ligne nom (700) + ligne variante/taille (400).
+  - Typo affinée : brand 20px/800, ship ligne discrète uppercase (plus de gros cadre), who 15px, addr 14px normal, item 15px, foot centré 13-14px, règles 1.5px.
+  - .items{flex:1 1 auto} SANS min-height:0 (min-height:0 laissait la zone se compresser → chevauchement du footer ; sans, le pire cas = footer coupé proprement par overflow:hidden du ticket).
+- Testé : sample avec adresses longues + 2 articles à variantes = tout tient sur 1 étiquette 142mm, footer complet visible.
