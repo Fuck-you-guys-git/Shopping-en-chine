@@ -1,0 +1,15 @@
+{
+  "summary": "Backend-only minimal re-verification of email pipeline with the NEW Resend API key. Ran /app/backend/tests/qa_demo_run.py which (1) inserted demo_qa order in MongoDB with customer.email=commands@shoppingenchine.com (MERCHANT_EMAIL, only allowed recipient in Resend test mode), (2) called email_service.maybe_send_customer_confirmation → returned True, order.customer_email_sent set to True, (3) called it a second time → returned False (idempotent, no duplicate email), (4) deleted demo_qa (deleted_count=1). Exactly 1 real email sent, as instructed. NEW Resend key is live and functional.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {"ui_bugs": [], "integration_issues": [], "design_issues": []},
+  "test_report_links": ["/app/backend/tests/qa_demo_run.py", "/app/backend/tests/test_email_service.py"],
+  "action_items": [],
+  "critical_code_review_comments": [],
+  "updated_files": ["/app/backend/tests/qa_demo_run.py"],
+  "success_rate": {"backend": "100%", "frontend": "not tested (backend-only request)"},
+  "seed_data_creation": "Inserted order id='demo_qa' with customer.email=commands@shoppingenchine.com; deleted at end of run (verified absent post-run).",
+  "should_call_test_agent_after_fix": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "NEW Resend key verified working. MERCHANT_EMAIL is now commands@shoppingenchine.com (was bafatoumata414@gmail.com in iter 25). Resend remains in TEST MODE — sends only work to MERCHANT_EMAIL until the sending domain is verified on resend.com/domains. Reusable one-shot script: /app/backend/tests/qa_demo_run.py.",
+  "rca_of_the_issue": "N/A — verification passed. Note: SENDER_EMAIL is still onboarding@resend.dev; verifying shoppingenchine.com (or another owned domain) on Resend and switching SENDER_EMAIL to an address on that domain remains required before real customers can receive confirmations."
+}
