@@ -527,3 +527,9 @@ Payments were failing with a **DNS error** because `backend/paxity_router.py` ha
 - Téléphone : <meta name="format-detection" content="telephone=no"> + a{color:inherit;text-decoration:none} → plus de lien bleu souligné sur iOS/Safari.
 - BUG RÉCURRENT : 2e corruption de fin de fichier par search_replace (Orders.jsx lignes dupliquées après }) — supprimées via sed. TOUJOURS lint après édition de gros fichiers JSX.
 - Vérifié par screenshot : ticket compact, sans photo, téléphone noir.
+
+## Update — Feb 2026 (Ticket multi-étiquettes pour grosses commandes)
+- Test user « crée une commande avec 11 articles » a révélé : au-delà de ~7 articles, le ticket était COUPÉ (overflow:hidden).
+- FIX : ticketHtml pagine les articles → 6 sur l'étiquette 1 (avec adresses complètes), 7 par étiquette suivante (en-tête compact : Commande # · Page i/n · nom client), pied de page uniquement sur la dernière, mention « Suite des articles sur l'étiquette suivante → » (.more italique 12px). En-tête indique « Articles (N) » total quand multi-pages.
+- Commande démo #9911 (Awa Ndiaye, 11 articles, EXPRESS, 114000 F, status success) laissée dans la DB PREVIEW pour que le user teste l'impression. La supprimer plus tard si demandé (db.orders id="9911").
+- Vérifié e2e via dashboard réel : 2 .ticket générés, page 1 = 6 articles, page 2 = 5 articles + footer, rien de coupé.

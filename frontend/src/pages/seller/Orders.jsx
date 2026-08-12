@@ -37,11 +37,31 @@ const ticketHtml = (o) => {
                 <span class="item-qty">${it.qty} sur ${it.qty}</span>
             </div>`;
     };
-    return `
-    <div class="ticket">
+
+    // Beaucoup d'articles = plusieurs étiquettes : 6 sur la 1re (avec adresses),
+    // 7 par étiquette suivante ; pied de page sur la dernière uniquement.
+    const ITEMS_FIRST = 6, ITEMS_NEXT = 7;
+    const pages = [o.items.slice(0, ITEMS_FIRST)];
+    for (let i = ITEMS_FIRST; i < o.items.length; i += ITEMS_NEXT) pages.push(o.items.slice(i, i + ITEMS_NEXT));
+
+    const foot = `
+        <div class="rule"></div>
+        <div class="foot">
+            <p class="thanks">Merci pour votre achat !</p>
+            <p class="fbrand">SHOPPING EN CHINE</p>
+            <p class="fline">Guangzhou, 510000 Guangdong, Chine</p>
+            <p class="fline">serviceclients@shoppingenchine.com</p>
+            <p class="fline">shoppingenchine.com</p>
+        </div>`;
+
+    return pages.map((pageItems, idx) => {
+        const isFirst = idx === 0;
+        const isLast = idx === pages.length - 1;
+        const pageTag = pages.length > 1 ? ` · Page ${idx + 1}/${pages.length}` : "";
+        const header = isFirst ? `
         <div class="top">
             <span class="brand">SHOPPING EN CHINE</span>
-            <span class="meta">Commande ${esc(orderNo(o.id))}<br/>${esc(dateStr)}</span>
+            <span class="meta">Commande ${esc(orderNo(o.id))}${pageTag}<br/>${esc(dateStr)}</span>
         </div>
         <p class="ship">Livraison : ${o.deliveryMode === "express" ? "EXPRESS (5–7 jours ouvrés)" : "STANDARD (15–20 jours ouvrés)"}</p>
         <div class="cols">
@@ -56,21 +76,23 @@ const ticketHtml = (o) => {
                 <p class="who">${esc(o.customer)}</p>
                 ${addr.map((l) => `<p class="addr">${esc(l)}</p>`).join("")}
             </div>
-        </div>
+        </div>` : `
+        <div class="top">
+            <span class="brand">SHOPPING EN CHINE</span>
+            <span class="meta">Commande ${esc(orderNo(o.id))}${pageTag}<br/>${esc(o.customer)}</span>
+        </div>`;
+        return `
+    <div class="ticket">
+        ${header}
         <div class="rule"></div>
         <div class="items">
-            <div class="items-head"><span>Articles</span><span>Quantité</span></div>
-            ${o.items.map(itemRow).join("")}
+            <div class="items-head"><span>Articles${pages.length > 1 ? ` (${o.items.length})` : ""}</span><span>Quantité</span></div>
+            ${pageItems.map(itemRow).join("")}
+            ${!isLast ? `<p class="more">Suite des articles sur l'étiquette suivante →</p>` : ""}
         </div>
-        <div class="rule"></div>
-        <div class="foot">
-            <p class="thanks">Merci pour votre achat !</p>
-            <p class="fbrand">SHOPPING EN CHINE</p>
-            <p class="fline">Guangzhou, 510000 Guangdong, Chine</p>
-            <p class="fline">serviceclients@shoppingenchine.com</p>
-            <p class="fline">shoppingenchine.com</p>
-        </div>
+        ${isLast ? foot : ""}
     </div>`;
+    }).join("");
 };
 
 const printTickets = (ordersToPrint) => {
@@ -105,6 +127,7 @@ const printTickets = (ordersToPrint) => {
         .item-name{font-size:15px;font-weight:700;line-height:1.3}
         .item-var{font-size:13px;font-weight:400;line-height:1.3}
         .item-qty{font-size:13px;font-weight:600;white-space:nowrap;margin-left:auto}
+        .more{font-size:12px;font-style:italic;margin-top:2mm}
         .foot{text-align:center;margin-top:1mm}
         .thanks{font-size:14px;font-weight:400;margin-bottom:2mm}
         .fbrand{font-size:14px;font-weight:800;letter-spacing:.5px;margin-bottom:.5mm}
