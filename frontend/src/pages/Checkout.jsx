@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import {
     Check, CreditCard, ShieldCheck, ArrowLeft, Phone, Loader2, XCircle, AlertTriangle,
@@ -108,6 +108,20 @@ export default function Checkout() {
             .catch(() => setPaxityError("Impossible de contacter le service de paiement."));
     }, []);
 
+    // Fenêtre de paiement Paxity/Wave ouverte par « Payer maintenant » :
+    // on garde la référence pour la FERMER automatiquement dès que le
+    // paiement est confirmé (le client ne reste plus bloqué sur paxity.io).
+    const payWindowRef = useRef(null);
+    const openPayWindow = (url) => {
+        payWindowRef.current = window.open(url, "sec_paxity_pay");
+    };
+    const closePayWindow = () => {
+        try {
+            if (payWindowRef.current && !payWindowRef.current.closed) payWindowRef.current.close();
+        } catch { /* fenêtre déjà fermée */ }
+        payWindowRef.current = null;
+    };
+
     // Poll status while pending — vérifie immédiatement, puis toutes les 3,5s,
     // et dès que le client revient sur l'onglet (retour de l'app Wave/OM).
     useEffect(() => {
@@ -123,11 +137,13 @@ export default function Checkout() {
                     setTransaction((prev) => ({ ...prev, ...res }));
                 }
                 if (res.status === "success") {
+                    closePayWindow();
                     setComplete(true);
                     clear();
                     localStorage.removeItem(PENDING_TX_KEY);
                     toast.success(t("Paiement confirmé ✦"), { description: `${t("Commande")} ${orderNo(res.order_id)}` });
                 } else if (res.status === "failed") {
+                    closePayWindow();
                     localStorage.removeItem(PENDING_TX_KEY);
                     toast.error(t("Paiement échoué"), { description: t("Veuillez réessayer") });
                 }
@@ -157,12 +173,14 @@ export default function Checkout() {
         try {
             const res = await paxityAPI.getStatus(transaction.transaction_id);
             if (res.status === "success") {
+                closePayWindow();
                 setTransaction((prev) => ({ ...prev, ...res }));
                 setComplete(true);
                 clear();
                 localStorage.removeItem(PENDING_TX_KEY);
                 toast.success(t("Paiement confirmé ✦"), { description: `${t("Commande")} ${orderNo(res.order_id)}` });
             } else if (res.status === "failed") {
+                closePayWindow();
                 setTransaction((prev) => ({ ...prev, ...res }));
                 localStorage.removeItem(PENDING_TX_KEY);
                 toast.error(t("Paiement échoué"), { description: t("Veuillez réessayer") });
@@ -410,17 +428,12 @@ export default function Checkout() {
                     {transaction.payment_link && (
                         <div className="my-6 space-y-4">
                             <Button
-                                asChild
                                 size="lg"
                                 className="rounded-full bg-ink text-ink-foreground hover:bg-ink/90"
+                                onClick={() => openPayWindow(transaction.payment_link)}
                                 data-testid="paxity-payment-link-btn"
                             >
-                                {/* Même onglet : au retour de l'app Wave/OM, le client
-                                    retombe sur la boutique (transaction restaurée via
-                                    localStorage) au lieu d'un onglet Paxity orphelin. */}
-                                <a href={transaction.payment_link}>
-                                    {t("Payer maintenant")}
-                                </a>
+                                {t("Payer maintenant")}
                             </Button>
                             {transaction.qr_code && (
                                 <div className="flex justify-center">

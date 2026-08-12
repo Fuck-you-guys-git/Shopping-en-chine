@@ -500,3 +500,15 @@ Payments were failing with a **DNS error** because `backend/paxity_router.py` ha
 - Ajout bandeau .print-hint (visible à l'écran, display:none à l'impression) : « Papier 100×150 mm · Échelle 100% · Marges Aucune » — le décalage/moitié vide de la 1re photo venait du driver qui réduisait la page (échelle auto).
 - Vérifié via émulation media print : hauteur ticket exactement 563px (=149mm) → 1 page par ticket garanti ; hint masqué en print.
 - LEÇON : ne JAMAIS utiliser vw/vh dans les documents à imprimer sur étiquettes ; toujours des mm fixes < taille @page.
+
+## Update — Feb 2026 (Ticket centré + suppression bouton lien Paxity)
+- Ticket : .ticket{width:94mm;height:142mm;margin:4mm auto 0} → contenu poussé vers le milieu de l'étiquette 100×150 (marges ~3mm côtés + 4mm haut), toujours 1 page par ticket (146mm < 150mm). Vérifié en émulation print (355×537px).
+- Écran d'attente Paxity (Checkout.jsx) : bouton « Payer maintenant » (payment_link → page paxity/wave) SUPPRIMÉ à la demande du user — seul le QR code reste (data-testid paxity-qr-code). data-testid paxity-payment-link-btn n'existe plus.
+- ⚠️ RISQUE SIGNALÉ AU USER : sans le lien, un client Wave SUR MOBILE ne peut pas scanner son propre écran → si les paiements Wave mobiles chutent, proposer de remettre le bouton uniquement sur mobile. (Orange Money passe par OTP direct, non affecté.)
+
+## Update — Feb 2026 (Bouton Payer maintenant restauré + fermeture auto fenêtre Paxity)
+- Le user a refusé la suppression du bouton (« ne supprime pas button payer mtn lol ») : ce qu'il voulait = supprimer la fenêtre paxity.io qui reste ouverte APRÈS le paiement.
+- SOLUTION : Checkout.jsx — payWindowRef (useRef) + openPayWindow(url) via window.open(url, "sec_paxity_pay") (fenêtre nommée fermable par l'opener) + closePayWindow(). Le bouton « Payer maintenant » (paxity-payment-link-btn) rouvre la page paiement dans cette fenêtre.
+- closePayWindow() appelé dès que le polling (checkNow) ou manualCheck détecte status success/failed → la fenêtre paxity.io se FERME AUTOMATIQUEMENT et le client retrouve la boutique avec sa confirmation.
+- Testé Playwright : clic → fenêtre ouverte (1→2 pages), fermeture par l'opener OK (2→1). QR code conservé.
+- Limite connue : si l'onglet boutique est en arrière-plan sur mobile, le polling peut être ralenti (throttling) → fermeture en léger différé ; le watcher serveur + IPN garantissent quand même la confirmation.

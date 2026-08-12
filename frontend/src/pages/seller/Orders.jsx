@@ -77,9 +77,9 @@ const printTickets = (ordersToPrint) => {
         *{box-sizing:border-box}
         body{font-family:Arial,Helvetica,sans-serif;margin:0;padding:0;color:#000;background:#fff}
         p{margin:0}
-        /* 1 ticket = EXACTEMENT 1 étiquette 100x150mm (149mm + overflow:hidden
-           = aucune retombée possible sur l'étiquette suivante). */
-        .ticket{width:100mm;height:149mm;padding:5mm;display:flex;flex-direction:column;overflow:hidden;page-break-after:always;break-after:page;border:1px solid #999;color:#000}
+        /* 1 ticket = EXACTEMENT 1 étiquette 100x150mm, contenu centré
+           au milieu de l'étiquette (94mm centré + marge haute). */
+        .ticket{width:94mm;height:142mm;margin:4mm auto 0;padding:5mm;display:flex;flex-direction:column;overflow:hidden;page-break-after:always;break-after:page;border:1px solid #999;color:#000}
         .ticket:last-child{page-break-after:auto;break-after:auto}
         .top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:3mm}
         .ship{font-size:18px;font-weight:900;border:2.5px solid #000;display:inline-block;padding:1.5mm 3mm;margin-bottom:4mm}
