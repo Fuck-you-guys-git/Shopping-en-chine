@@ -559,3 +559,9 @@ Payments were failing with a **DNS error** because `backend/paxity_router.py` ha
 - ATTENTION : frontend dev server NE recharge PAS public/index.html à chaud → supervisorctl restart frontend nécessaire. Vérifié servi (grep og:image OK, /og-image.png 200).
 - NOTE : WhatsApp/Facebook mettent l'aperçu en cache — après redéploiement, utiliser https://developers.facebook.com/tools/debug/ (bouton Scrape Again) pour forcer le rafraîchissement.
 - EN ATTENTE USER : choix a/b/c sur la gestion de la fenêtre Paxity (fermeture auto actuelle / même onglet / iframe) — question posée, pas encore répondue.
+
+## Update — Feb 2026 (Domaine Resend VÉRIFIÉ — emails clients opérationnels)
+- Le user a vérifié shoppingenchine.com chez Resend (DNS). Test direct : envoi depuis serviceclients@shoppingenchine.com OK (id retourné, plus d'erreur 'not verified').
+- Test e2e : seed commande qa_dns_1 (client = Gmail du user) + webhook SUCCESS → logs '[Email] Order confirmation sent' + '[Email:customer-confirm] sent to Modou.ba.568@gmail.com' SANS warning de repli → les clients EXTERNES reçoivent désormais leurs confirmations depuis l'adresse officielle. Seed nettoyé.
+- Le fallback _send_raw reste en place (inoffensif, ne se déclenche plus).
+- RAPPEL : la PRODUCTION doit être redéployée pour avoir email_service.py avec _send_raw (sinon prod utilise encore l'ancien code avec SENDER_EMAIL env ; en prod l'env var SENDER_EMAIL doit être serviceclients@shoppingenchine.com — vérifier les env vars de déploiement).
