@@ -641,3 +641,14 @@ Payments were failing with a **DNS error** because `backend/paxity_router.py` ha
   - DESKTOP : window.open + fermeture auto de l'onglet à la confirmation (payWinRef/closePayWindow).
 - TESTÉ Playwright UA iPhone : clic Payer → 0 nouvel onglet, navigation même onglet ✓ ; retour sur le site → redirection auto /commande + écran d'attente restauré ✓ ; webhook SUCCESS → confirmation affichée ✓.
 - ⚠️ REDEPLOY requis pour appliquer en production.
+
+## Update — Feb 2026 (redirectUrl Paxity)
+- Le support Paxity a confirmé au user l'existence de l'attribut `redirectUrl` (NON documenté publiquement) dans la requête PayIn.
+- Ajouté dans _build_payin_body (paxity_router.py) : body["redirectUrl"] = {origin de la requête ou FRONTEND_URL}/commande. En prod → https://shoppingenchine.com/commande. Testé unitairement : le corps PayIn contient bien redirectUrl + ipn.
+- Effet : après paiement sur la page Wave/OM/paxity, le client est redirigé par PAXITY vers notre page /commande (où PENDING_TX_KEY restaure la transaction et affiche la confirmation). Combiné avec : mobile = même onglet, desktop = onglet auto-fermé.
+- ⚠️ REDEPLOY requis.
+
+## Update — Feb 2026 (LANCEMENT : gate retiré)
+- REACT_APP_SITE_GATE_ENABLED=false dans frontend/.env → l'écran « Bientôt disponible » ne s'affiche plus (testé visiteur neuf, localStorage vidé : accueil direct).
+- Pour réactiver le gate un jour : remettre true (mot de passe toujours dans REACT_APP_SITE_PASSWORD).
+- PROD : redeploy requis ; si l'écran persiste en prod, vérifier que la variable REACT_APP_SITE_GATE_ENABLED n'est pas forcée à true dans les env vars du déploiement.

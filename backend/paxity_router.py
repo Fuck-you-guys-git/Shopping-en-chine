@@ -509,6 +509,15 @@ def _build_payin_body(payload: PaxityPayinRequest, method_meta: dict, currency: 
     ipn_url = PAXITY_IPN_URL or _public_ipn_url(request)
     if ipn_url:
         body["ipn"] = ipn_url
+    # URL de retour après paiement — attribut `redirectUrl` confirmé par le
+    # support Paxity (absent de leur doc publique). Après le paiement sur la
+    # page Wave/OM/paxity.io, le client est redirigé vers notre page commande,
+    # où la transaction en attente est restaurée et la confirmation s'affiche.
+    # L'origine de la requête (site appelant) garantit la bonne URL par
+    # environnement (prod : https://shoppingenchine.com) ; repli sur FRONTEND_URL.
+    redirect_base = (request.headers.get("origin") or os.environ.get("FRONTEND_URL", "")).rstrip("/")
+    if redirect_base.startswith("http"):
+        body["redirectUrl"] = f"{redirect_base}/commande"
     # Drop keys that resolved to None (e.g. country for CARD) so we send a clean payload
     return {k: v for k, v in body.items() if v is not None}
 
