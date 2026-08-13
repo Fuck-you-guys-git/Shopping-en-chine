@@ -21,7 +21,8 @@ logger = logging.getLogger(__name__)
 RESEND_API_KEY = os.environ.get("RESEND_API_KEY", "")
 # Destinataires marchands FIXÉS dans le code (demande explicite du marchand).
 # Double destinataire : si la boîte commands@ a un souci, le Gmail reçoit quand même.
-MERCHANT_RECIPIENTS = ["commands@shoppingenchine.com", "Modou.ba.568@gmail.com"]
+# Destinataire des notifications de commande (boîte marchande officielle)
+MERCHANT_RECIPIENTS = ["commands@shoppingenchine.com"]
 MERCHANT_EMAIL = MERCHANT_RECIPIENTS[0]
 
 if RESEND_API_KEY:

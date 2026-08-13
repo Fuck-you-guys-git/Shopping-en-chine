@@ -622,3 +622,8 @@ Payments were failing with a **DNS error** because `backend/paxity_router.py` ha
   - /app/backend/emails_router.py : GET /api/emails/log (JWT vendeur, 401 sans token) avec rafraîchissement AUTO des statuts via API Resend (resend.Emails.get, tolérant 404 anciennes clés, abandon après 3 échecs si clé restreinte) ; POST /api/emails/resend-webhook (événements Resend delivered/bounced/complained, rang de statut anti-écrasement, insert si email inconnu).
   - Frontend : page /vendeur/emails (pages/seller/Emails.jsx) + lien nav « Emails » (SellerLayout) + route /admin/emails + emailsAPI.log() dans lib/api.js. Badges : Envoyé/Délivré ✓/Ouvert/Rejeté ✗/Marqué spam/Échec (raison affichée).
 - PRODUCTION : au redéploiement, METTRE À JOUR l'env var RESEND_API_KEY du déploiement avec la nouvelle clé (re_d7vM...) sinon la prod continue avec l'ancienne clé morte.
+
+## Update — Feb 2026 (destinataire commandes = commands@ uniquement)
+- Root cause "commands@ ne reçoit rien" : emails DELIVERED au serveur mais retenus par Proofpoint/junk. User a ajouté le domaine shoppingenchine.com à l'Allow List GoDaddy Advanced Email Security → résolu.
+- MERCHANT_RECIPIENTS réduit à ["commands@shoppingenchine.com"] (Modou.ba.568@gmail.com retiré à la demande du user). Testé : delivered ✓, 4 tests audit passent.
+- ⚠️ REDEPLOY REQUIS pour appliquer en production (la prod envoie encore aux 2 adresses).
