@@ -571,3 +571,10 @@ Payments were failing with a **DNS error** because `backend/paxity_router.py` ha
 - FIX : email_service.py → MERCHANT_EMAIL = "commands@shoppingenchine.com" EN DUR (env ignorée). Env var MERCHANT_EMAIL supprimée de backend/.env (morte). Log marchand inclut désormais to=<adresse>.
 - TESTÉ (iteration_30, 100%) : audit code (2 destinataires seulement : MERCHANT_EMAIL constant + email du client), webhook SUCCESS e2e, logs vers commands@ uniquement, zéro 'bafatoumata', zéro fallback sandbox (domaine vérifié). Test pytest ajouté : /app/backend/tests/test_merchant_email_destination.py.
 - REDÉPLOIEMENT REQUIS pour que la production ignore son ancienne env var.
+
+## Update — Feb 2026 (SOLUTION FINALE retour Paxity : même onglet — iteration_31, 100%)
+- Recherche : iframe IMPOSSIBLE (Orange Money renvoie x-frame-options: DENY ; Wave redirige vers paxity.io). 
+- SOLUTION : paiement dans le MÊME onglet. Checkout.jsx : openPayWindow(url) = window.location.href (payWindowRef/closePayWindow/useRef supprimés — le mécanisme window.open+fermeture auto d'iteration_28 est OBSOLÈTE). PaymentReturnRedirect (App.js, existait déjà) ramène automatiquement le client sur /commande à tout chargement de page si sec_pending_paxity_tx_v1 existe (exclusions : /commande, /vendeur, /admin, /paiement).
+- TESTÉ (iteration_31, 4/4) : clic → même onglet (0 nouvelle fenêtre) ; retour racine → redirection auto /commande ; webhook SUCCESS → écran confirmation ~4s + localStorage nettoyé ; pas de boucle après confirmation.
+- Note review (non bloquante) : un payment_link same-origin boomerangerait vers /commande — en prod les liens sont toujours externes (pay.wave.com / sugu.orange-sonatel.com), pas de fix nécessaire.
+- Script QA réutilisable : /app/scripts/seed_qa_tab.py
