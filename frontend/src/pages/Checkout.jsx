@@ -101,10 +101,15 @@ export default function Checkout() {
     }, []);
 
     // L'API Paxity n'accepte AUCUNE URL de retour (doc officielle) : le retour
-    // vers notre site est donc géré ici. Le paiement s'ouvre dans un onglet
-    // séparé pendant que CETTE page reste en attente active ; dès que Paxity
-    // confirme (polling 2s), l'onglet de paiement est fermé automatiquement et
-    // le client retrouve notre page de confirmation.
+    // vers notre site est donc géré ici, différemment selon l'appareil.
+    // - MOBILE (Android/iPhone) : AUCUNE nouvelle fenêtre. Le lien s'ouvre dans
+    //   le même onglet → le système ouvre l'app Wave/OM par-dessus le site.
+    //   Au retour du client, la transaction en attente est restaurée depuis
+    //   localStorage (PENDING_TX_KEY) et confirmée par polling.
+    // - ORDINATEUR : onglet séparé pendant que cette page reste en attente
+    //   active ; dès que Paxity confirme, l'onglet de paiement est fermé
+    //   automatiquement et le client retrouve notre confirmation.
+    const isMobileDevice = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
     const payWinRef = useRef(null);
     const closePayWindow = () => {
         try {
@@ -115,12 +120,16 @@ export default function Checkout() {
         payWinRef.current = null;
     };
     const openPayWindow = (url) => {
+        if (isMobileDevice) {
+            // Même onglet : pas de fenêtre supplémentaire sur téléphone
+            window.location.href = url;
+            return;
+        }
         const w = window.open(url, "_blank");
         if (w) {
             payWinRef.current = w;
         } else {
-            // Pop-up bloqué : repli dans le même onglet (retour via bouton
-            // retour ou en rouvrant le site — transaction restaurée du localStorage)
+            // Pop-up bloqué : repli dans le même onglet
             window.location.href = url;
         }
     };

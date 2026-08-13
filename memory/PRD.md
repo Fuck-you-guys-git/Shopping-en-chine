@@ -633,3 +633,11 @@ Payments were failing with a **DNS error** because `backend/paxity_router.py` ha
 - Solution implémentée côté site (Checkout.jsx) : « Payer maintenant » ouvre le lien Wave/OM dans un ONGLET SÉPARÉ (payWinRef) pendant que notre page reste en attente active (polling 2s inchangé). Dès confirmation (success/failed, via polling, manualCheck ou annulation), closePayWindow() ferme automatiquement l'onglet de paiement → le client revient sur notre confirmation. Repli même onglet si pop-up bloqué (restauration via PENDING_TX_KEY inchangée).
 - TESTÉ e2e Playwright : onglet ouvert au clic (1→2), webhook SUCCESS → onglet fermé auto (2→1) + page confirmation affichée. SUCCÈS TOTAL.
 - ⚠️ REDEPLOY requis pour appliquer en production.
+
+## Update — Feb 2026 (Mobile : plus aucune nouvelle fenêtre au paiement)
+- User : sur Android/iPhone, payer avec l'app Wave/OM ouvrait une nouvelle fenêtre → interdit désormais.
+- Checkout.jsx openPayWindow : détection isMobileDevice (userAgent Android|iPhone|iPad|iPod).
+  - MOBILE : window.location.href (même onglet, l'app s'ouvre par-dessus) — au retour, PaymentReturnRedirect (App.js) restaure la transaction en attente et le polling confirme.
+  - DESKTOP : window.open + fermeture auto de l'onglet à la confirmation (payWinRef/closePayWindow).
+- TESTÉ Playwright UA iPhone : clic Payer → 0 nouvel onglet, navigation même onglet ✓ ; retour sur le site → redirection auto /commande + écran d'attente restauré ✓ ; webhook SUCCESS → confirmation affichée ✓.
+- ⚠️ REDEPLOY requis pour appliquer en production.
