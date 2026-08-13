@@ -578,3 +578,9 @@ Payments were failing with a **DNS error** because `backend/paxity_router.py` ha
 - TESTÉ (iteration_31, 4/4) : clic → même onglet (0 nouvelle fenêtre) ; retour racine → redirection auto /commande ; webhook SUCCESS → écran confirmation ~4s + localStorage nettoyé ; pas de boucle après confirmation.
 - Note review (non bloquante) : un payment_link same-origin boomerangerait vers /commande — en prod les liens sont toujours externes (pay.wave.com / sugu.orange-sonatel.com), pas de fix nécessaire.
 - Script QA réutilisable : /app/scripts/seed_qa_tab.py
+
+## Update — Feb 2026 (Emails « une fois pour toutes » — double destinataire marchand)
+- email_service.py : MERCHANT_RECIPIENTS = ["commands@shoppingenchine.com", "Modou.ba.568@gmail.com"] (en dur) — la notification marchande part vers LES DEUX (filet si la boîte commands@ n'existe pas/spam). MERCHANT_EMAIL = premier de la liste (compat EMAIL_ENABLED).
+- Test e2e immédiat (webhook SUCCESS) : logs → marchand envoyé aux 2 adresses (id 6de99b72) + client envoyé au Gmail (id e232d7ce). Le user doit VÉRIFIER SON GMAIL pour confirmer réception (« Nouvelle commande payée » + « Test définitif emails »).
+- DIAGNOSTIC CLÉ : le pipeline PREVIEW est 100% fonctionnel (iterations 29/30 + ce test). Si rien n'arrive en PRODUCTION c'est que : (1) la prod n'a PAS été redéployée avec ce code, et/ou (2) l'env var RESEND_API_KEY du déploiement est ancienne/invalide (à vérifier dans les paramètres de déploiement Emergent). SENDER/MERCHANT en dur → plus dépendants des env vars.
+- DNS réception : shoppingenchine.com a des MX (Proofpoint/Microsoft365 GoDaddy) → le domaine peut recevoir ; l'existence de la boîte commands@ reste à confirmer par le user (statut Delivered/Bounced dans resend.com → Emails).
