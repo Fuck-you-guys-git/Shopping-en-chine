@@ -1,0 +1,23 @@
+{
+  "summary": "Backend-only test: verified merchant order-confirmation notifications now go EXCLUSIVELY to commands@shoppingenchine.com (constant hardcoded in email_service.py, env var ignored). Full audit + E2E via Paxity webhook + log inspection: all passed. Domain shoppingenchine.com verified at Resend — direct send, no sandbox fallback triggered. Zero occurrences of the old 'bafatoumata' address anywhere in backend code or recent logs.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {"ui_bugs": [], "integration_issues": [], "design_issues": []},
+  "test_report_links": [
+    "/app/backend/tests/test_merchant_email_destination.py",
+    "/app/test_reports/pytest/iteration_30.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "email_service.py logs '[Email] Order confirmation sent for <order_id>' but does NOT include the destination address in the log line. Consider appending 'to=<MERCHANT_EMAIL>' so future audits can prove the destination directly from logs (right now it's proved indirectly via the hardcoded constant + code audit).",
+    "MERCHANT_EMAIL env var in /app/backend/.env is now dead code (line 14). Either remove it or add an inline comment noting it is intentionally ignored, to prevent an operator from thinking they can change the destination via env in the future."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_merchant_email_destination.py (new)"
+  ],
+  "success_rate": {"backend": "100%", "frontend": "n/a"},
+  "seed_data_creation": "Seeded orders.qa_dest_1 + paxity_transactions.tx_qa_dest_1 (customer email = commands@shoppingenchine.com), then cleaned up in test_cleanup.",
+  "should_call_test_agent_after_fix": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Verified: (1) MERCHANT_EMAIL is a Python constant on line 24 of email_service.py, not read from os.environ; (2) grep of /app/backend/*.py finds only two email destinations — MERCHANT_EMAIL (merchant notification) and customer.email (customer confirmation); (3) POST /api/paxity/webhook with SUCCESS advanced order qa_dest_1 to status='success' and flipped confirmation_email_sent=true; (4) backend.err.log shows '[Email] Order confirmation sent for qa_dest_1' + '[Email:customer-confirm] sent to commands@shoppingenchine.com'; (5) zero 'bafatoumata' hits in code or logs; (6) zero 'NON VÉRIFIÉ' / 'onboarding@resend.dev' fallback warnings → the verified shoppingenchine.com domain is being used directly.",
+  "rca_of_the_issue": "Original bug: an old address received emails because MERCHANT_EMAIL was read from an env var still set to that address in a production deployment. Fix (validated): MERCHANT_EMAIL is now the string literal 'commands@shoppingenchine.com' at module import time in email_service.py — cannot be overridden by any env config drift."
+}

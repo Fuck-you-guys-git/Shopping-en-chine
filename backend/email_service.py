@@ -18,7 +18,10 @@ from motor.motor_asyncio import AsyncIOMotorDatabase
 logger = logging.getLogger(__name__)
 
 RESEND_API_KEY = os.environ.get("RESEND_API_KEY", "")
-MERCHANT_EMAIL = os.environ.get("MERCHANT_EMAIL", "")
+# Adresse marchande FIXÉE dans le code (demande explicite du marchand) :
+# les notifications de commande vont UNIQUEMENT ici, quelle que soit la
+# variable d'environnement (évite les anciennes adresses en production).
+MERCHANT_EMAIL = "commands@shoppingenchine.com"
 
 if RESEND_API_KEY:
     resend.api_key = RESEND_API_KEY
@@ -102,7 +105,7 @@ async def maybe_send_order_confirmation(db: AsyncIOMotorDatabase, order_id: str)
     }
     try:
         email = await _send_raw(params, "merchant")
-        logger.info(f"[Email] Order confirmation sent for {order_id} (id={email.get('id')})")
+        logger.info(f"[Email] Order confirmation sent for {order_id} to={MERCHANT_EMAIL} (id={email.get('id')})")
         return True
     except Exception:
         logger.exception(f"[Email] Failed to send confirmation for {order_id}")

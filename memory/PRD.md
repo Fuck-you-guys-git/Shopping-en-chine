@@ -565,3 +565,9 @@ Payments were failing with a **DNS error** because `backend/paxity_router.py` ha
 - Test e2e : seed commande qa_dns_1 (client = Gmail du user) + webhook SUCCESS → logs '[Email] Order confirmation sent' + '[Email:customer-confirm] sent to Modou.ba.568@gmail.com' SANS warning de repli → les clients EXTERNES reçoivent désormais leurs confirmations depuis l'adresse officielle. Seed nettoyé.
 - Le fallback _send_raw reste en place (inoffensif, ne se déclenche plus).
 - RAPPEL : la PRODUCTION doit être redéployée pour avoir email_service.py avec _send_raw (sinon prod utilise encore l'ancien code avec SENDER_EMAIL env ; en prod l'env var SENDER_EMAIL doit être serviceclients@shoppingenchine.com — vérifier les env vars de déploiement).
+
+## Update — Feb 2026 (Destinataire marchand verrouillé — iteration_30, 100%)
+- BUG : bafatoumata414@... recevait encore les notifications (via env var MERCHANT_EMAIL de la PRODUCTION — jamais présente dans le code preview).
+- FIX : email_service.py → MERCHANT_EMAIL = "commands@shoppingenchine.com" EN DUR (env ignorée). Env var MERCHANT_EMAIL supprimée de backend/.env (morte). Log marchand inclut désormais to=<adresse>.
+- TESTÉ (iteration_30, 100%) : audit code (2 destinataires seulement : MERCHANT_EMAIL constant + email du client), webhook SUCCESS e2e, logs vers commands@ uniquement, zéro 'bafatoumata', zéro fallback sandbox (domaine vérifié). Test pytest ajouté : /app/backend/tests/test_merchant_email_destination.py.
+- REDÉPLOIEMENT REQUIS pour que la production ignore son ancienne env var.
