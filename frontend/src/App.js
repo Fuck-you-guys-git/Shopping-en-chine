@@ -68,11 +68,16 @@ function Shell({ children }) {
     if (GATE_ENABLED && !isSeller && !unlocked) {
         return <ComingSoon onUnlock={() => setUnlocked(true)} />;
     }
+    // Le changement de langue/devise force un re-rendu complet via la key —
+    // SAUF sur la page commande : un remontage y détruirait l'état du paiement
+    // (confirmation affichée, formulaire en cours de saisie) quand la détection
+    // IP de la locale se termine pendant le checkout.
+    const localeKey = pathname === "/commande" ? "" : `-${lang}-${currency}`;
     return (
         <>
             <PaymentReturnRedirect />
             {!isSeller && <Navbar />}
-            <main key={`${pathname}-${lang}-${currency}`} className="page-fade">{children}</main>
+            <main key={`${pathname}${localeKey}`} className="page-fade">{children}</main>
             {!isSeller && <Footer />}
             {!isSeller && <CartDrawer />}
             {!isSeller && <WhatsAppButton />}

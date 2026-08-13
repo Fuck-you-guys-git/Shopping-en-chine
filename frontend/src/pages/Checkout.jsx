@@ -24,6 +24,9 @@ import { CheckoutSummary } from "@/components/checkout/CheckoutSummary";
 // l'app Wave/Orange Money et que le navigateur recharge la page au retour,
 // on restaure l'attente et on affiche la confirmation dès que c'est payé.
 const PENDING_TX_KEY = "sec_pending_paxity_tx_v1";
+// Confirmation persistée en session : survit au remontage du composant
+// (changement de langue/devise) et au rechargement de la page.
+const COMPLETE_TX_KEY = "sec_completed_paxity_tx_v1";
 
 export default function Checkout() {
     const { items, subtotal, clear } = useCart();
@@ -64,7 +67,30 @@ export default function Checkout() {
     const [stripeClientSecret, setStripeClientSecret] = useState(null);
 
     // Restaurer une transaction en attente (retour depuis l'app de paiement)
+    // ou une confirmation récente (remontage/rechargement juste après paiement)
+    const restoredOnce = useRef(false);
     useEffect(() => {
+        if (restoredOnce.current) return;
+        restoredOnce.current = true;
+        try {
+            const done = sessionStorage.getItem(COMPLETE_TX_KEY);
+            if (done) {
+                if (items.length > 0) {
+                    // Le client démarre une NOUVELLE commande : on oublie
+                    // l'ancienne confirmation.
+                    sessionStorage.removeItem(COMPLETE_TX_KEY);
+                } else {
+                    const tx = JSON.parse(done);
+                    if (tx?.order_id) {
+                        setTransaction(tx);
+                        setComplete(true);
+                        return; // confirmation prioritaire sur toute restauration pending
+                    }
+                }
+            }
+        } catch {
+            sessionStorage.removeItem(COMPLETE_TX_KEY);
+        }
         try {
             const raw = localStorage.getItem(PENDING_TX_KEY);
             if (!raw) return;
@@ -74,7 +100,7 @@ export default function Checkout() {
         } catch {
             localStorage.removeItem(PENDING_TX_KEY);
         }
-    }, []);
+    }, [items.length]);
 
     // Persister tant que le paiement est en attente
     useEffect(() => {
@@ -85,6 +111,14 @@ export default function Checkout() {
             localStorage.removeItem(PENDING_TX_KEY);
         }
     }, [transaction]);
+
+    // Persister la confirmation : elle doit survivre à un remontage du composant
+    // (changement de langue/devise détecté) ou à un rechargement de la page.
+    useEffect(() => {
+        if (complete && transaction?.order_id) {
+            sessionStorage.setItem(COMPLETE_TX_KEY, JSON.stringify({ ...transaction, status: "success" }));
+        }
+    }, [complete, transaction]);
 
     // Fetch backend config
     useEffect(() => {
@@ -219,6 +253,7 @@ export default function Checkout() {
     const operatorIconMeta = selectedMethod ? (OPERATOR_META[selectedMethod.icon] || OPERATOR_META.card) : OPERATOR_META.card;
 
     const handleStripeCheckout = async () => {
+        sessionStorage.removeItem(COMPLETE_TX_KEY); // nouvelle commande : oublier l'ancienne confirmation
         setProcessing(true);
         try {
             const res = await stripeAPI.checkout({
@@ -256,6 +291,7 @@ export default function Checkout() {
 
     const handlePayment = async (e) => {
         e.preventDefault();
+        sessionStorage.removeItem(COMPLETE_TX_KEY); // nouvelle commande : oublier l'ancienne confirmation
 
         // ---- Client-side validation ----
         const cleanPhone = buyer.phone.replace(/\D/g, "");

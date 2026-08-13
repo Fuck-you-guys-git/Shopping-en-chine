@@ -652,3 +652,12 @@ Payments were failing with a **DNS error** because `backend/paxity_router.py` ha
 - REACT_APP_SITE_GATE_ENABLED=false dans frontend/.env → l'écran « Bientôt disponible » ne s'affiche plus (testé visiteur neuf, localStorage vidé : accueil direct).
 - Pour réactiver le gate un jour : remettre true (mot de passe toujours dans REACT_APP_SITE_PASSWORD).
 - PROD : redeploy requis ; si l'écran persiste en prod, vérifier que la variable REACT_APP_SITE_GATE_ENABLED n'est pas forcée à true dans les env vars du déploiement.
+
+## Update — Feb 2026 (BUG : confirmation → « Panier vide » après 1s — CORRIGÉ)
+- Symptôme (prod, mobile) : après paiement, la page de confirmation s'affichait 1 seconde puis basculait sur « Panier vide ».
+- ROOT CAUSE : App.js ligne 75 — <main key={pathname-lang-currency}> : quand la détection IP de locale se termine (~1s), lang/currency changent → la key change → React REMONTE toute la page → Checkout perd complete=true, le panier est déjà vidé et PENDING_TX_KEY supprimé → guard « Panier vide ».
+- FIX double protection :
+  1. App.js : la key de <main> exclut lang/currency sur /commande (pas de remontage pendant le checkout — protège aussi le formulaire d'adresse en cours de saisie).
+  2. Checkout.jsx : confirmation persistée dans sessionStorage (COMPLETE_TX_KEY = sec_completed_paxity_tx_v1) — restaurée au montage SI panier vide ; supprimée si panier plein (nouvelle commande) et au démarrage d'un nouveau paiement (handlePayment/handleStripeCheckout).
+- TESTÉ Playwright : confirmation stable après 9s ✓, survit à un rechargement complet ✓, nouvelle commande avec panier plein → formulaire normal + marqueur nettoyé ✓.
+- ⚠️ REDEPLOY requis.
