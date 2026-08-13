@@ -627,3 +627,9 @@ Payments were failing with a **DNS error** because `backend/paxity_router.py` ha
 - Root cause "commands@ ne reçoit rien" : emails DELIVERED au serveur mais retenus par Proofpoint/junk. User a ajouté le domaine shoppingenchine.com à l'Allow List GoDaddy Advanced Email Security → résolu.
 - MERCHANT_RECIPIENTS réduit à ["commands@shoppingenchine.com"] (Modou.ba.568@gmail.com retiré à la demande du user). Testé : delivered ✓, 4 tests audit passent.
 - ⚠️ REDEPLOY REQUIS pour appliquer en production (la prod envoie encore aux 2 adresses).
+
+## Update — Feb 2026 (Retour automatique après paiement Paxity)
+- Contexte : Paxity a confirmé au user que leur API ne redirige PAS vers le site marchand (doc officielle vérifiée : aucun paramètre returnUrl/redirect dans pay-in-mobile ; champs = amount, country, currency, phoneNumber, prefixPhone, paymentMethod, codeOtp, description, idClient, ipn).
+- Solution implémentée côté site (Checkout.jsx) : « Payer maintenant » ouvre le lien Wave/OM dans un ONGLET SÉPARÉ (payWinRef) pendant que notre page reste en attente active (polling 2s inchangé). Dès confirmation (success/failed, via polling, manualCheck ou annulation), closePayWindow() ferme automatiquement l'onglet de paiement → le client revient sur notre confirmation. Repli même onglet si pop-up bloqué (restauration via PENDING_TX_KEY inchangée).
+- TESTÉ e2e Playwright : onglet ouvert au clic (1→2), webhook SUCCESS → onglet fermé auto (2→1) + page confirmation affichée. SUCCÈS TOTAL.
+- ⚠️ REDEPLOY requis pour appliquer en production.
