@@ -584,3 +584,13 @@ Payments were failing with a **DNS error** because `backend/paxity_router.py` ha
 - Test e2e immédiat (webhook SUCCESS) : logs → marchand envoyé aux 2 adresses (id 6de99b72) + client envoyé au Gmail (id e232d7ce). Le user doit VÉRIFIER SON GMAIL pour confirmer réception (« Nouvelle commande payée » + « Test définitif emails »).
 - DIAGNOSTIC CLÉ : le pipeline PREVIEW est 100% fonctionnel (iterations 29/30 + ce test). Si rien n'arrive en PRODUCTION c'est que : (1) la prod n'a PAS été redéployée avec ce code, et/ou (2) l'env var RESEND_API_KEY du déploiement est ancienne/invalide (à vérifier dans les paramètres de déploiement Emergent). SENDER/MERCHANT en dur → plus dépendants des env vars.
 - DNS réception : shoppingenchine.com a des MX (Proofpoint/Microsoft365 GoDaddy) → le domaine peut recevoir ; l'existence de la boîte commands@ reste à confirmer par le user (statut Delivered/Bounced dans resend.com → Emails).
+
+## Update — Feb 2026 (Revue de code — correctifs appliqués, iteration_32 100%)
+- APPLIQUÉ : products_router.py _process_images → MD5 remplacé par SHA-256 (hash 8 chars, versioning/cache-busting images). Testé : upload data-URL, thumb+full 200, anciens produits intacts (test pytest /app/backend/tests/test_product_images.py).
+- FAUX POSITIFS écartés : tracking_router `dt.tzinfo is None` = idiome Python correct ; ComingSoon "API key" = simple mot de passe de gate soft (par design) ; document.write dans Orders.jsx = fenêtre d'impression contrôlée avec esc() (contenu échappé).
+- BACKLOG REFACTORING (volontairement non appliqué — risque vs bénéfice sur app en prod, à faire lors d'un sprint dédié) :
+  - Découper Checkout.jsx (784 l.), AddProduct.jsx (605 l.), Orders.jsx, Navbar.jsx en sous-composants
+  - Extraire create_payin (complexité 42) et _extract_error_message en services
+  - useMemo sur les values des 5 contextes (SellerContext, SellerAuthContext, CartContext, LocaleContext, CatalogContext)
+  - Clés React stables au lieu d'index (11 endroits), catch vides à logger, deps useEffect manquantes (attention : les corriger peut créer des boucles — tester soigneusement)
+  - Credentials de tests → fixtures .env.test

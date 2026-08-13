@@ -77,7 +77,8 @@ async def _store_image(db, product_id: str, src: str) -> Optional[str]:
         logger.warning(f"[Products] Image illisible pour {product_id} — ignorée")
         return None
     image_id = uuid.uuid4().hex[:10]
-    v = hashlib.md5(data).hexdigest()[:8]
+    # Hash de contenu pour le versioning/cache-busting des images (non cryptographique)
+    v = hashlib.sha256(data).hexdigest()[:8]
     await db.product_images.insert_one({
         "product_id": product_id,
         "image_id": image_id,
