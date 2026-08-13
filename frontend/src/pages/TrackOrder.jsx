@@ -214,7 +214,7 @@ export default function TrackOrder() {
                                 </h2>
                                 <div className="space-y-3">
                                     {data.items.map((it, i) => (
-                                        <div key={i} className="flex justify-between text-sm">
+                                        <div key={`${it.product_id || it.name}-${i}`} className="flex justify-between text-sm">
                                             <span className="text-muted-foreground">
                                                 {it.name} <span className="text-xs">× {it.qty}</span>
                                             </span>

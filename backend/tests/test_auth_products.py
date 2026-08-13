@@ -5,9 +5,8 @@ import requests
 
 BASE_URL = os.environ["REACT_APP_BACKEND_URL"].rstrip("/")
 
-# Real seeded seller credentials (from backend/.env & memory/test_credentials.md)
-SELLER_EMAIL = "modou.ba.568@gmail.com"
-SELLER_PASSWORD = "40881215.Com"
+# Identifiants vendeur chargés depuis l'environnement (voir tests/creds.py)
+from creds import SELLER_EMAIL, SELLER_PASSWORD
 
 
 @pytest.fixture(scope="module")

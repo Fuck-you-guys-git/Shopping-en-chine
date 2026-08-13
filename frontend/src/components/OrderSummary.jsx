@@ -24,7 +24,7 @@ export const OrderSummary = ({ orderId }) => {
             <p className="text-xs uppercase tracking-widest text-muted-foreground mb-3">Votre commande</p>
             <div className="space-y-2 mb-3" data-testid="order-summary-items">
                 {(order.items || []).map((it, i) => (
-                    <div key={i} className="flex items-baseline justify-between gap-3 text-sm">
+                    <div key={`${it.product_id || it.name}-${i}`} className="flex items-baseline justify-between gap-3 text-sm">
                         <span className="min-w-0">
                             {it.name} <span className="text-muted-foreground whitespace-nowrap">× {it.qty || 1}</span>
                         </span>

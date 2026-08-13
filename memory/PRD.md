@@ -594,3 +594,21 @@ Payments were failing with a **DNS error** because `backend/paxity_router.py` ha
   - useMemo sur les values des 5 contextes (SellerContext, SellerAuthContext, CartContext, LocaleContext, CatalogContext)
   - Clés React stables au lieu d'index (11 endroits), catch vides à logger, deps useEffect manquantes (attention : les corriger peut créer des boucles — tester soigneusement)
   - Credentials de tests → fixtures .env.test
+
+## Update — Feb 2026 (Revue de code P1+P2 appliquée — iteration_33, 100%)
+- SÉCURITÉ (P1) :
+  - XSS impression tickets : Orders.jsx printTickets → document.write SUPPRIMÉ, remplacé par Blob URL (URL.createObjectURL + window.open, contenu toujours échappé via esc()). Vérifié : onglet blob: s'ouvre avec tickets 100x150mm.
+  - Gate « Bientôt disponible » : mot de passe déplacé vers frontend/.env → REACT_APP_SITE_PASSWORD=alarba2026 + REACT_APP_SITE_GATE_ENABLED=true (ComingSoon.jsx lit process.env ; gate désactivé si password absent). ATTENTION PROD : ajouter ces 2 env vars au déploiement.
+  - Secrets tests Python : 5 fichiers de tests → import depuis tests/creds.py qui lit TEST_SELLER_EMAIL/TEST_SELLER_PASSWORD (ajoutés dans backend/.env).
+  - Hooks React + `is` Python : vérifiés DÉJÀ propres (ESLint react-hooks exhaustive-deps 0 erreur sur tout src ; audit AST backend 0 comparaison `is` littérale). Directives eslint-disable obsolètes retirées (RetryOrder, PaymentSuccess).
+- REFACTORING (P2) :
+  - Checkout.jsx : 820 → ~535 lignes. Extraits dans src/components/checkout/ : AddressStep, PaymentMethodPicker, StripeCardPanel, PaxityPhoneForm, CheckoutSuccess, CheckoutPending, CheckoutSummary, operatorMeta.js. Polling PENDING_TX_KEY inchangé.
+  - AddProduct.jsx : 640 → ~290 lignes. Extraits dans src/pages/seller/addproduct/ : GeneralInfoSection, PricingSection, PhotosSection, VariantsSection, ProductPreview, constants.js (SAMPLE_IMAGES, tailles, sortSizes).
+  - paxity_router.py create_payin (198 l.) → helpers courts : _require_paxity_configured, _validate_payin, _persist_order, _build_payin_body, _parse_payin_response, _hydrate_tx_from_response, _mark_payin_failed, _finalize_payin. _extract_error_message simplifié via _first_str. Param BackgroundTasks inutilisé supprimé.
+  - stripe_router.py create_stripe_checkout → _unit_amount_for, _build_stripe_lines, _create_stripe_session, _persist_stripe_order.
+  - Clés React index → clés composites (OrderSummary, TrackOrder, seller/Orders items, SellerLayout liveEvents, ProductDetail gallery, DeliveryOptions, photos AddProduct).
+  - Products.jsx : FiltersPanel (composant imbriqué re-monté à chaque rendu) → variable JSX filtersPanel.
+  - Catch vide du polling Checkout → console.debug loggé.
+- TESTS RÉPARÉS (assertions obsolètes, pas de régression réelle) : test_multicurrency_iter27 (32→19 USD, barème actuel), test_iter22 (image=images[0] par design ; Stripe embarqué = client_secret), test_stripe_iter20 (plus de seed p1, order_id séquentiel), test_email_service + test_merchant_email_destination (MERCHANT_EMAIL constante code).
+- TESTÉ iteration_33 : 100% backend (91 pytest + curls) et 100% frontend (gate env, checkout 3 étapes multi-pays, Stripe embarqué chargé, AddProduct complet create/edit/delete, impression tickets blob, filtres boutique, tracking). data-testid ajoutés aux champs adresse (first-name-input, etc.).
+- BACKLOG REFACTORING restant (optionnel) : useMemo sur les values des 5 contextes ; découpe Navbar.jsx / seller Orders.jsx si besoin.

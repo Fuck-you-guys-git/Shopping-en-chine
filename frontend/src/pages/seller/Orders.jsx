@@ -80,9 +80,7 @@ const ticketHtml = (o) => {
 
 const printTickets = (ordersToPrint) => {
     if (!ordersToPrint.length) return false;
-    const w = window.open("", "_blank");
-    if (!w) return false;
-    w.document.write(`<!doctype html><html><head><title>Tickets colis — Shopping en Chine</title><style>
+    const html = `<!doctype html><html><head><title>Tickets colis — Shopping en Chine</title><style>
         /* Étiquette 100 × 150 mm (4 × 6 pouces) — une commande par page.
            Le ticket occupe 100% de la page (100vw × 100vh) pour couvrir
            TOUTE la feuille et rester centré quelle que soit l'imprimante. */
@@ -154,10 +152,29 @@ const printTickets = (ordersToPrint) => {
         @media print{.ticket{border:none}.print-hint{display:none}}
     </style></head><body>
     <div class="print-hint"><b>Réglages d'impression :</b> Papier/étiquette <b>100 × 150 mm (4×6")</b> · Échelle <b>100%</b> (pas « Ajuster à la page ») · Marges <b>Aucune</b>.</div>
-    ${ordersToPrint.map(ticketHtml).join("")}</body></html>`);
-    w.document.close();
-    w.focus();
-    setTimeout(() => w.print(), 400);
+    ${ordersToPrint.map(ticketHtml).join("")}</body></html>`;
+    // Pas de document.write (risque XSS / API dépréciée) : le HTML est servi
+    // via une URL Blob same-origin, ce qui permet d'appeler print() sur l'onglet.
+    const blobUrl = URL.createObjectURL(new Blob([html], { type: "text/html" }));
+    const w = window.open(blobUrl, "_blank");
+    if (!w) {
+        URL.revokeObjectURL(blobUrl);
+        return false;
+    }
+    let printed = false;
+    const doPrint = () => {
+        if (printed) return;
+        printed = true;
+        try {
+            w.focus();
+            w.print();
+        } catch (err) {
+            console.warn("[printTickets] impression impossible (fenêtre fermée ?)", err);
+        }
+    };
+    w.addEventListener("load", () => setTimeout(doPrint, 150));
+    setTimeout(doPrint, 900); // repli si l'événement load ne se déclenche pas
+    setTimeout(() => URL.revokeObjectURL(blobUrl), 60000);
     return true;
 };
 
@@ -421,7 +438,7 @@ export default function Orders() {
                                     <p className="text-xs uppercase tracking-widest text-muted-foreground mb-3">Articles ({selected.items.length})</p>
                                     <div className="space-y-2 max-h-52 overflow-y-auto">
                                         {selected.items.map((it, i) => (
-                                            <div key={i} className="flex items-center gap-3 p-2 rounded-lg hover:bg-muted/30">
+                                            <div key={`${it.product_id || it.name}-${i}`} className="flex items-center gap-3 p-2 rounded-lg hover:bg-muted/30">
                                                 <div className="h-12 w-12 rounded-lg bg-muted overflow-hidden shrink-0 flex items-center justify-center">
                                                     {it.image
                                                         ? <img src={it.image} alt="" className="h-full w-full object-cover" />

@@ -40,7 +40,7 @@ from typing import Optional
 from urllib.parse import urlparse
 
 import httpx
-from fastapi import APIRouter, BackgroundTasks, HTTPException, Request
+from fastapi import APIRouter, HTTPException, Request
 from motor.motor_asyncio import AsyncIOMotorDatabase
 from pydantic import BaseModel, Field
 
@@ -156,6 +156,15 @@ def _map_status(raw: object) -> str:
     return "pending"
 
 
+def _first_str(d: dict, *keys: str) -> Optional[str]:
+    """Première valeur str non vide parmi les clés données."""
+    for key in keys:
+        v = d.get(key)
+        if isinstance(v, str) and v:
+            return v
+    return None
+
+
 def _extract_error_message(data: object, status_code: int) -> str:
     """
     Dig through a Paxity error response to surface the real message.
@@ -164,35 +173,31 @@ def _extract_error_message(data: object, status_code: int) -> str:
     """
     if isinstance(data, dict):
         # Direct fields
-        for key in ("message", "error_message", "detail", "description"):
-            v = data.get(key)
-            if isinstance(v, str) and v:
-                return v
+        msg = _first_str(data, "message", "error_message", "detail", "description")
+        if msg:
+            return msg
         # Nested error object
         err = data.get("error")
         if isinstance(err, dict):
-            for key in ("message", "detail", "description"):
-                v = err.get(key)
-                if isinstance(v, str) and v:
-                    return v
+            msg = _first_str(err, "message", "detail", "description")
+            if msg:
+                return msg
         elif isinstance(err, str) and err:
             return err
         # Nested data object
         dat = data.get("data")
         if isinstance(dat, dict):
-            for key in ("message", "error", "detail"):
-                v = dat.get(key)
-                if isinstance(v, str) and v:
-                    return v
+            msg = _first_str(dat, "message", "error", "detail")
+            if msg:
+                return msg
         # errors[] array
         errs = data.get("errors")
         if isinstance(errs, list) and errs:
             first = errs[0]
             if isinstance(first, dict):
-                for key in ("message", "detail", "description"):
-                    v = first.get(key)
-                    if isinstance(v, str) and v:
-                        return v
+                msg = _first_str(first, "message", "detail", "description")
+                if msg:
+                    return msg
             elif isinstance(first, str) and first:
                 return first
         # Non-JSON preview
@@ -424,38 +429,37 @@ async def diagnostic():
     return result
 
 
-@router.post("/payin")
-async def create_payin(payload: PaxityPayinRequest, request: Request, bg: BackgroundTasks):
-    """
-    Initiate a Paxity PayIn (customer pays merchant).
+# ---------------------------------------------------------------------------
+# PayIn helpers — create_payin est découpé en étapes courtes et testables
+# ---------------------------------------------------------------------------
 
-    IMPORTANT: This handler is wrapped in defensive try/except so that any
-    unexpected failure returns a proper JSON error instead of crashing the
-    process and triggering a Cloudflare 520/521 in front of the app.
-    """
-    if not PAXITY_CONFIGURED:
-        missing = []
-        if not PAXITY_API_KEY:
-            missing.append("PAXITY_API_KEY")
-        if not PAXITY_API_TOKEN:
-            missing.append("PAXITY_API_TOKEN")
-        if not PAXITY_BASE_URL:
-            missing.append("PAXITY_BASE_URL")
-        raise HTTPException(
-            status_code=503,
-            detail=(
-                f"Paxity n'est pas configuré. Ajoutez {', '.join(missing)} dans "
-                "backend/.env puis redémarrez le serveur."
-            ),
-        )
+def _require_paxity_configured() -> None:
+    """503 explicite si les clés Paxity manquent dans backend/.env."""
+    if PAXITY_CONFIGURED:
+        return
+    missing = [
+        name for name, val in (
+            ("PAXITY_API_KEY", PAXITY_API_KEY),
+            ("PAXITY_API_TOKEN", PAXITY_API_TOKEN),
+            ("PAXITY_BASE_URL", PAXITY_BASE_URL),
+        ) if not val
+    ]
+    raise HTTPException(
+        status_code=503,
+        detail=(
+            f"Paxity n'est pas configuré. Ajoutez {', '.join(missing)} dans "
+            "backend/.env puis redémarrez le serveur."
+        ),
+    )
+
+
+def _validate_payin(payload: PaxityPayinRequest) -> dict:
+    """Valide méthode, montant et OTP ; renvoie les métadonnées de la méthode."""
     if payload.payment_method not in PAYMENT_METHODS:
         raise HTTPException(status_code=400, detail=f"Méthode de paiement inconnue : {payload.payment_method}")
     if payload.amount <= 0:
         raise HTTPException(status_code=400, detail="Montant invalide")
-
     method_meta = PAYMENT_METHODS[payload.payment_method]
-
-    # ---- Phase 3: OTP validation ----
     if method_meta.get("requires_otp") and not (payload.otp_code or "").strip():
         raise HTTPException(
             status_code=400,
@@ -464,25 +468,12 @@ async def create_payin(payload: PaxityPayinRequest, request: Request, bg: Backgr
                 "Composez le code de validation sur votre téléphone avant de payer."
             ),
         )
+    return method_meta
 
-    currency = (payload.currency or PAXITY_DEFAULT_CURRENCY).upper()
 
-    db = _db(request)
-    order_id = await next_order_number(db)
-
-    tx = PaxityTransaction(
-        order_id=order_id,
-        amount=payload.amount,
-        currency=currency,
-        payment_method=payload.payment_method,
-        phone_number=payload.phone_number,
-        prefix_phone=payload.prefix_phone,
-        customer_name=payload.customer.name,
-        customer_email=payload.customer.email,
-        description=payload.description,
-    )
-
-    # Persist the order first (source of truth even if Paxity is down)
+async def _persist_order(db: AsyncIOMotorDatabase, order_id: str, payload: PaxityPayinRequest,
+                         tx: "PaxityTransaction", currency: str) -> None:
+    """Persist the order first (source of truth even if Paxity is down)."""
     try:
         await db.orders.insert_one({
             "id": order_id,
@@ -500,6 +491,10 @@ async def create_payin(payload: PaxityPayinRequest, request: Request, bg: Backgr
     except Exception:
         logger.exception("[Paxity] Mongo insert failed — continuing anyway")
 
+
+def _build_payin_body(payload: PaxityPayinRequest, method_meta: dict, currency: str,
+                      order_id: str, request: Request) -> dict:
+    """Corps de la requête PayIn Paxity (payload propre, sans clés None)."""
     body = {
         "amount": int(payload.amount),
         "country": method_meta.get("country") if method_meta.get("country") not in (None, "*") else None,
@@ -515,33 +510,24 @@ async def create_payin(payload: PaxityPayinRequest, request: Request, bg: Backgr
     if ipn_url:
         body["ipn"] = ipn_url
     # Drop keys that resolved to None (e.g. country for CARD) so we send a clean payload
-    body = {k: v for k, v in body.items() if v is not None}
+    return {k: v for k, v in body.items() if v is not None}
 
-    logger.info(
-        f"[Paxity] PayIn request order={order_id} amount={payload.amount} "
-        f"currency={currency} method={payload.payment_method} body={_redact(body)}"
-    )
 
-    # ---- Robust Paxity call with retry ----
-    resp, transport_error = await _post_with_retry(
-        f"{PAXITY_BASE_URL}{PAXITY_PAYIN_PATH}",
-        _headers(),
-        body,
-    )
+def _parse_payin_response(resp: Optional[httpx.Response]) -> dict:
+    """Décode la réponse Paxity en dict, même si le corps n'est pas du JSON."""
+    if resp is None:
+        return {}
+    try:
+        data = resp.json() if resp.content else {}
+        return data if isinstance(data, dict) else {"raw": data}
+    except Exception:
+        text_preview = (resp.text or "")[:500]
+        logger.warning(f"[Paxity] Non-JSON response ({resp.status_code}): {text_preview!r}")
+        return {"raw_text": text_preview}
 
-    data: dict = {}
-    if resp is not None:
-        try:
-            data = resp.json() if resp.content else {}
-            if not isinstance(data, dict):
-                data = {"raw": data}
-        except Exception:
-            text_preview = (resp.text or "")[:500]
-            data = {"raw_text": text_preview}
-            logger.warning(f"[Paxity] Non-JSON response ({resp.status_code}): {text_preview!r}")
 
-    # Update transaction with whatever we have (fields live inside the nested
-    # `data` object per Paxity's response envelope)
+def _hydrate_tx_from_response(tx: "PaxityTransaction", data: dict) -> dict:
+    """Copie les champs Paxity (id, référence, lien, QR) dans la transaction."""
     root = _payload_root(data)
     try:
         tx.raw_response = data
@@ -554,42 +540,22 @@ async def create_payin(payload: PaxityPayinRequest, request: Request, bg: Backgr
             tx.qr_code = root.get("qrCode") or root.get("qr_code")
     except Exception:
         logger.exception("[Paxity] Failed to parse Paxity fields")
+    return root
 
-    # Transport failure (all retries exhausted)
-    if transport_error or resp is None:
-        tx.status = "failed"
-        try:
-            await db.paxity_transactions.insert_one(tx.model_dump(mode="json"))
-            await db.orders.update_one({"id": order_id}, {"$set": {"status": "failed"}})
-        except Exception:
-            logger.exception("[Paxity] Mongo write failed on error path")
-        logger.error(f"[Paxity] Transport failure for order {order_id}: {transport_error}")
-        # Use 424 Failed Dependency (upstream gateway unreachable). We deliberately
-        # avoid 502/504 because Cloudflare rewrites those to its own HTML error
-        # page, which would strip our French error detail from the client.
-        raise HTTPException(
-            status_code=424,
-            detail=transport_error or "Aucune réponse de Paxity",
-        )
 
-    # HTTP error (>= 400) — surface Paxity's real message
-    if resp.status_code >= 400:
-        tx.status = "failed"
-        try:
-            await db.paxity_transactions.insert_one(tx.model_dump(mode="json"))
-            await db.orders.update_one({"id": order_id}, {"$set": {"status": "failed"}})
-        except Exception:
-            logger.exception("[Paxity] Mongo write failed on 4xx path")
-        message = _extract_error_message(data, resp.status_code)
-        logger.error(
-            f"[Paxity] {resp.status_code} order={order_id} — request={_redact(body)} response={data}"
-        )
-        raise HTTPException(status_code=resp.status_code, detail=str(message))
+async def _mark_payin_failed(db: AsyncIOMotorDatabase, tx: "PaxityTransaction",
+                             order_id: str, log_context: str) -> None:
+    """Marque transaction + commande en échec (écriture best-effort)."""
+    tx.status = "failed"
+    try:
+        await db.paxity_transactions.insert_one(tx.model_dump(mode="json"))
+        await db.orders.update_one({"id": order_id}, {"$set": {"status": "failed"}})
+    except Exception:
+        logger.exception(f"[Paxity] Mongo write failed on {log_context} path")
 
-    # 2xx — parse status with comprehensive mapping (status lives in nested data)
-    raw_status = root.get("status") if root else None
-    tx.status = _map_status(raw_status)
 
+async def _finalize_payin(db: AsyncIOMotorDatabase, tx: "PaxityTransaction", order_id: str) -> None:
+    """Persiste le résultat 2xx : emails si succès, watcher serveur si en attente."""
     try:
         await db.paxity_transactions.insert_one(tx.model_dump(mode="json"))
         await db.orders.update_one({"id": order_id}, {"$set": {"status": tx.status}})
@@ -602,6 +568,77 @@ async def create_payin(payload: PaxityPayinRequest, request: Request, bg: Backgr
             asyncio.create_task(_watch_pending_tx(db, tx.id))
     except Exception:
         logger.exception("[Paxity] Mongo write failed on success path")
+
+
+@router.post("/payin")
+async def create_payin(payload: PaxityPayinRequest, request: Request):
+    """
+    Initiate a Paxity PayIn (customer pays merchant).
+
+    IMPORTANT: Every step returns a proper JSON error instead of crashing the
+    process and triggering a Cloudflare 520/521 in front of the app.
+    """
+    _require_paxity_configured()
+    method_meta = _validate_payin(payload)
+    currency = (payload.currency or PAXITY_DEFAULT_CURRENCY).upper()
+
+    db = _db(request)
+    order_id = await next_order_number(db)
+
+    tx = PaxityTransaction(
+        order_id=order_id,
+        amount=payload.amount,
+        currency=currency,
+        payment_method=payload.payment_method,
+        phone_number=payload.phone_number,
+        prefix_phone=payload.prefix_phone,
+        customer_name=payload.customer.name,
+        customer_email=payload.customer.email,
+        description=payload.description,
+    )
+
+    await _persist_order(db, order_id, payload, tx, currency)
+
+    body = _build_payin_body(payload, method_meta, currency, order_id, request)
+    logger.info(
+        f"[Paxity] PayIn request order={order_id} amount={payload.amount} "
+        f"currency={currency} method={payload.payment_method} body={_redact(body)}"
+    )
+
+    # ---- Robust Paxity call with retry ----
+    resp, transport_error = await _post_with_retry(
+        f"{PAXITY_BASE_URL}{PAXITY_PAYIN_PATH}",
+        _headers(),
+        body,
+    )
+    data = _parse_payin_response(resp)
+    root = _hydrate_tx_from_response(tx, data)
+
+    # Transport failure (all retries exhausted)
+    if transport_error or resp is None:
+        await _mark_payin_failed(db, tx, order_id, "error")
+        logger.error(f"[Paxity] Transport failure for order {order_id}: {transport_error}")
+        # Use 424 Failed Dependency (upstream gateway unreachable). We deliberately
+        # avoid 502/504 because Cloudflare rewrites those to its own HTML error
+        # page, which would strip our French error detail from the client.
+        raise HTTPException(
+            status_code=424,
+            detail=transport_error or "Aucune réponse de Paxity",
+        )
+
+    # HTTP error (>= 400) — surface Paxity's real message
+    if resp.status_code >= 400:
+        await _mark_payin_failed(db, tx, order_id, "4xx")
+        message = _extract_error_message(data, resp.status_code)
+        logger.error(
+            f"[Paxity] {resp.status_code} order={order_id} — request={_redact(body)} response={data}"
+        )
+        raise HTTPException(status_code=resp.status_code, detail=str(message))
+
+    # 2xx — parse status with comprehensive mapping (status lives in nested data)
+    raw_status = root.get("status") if root else None
+    tx.status = _map_status(raw_status)
+    await _finalize_payin(db, tx, order_id)
 
     logger.info(
         f"[Paxity] PayIn response order={order_id} status={tx.status} "

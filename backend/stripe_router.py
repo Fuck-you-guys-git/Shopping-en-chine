@@ -61,20 +61,23 @@ class StripeCheckoutRequest(BaseModel):
     delivery_mode: Optional[str] = "standard"  # standard (économique) | express
 
 
-@router.post("/payments/stripe/checkout")
-async def create_stripe_checkout(payload: StripeCheckoutRequest, request: Request):
-    db = _db(request)
+def _unit_amount_for(product: dict, price_xof: int, cur: str, rate: float) -> int:
+    """Montant unitaire en unité mineure de la devise (francs XOF ou centimes)."""
+    if cur == "XOF":
+        return price_xof  # XOF : zéro décimale, francs entiers
+    # Prix EUR/USD saisi par le vendeur prioritaire, sinon conversion au barème
+    explicit = product.get("priceEur") if cur == "EUR" else product.get("priceUsd")
+    if explicit and float(explicit) > 0:
+        return int(round(float(explicit) * 100))  # centimes
+    return int(round(price_xof / rate * 100))  # EUR/USD : centimes
 
-    # Devise de paiement : le client européen paie en EUR, l'américain en USD,
-    # les autres en F CFA. Les prix restent définis en F CFA (devise principale).
-    cur = (payload.currency or "XOF").upper()
-    if cur not in RATES_XOF:
-        cur = "XOF"
-    rate = RATES_XOF[cur]
 
-    # Server-side pricing from the catalog
-    line_items = []
-    order_items = []
+async def _build_stripe_lines(db, payload: StripeCheckoutRequest, cur: str, rate: float):
+    """Tarification côté serveur depuis le catalogue.
+
+    Renvoie (line_items Stripe, order_items en base, total XOF, total débité).
+    """
+    line_items, order_items = [], []
     amount = 0          # total en F CFA (devise principale, stocké en base)
     charged_minor = 0   # total débité, en unité mineure de la devise (centimes ou francs)
     for it in payload.items:
@@ -85,15 +88,7 @@ async def create_stripe_checkout(payload: StripeCheckoutRequest, request: Reques
         amount += price * it.qty
         item_name = f"{product['name']} — Taille {it.size}" if it.size else product["name"]
         order_items.append({"product_id": it.product_id, "name": item_name, "price": price, "qty": it.qty})
-        if cur == "XOF":
-            unit_amount = price  # XOF : zéro décimale, francs entiers
-        else:
-            # Prix EUR/USD saisi par le vendeur prioritaire, sinon conversion au barème
-            explicit = product.get("priceEur") if cur == "EUR" else product.get("priceUsd")
-            if explicit and float(explicit) > 0:
-                unit_amount = int(round(float(explicit) * 100))  # centimes
-            else:
-                unit_amount = int(round(price / rate * 100))  # EUR/USD : centimes
+        unit_amount = _unit_amount_for(product, price, cur, rate)
         charged_minor += unit_amount * it.qty
         line_items.append({
             "price_data": {
@@ -106,10 +101,11 @@ async def create_stripe_checkout(payload: StripeCheckoutRequest, request: Reques
     if amount <= 0:
         raise HTTPException(status_code=400, detail="Montant invalide.")
     charged_amount = charged_minor if cur == "XOF" else round(charged_minor / 100, 2)
+    return line_items, order_items, amount, charged_amount
 
-    order_id = await next_order_number(db)
-    now = datetime.now(timezone.utc).isoformat()
 
+def _create_stripe_session(payload: StripeCheckoutRequest, line_items: list, order_id: str):
+    """Crée la session Stripe embarquée (retente sans automatic_tax si refusé)."""
     kwargs = dict(
         line_items=line_items,
         mode="payment",
@@ -120,17 +116,21 @@ async def create_stripe_checkout(payload: StripeCheckoutRequest, request: Reques
     )
     try:
         try:
-            session = stripe.checkout.Session.create(
+            return stripe.checkout.Session.create(
                 **kwargs, automatic_tax={"enabled": True}, billing_address_collection="required",
             )
         except stripe.error.InvalidRequestError as e:
             logger.warning(f"[Stripe] automatic_tax refused ({e.user_message}) — retrying without")
-            session = stripe.checkout.Session.create(**kwargs)
+            return stripe.checkout.Session.create(**kwargs)
     except stripe.error.StripeError as e:
         logger.exception("[Stripe] Session create failed")
         raise HTTPException(status_code=502, detail=f"Paiement carte indisponible : {getattr(e, 'user_message', None) or 'erreur Stripe'}")
 
-    # Persist order (source of truth) + transaction BEFORE redirect
+
+async def _persist_stripe_order(db, payload: StripeCheckoutRequest, order_id: str, session_id: str,
+                                order_items: list, amount: int, cur: str, charged_amount) -> None:
+    """Persist order (source of truth) + transaction BEFORE redirect."""
+    now = datetime.now(timezone.utc).isoformat()
     await db.orders.insert_one({
         "id": order_id,
         "customer": payload.customer.model_dump(),
@@ -142,13 +142,13 @@ async def create_stripe_checkout(payload: StripeCheckoutRequest, request: Reques
         "status": "pending",
         "payment_method": "CARD",
         "delivery_mode": payload.delivery_mode or "standard",
-        "stripe_session_id": session.id,
+        "stripe_session_id": session_id,
         "created_at": now,
         "tracking_step": "ordered",
         "tracking_history": [{"step": "ordered", "at": now}],
     })
     await db.payment_transactions.insert_one({
-        "session_id": session.id,
+        "session_id": session_id,
         "order_id": order_id,
         "amount": amount,
         "currency": "xof",
@@ -159,6 +159,25 @@ async def create_stripe_checkout(payload: StripeCheckoutRequest, request: Reques
         "created_at": now,
         "updated_at": now,
     })
+
+
+@router.post("/payments/stripe/checkout")
+async def create_stripe_checkout(payload: StripeCheckoutRequest, request: Request):
+    db = _db(request)
+
+    # Devise de paiement : le client européen paie en EUR, l'américain en USD,
+    # les autres en F CFA. Les prix restent définis en F CFA (devise principale).
+    cur = (payload.currency or "XOF").upper()
+    if cur not in RATES_XOF:
+        cur = "XOF"
+    rate = RATES_XOF[cur]
+
+    line_items, order_items, amount, charged_amount = await _build_stripe_lines(db, payload, cur, rate)
+
+    order_id = await next_order_number(db)
+    session = _create_stripe_session(payload, line_items, order_id)
+    await _persist_stripe_order(db, payload, order_id, session.id, order_items, amount, cur, charged_amount)
+
     return {
         "client_secret": session.client_secret,
         "checkout_url": session.url,

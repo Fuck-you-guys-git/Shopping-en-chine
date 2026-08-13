@@ -89,7 +89,7 @@ const SidebarContent = ({ onNavigate }) => {
                         <p className="text-xs text-ink-foreground/40 italic">En attente d&apos;activité…</p>
                     )}
                     {liveEvents.slice(0, 4).map((e, i) => (
-                        <div key={i} className="text-xs text-ink-foreground/70 leading-snug">
+                        <div key={`${e.id}-${e.type}-${i}`} className="text-xs text-ink-foreground/70 leading-snug">
                             {e.type === "new" ? (
                                 <>
                                     <span className="text-primary font-medium">Nouvelle commande</span>

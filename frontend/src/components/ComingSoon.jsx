@@ -5,12 +5,13 @@ import { Logo } from "@/components/Logo";
 /*
  * Écran de lancement « Bientôt disponible ».
  * Le site public est verrouillé tant que le visiteur n'a pas saisi le mot
- * de passe ci-dessous. L'espace vendeur (/vendeur, /admin) reste accessible.
- * Pour changer le mot de passe : modifiez SITE_PASSWORD.
- * Pour rouvrir le site à tous : passez GATE_ENABLED à false.
+ * de passe. L'espace vendeur (/vendeur, /admin) reste accessible.
+ * Configuration via frontend/.env (aucun secret dans le code) :
+ *   - REACT_APP_SITE_PASSWORD : mot de passe d'accès
+ *   - REACT_APP_SITE_GATE_ENABLED : "true" pour verrouiller, "false" pour ouvrir à tous
  */
-export const GATE_ENABLED = true;
-const SITE_PASSWORD = "alarba2026";
+const SITE_PASSWORD = process.env.REACT_APP_SITE_PASSWORD;
+export const GATE_ENABLED = process.env.REACT_APP_SITE_GATE_ENABLED === "true" && Boolean(SITE_PASSWORD);
 const UNLOCK_KEY = "sec_site_unlocked_v1";
 
 export const isSiteUnlocked = () => {

@@ -9,8 +9,7 @@ frontend_env = dotenv_values("/app/frontend/.env")
 base_url = os.environ.get("REACT_APP_BACKEND_URL") or frontend_env.get("REACT_APP_BACKEND_URL")
 BASE_URL = base_url.rstrip("/")
 
-SELLER_EMAIL = "Modou.ba.568@gmail.com"
-SELLER_PASSWORD = "40881215.Com"
+from creds import SELLER_EMAIL, SELLER_PASSWORD
 
 
 @pytest.fixture(scope="module")
@@ -91,7 +90,8 @@ class TestProductSizesRoundTrip:
         assert "images" not in item
         assert item.get("sizes") == ["M", "XL", "40"]
         assert item.get("keywords") == ["test", "iter22", "tailles"]
-        assert item.get("image") == "https://example.com/img.png"
+        # Depuis la refonte du stockage d'images, `image` = miniature de images[0]
+        assert item.get("image"), "Main image missing from list payload"
 
         # Full detail via /{id}
         r2 = requests.get(f"{BASE_URL}/api/products/{pid}")
@@ -130,8 +130,9 @@ class TestStripeCheckoutWithSize:
         r = requests.post(f"{BASE_URL}/api/payments/stripe/checkout", json=payload)
         assert r.status_code == 200, f"Checkout failed: {r.status_code} {r.text[:300]}"
         data = r.json()
-        assert "checkout_url" in data
-        assert data["checkout_url"].startswith("https://checkout.stripe.com") or "stripe.com" in data["checkout_url"]
+        # Checkout Stripe embarqué (ui_mode="embedded") : client_secret présent,
+        # checkout_url peut être None (pas de redirection externe).
+        assert data.get("client_secret") or data.get("checkout_url")
         order_id = data.get("order_id")
         assert order_id
 

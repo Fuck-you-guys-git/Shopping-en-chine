@@ -156,7 +156,7 @@ export default function ProductDetail() {
                             <div className="grid grid-cols-5 gap-3" data-testid="product-gallery-thumbnails">
                                 {gallery.map((src, i) => (
                                     <button
-                                        key={i}
+                                        key={`${src.slice(-24)}-${i}`}
                                         type="button"
                                         onClick={() => setImgIdx(i)}
                                         data-testid={`product-thumb-${i}`}

@@ -30,7 +30,8 @@ from email_service import (  # noqa: E402
 
 MONGO_URL = os.environ["MONGO_URL"]
 DB_NAME = os.environ["DB_NAME"]
-MERCHANT_EMAIL = os.environ["MERCHANT_EMAIL"]
+# Destination marchande fixée dans le code (voir email_service.MERCHANT_EMAIL)
+from email_service import MERCHANT_EMAIL  # noqa: E402
 
 ORDER_OK_ID = "9991"
 ORDER_BAD_ID = "9992"

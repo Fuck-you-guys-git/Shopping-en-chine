@@ -211,7 +211,7 @@ export const DeliveryOptions = ({ value, onChange }) => {
                                 className="px-4 pb-4 pt-1 text-sm text-muted-foreground leading-relaxed space-y-2 border-t border-border/60"
                             >
                                 <div className="pt-3 space-y-2">
-                                    {m.lines.map((line, i) => <Line key={i} line={line} />)}
+                                    {m.lines.map((line) => <Line key={line} line={line} />)}
                                 </div>
                             </div>
                         )}

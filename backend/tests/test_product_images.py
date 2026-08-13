@@ -6,8 +6,7 @@ from dotenv import dotenv_values
 frontend_env = dotenv_values("/app/frontend/.env")
 BASE_URL = (os.environ.get("REACT_APP_BACKEND_URL") or frontend_env.get("REACT_APP_BACKEND_URL")).rstrip("/")
 
-SELLER_EMAIL = "Modou.ba.568@gmail.com"
-SELLER_PASSWORD = "40881215.Com"
+from creds import SELLER_EMAIL, SELLER_PASSWORD
 
 # 1x1 PNG
 PNG_DATA_URL = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=="

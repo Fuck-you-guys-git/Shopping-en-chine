@@ -1,36 +1,40 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate, useLocation, useParams } from "react-router-dom";
-import { Upload, Package, Sparkles, ImagePlus, Camera } from "lucide-react";
+import { Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator";
 import { Switch } from "@/components/ui/switch";
 import { useSeller } from "@/context/SellerContext";
 import { productsAPI } from "@/lib/api";
-import { categories, subcategoriesByCategory } from "@/data/products";
-import { formatCfa as formatPrice } from "@/lib/locale";
-import { COLOR_PALETTE } from "@/lib/colors";
+import { subcategoriesByCategory } from "@/data/products";
 import { toast } from "sonner";
+import { SAMPLE_IMAGES, MAX_PHOTOS, sortSizes } from "./addproduct/constants";
+import { GeneralInfoSection } from "./addproduct/GeneralInfoSection";
+import { PricingSection } from "./addproduct/PricingSection";
+import { PhotosSection } from "./addproduct/PhotosSection";
+import { VariantsSection } from "./addproduct/VariantsSection";
+import { ProductPreview } from "./addproduct/ProductPreview";
 
-const SAMPLE_IMAGES = [
-    "https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=600&q=80",
-    "https://images.unsplash.com/photo-1546435770-a3e426bf472b?w=600&q=80",
-    "https://images.unsplash.com/photo-1553062407-98eeb64c6a62?w=600&q=80",
-    "https://images.unsplash.com/photo-1602143407151-7111542de6e8?w=600&q=80",
-    "https://images.unsplash.com/photo-1560343090-f0409e92791a?w=600&q=80",
-    "https://images.unsplash.com/photo-1526170375885-4d8ecf77b99f?w=600&q=80",
-];
-
-// Tailles proposées au vendeur (facultatif)
-const LETTER_SIZES = ["XS", "S", "M", "L", "XL", "2XL", "3XL", "4XL"];
-const NUMERIC_SIZES = Array.from({ length: 55 }, (_, i) => String(i + 1));
-const SIZE_ORDER = [...LETTER_SIZES, ...NUMERIC_SIZES];
-const sortSizes = (arr) => [...arr].sort((a, b) => SIZE_ORDER.indexOf(a) - SIZE_ORDER.indexOf(b));
-
+// Compression côté client (max 800px, JPEG 75%) avant envoi au backend
+const compressFile = (file) =>
+    new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onerror = reject;
+        reader.onload = () => {
+            const img = new Image();
+            img.onerror = reject;
+            img.onload = () => {
+                const MAX = 800;
+                const scale = Math.min(1, MAX / Math.max(img.width, img.height));
+                const canvas = document.createElement("canvas");
+                canvas.width = Math.round(img.width * scale);
+                canvas.height = Math.round(img.height * scale);
+                canvas.getContext("2d").drawImage(img, 0, 0, canvas.width, canvas.height);
+                resolve(canvas.toDataURL("image/jpeg", 0.75));
+            };
+            img.src = reader.result;
+        };
+        reader.readAsDataURL(file);
+    });
 
 export default function AddProduct() {
     const { addProduct, updateProduct } = useSeller();
@@ -56,6 +60,11 @@ export default function AddProduct() {
         active: true,
     });
     const [urlInput, setUrlInput] = useState("");
+
+    // --- Photos (jusqu'à 5) : photoColors[i] = couleur associée à la photo i ---
+    const [photos, setPhotos] = useState([]);
+    const [photoColors, setPhotoColors] = useState([]);
+    const [uploading, setUploading] = useState(false);
 
     // --- Mode édition : pré-remplir avec le produit existant (fiche complète,
     // la liste publique ne contient plus la galerie) ---
@@ -92,35 +101,6 @@ export default function AddProduct() {
     const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
     const toggleColor = (c) => set("colors", form.colors.includes(c) ? form.colors.filter((x) => x !== c) : [...form.colors, c]);
     const toggleSize = (s) => set("sizes", form.sizes.includes(s) ? form.sizes.filter((x) => x !== s) : sortSizes([...form.sizes, s]));
-
-    // --- Photos (jusqu'à 5) : téléphone, exemples ou URL — compressées côté client ---
-    // photoColors[i] = couleur associée à la photo i (null = aucune)
-    const MAX_PHOTOS = 5;
-    const [photos, setPhotos] = useState([]);
-    const [photoColors, setPhotoColors] = useState([]);
-    const fileRef = useRef(null);
-    const [uploading, setUploading] = useState(false);
-
-    const compressFile = (file) =>
-        new Promise((resolve, reject) => {
-            const reader = new FileReader();
-            reader.onerror = reject;
-            reader.onload = () => {
-                const img = new Image();
-                img.onerror = reject;
-                img.onload = () => {
-                    const MAX = 800;
-                    const scale = Math.min(1, MAX / Math.max(img.width, img.height));
-                    const canvas = document.createElement("canvas");
-                    canvas.width = Math.round(img.width * scale);
-                    canvas.height = Math.round(img.height * scale);
-                    canvas.getContext("2d").drawImage(img, 0, 0, canvas.width, canvas.height);
-                    resolve(canvas.toDataURL("image/jpeg", 0.75));
-                };
-                img.src = reader.result;
-            };
-            reader.readAsDataURL(file);
-        });
 
     const onPhotoSelected = async (e) => {
         const files = Array.from(e.target.files || []).filter((f) => f.type.startsWith("image/"));
@@ -240,8 +220,6 @@ export default function AddProduct() {
         }
     };
 
-    const catObj = categories.find((c) => c.id === form.category);
-
     if (!ready) {
         return (
             <div className="py-24 text-center text-sm text-muted-foreground" data-testid="edit-product-loading">
@@ -254,309 +232,27 @@ export default function AddProduct() {
         <form onSubmit={submit} className="grid lg:grid-cols-[1fr_360px] gap-5">
             {/* Main form */}
             <div className="space-y-5">
-                <div className="bg-card rounded-2xl p-5 md:p-6 shadow-card border border-border/50">
-                    <h3 className="font-display text-lg font-medium mb-1">Informations générales</h3>
-                    <p className="text-xs text-muted-foreground mb-5">Renseignez les détails principaux du produit.</p>
-                    <div className="space-y-4">
-                        <div className="space-y-1.5">
-                            <Label htmlFor="name">Nom du produit *</Label>
-                            <Input id="name" value={form.name} onChange={(e) => set("name", e.target.value)} placeholder="Ex : Sac à dos en cuir tressé" />
-                        </div>
-                        <div className="grid sm:grid-cols-2 gap-4">
-                            <div className="space-y-1.5">
-                                <Label>Catégorie *</Label>
-                                <Select value={form.category} onValueChange={(v) => { set("category", v); set("subcategory", ""); }}>
-                                    <SelectTrigger><SelectValue placeholder="Choisir une catégorie" /></SelectTrigger>
-                                    <SelectContent>
-                                        {categories.map((c) => (
-                                            <SelectItem key={c.id} value={c.id}>
-                                                <span className="flex items-center gap-2">
-                                                    <i className={`fa-solid ${c.icon} text-primary text-xs`} />
-                                                    {c.name}
-                                                </span>
-                                            </SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
-                            </div>
-                            <div className="space-y-1.5">
-                                <Label htmlFor="badge">Badge (optionnel)</Label>
-                                <Select value={form.badge} onValueChange={(v) => set("badge", v === "none" ? "" : v)}>
-                                    <SelectTrigger><SelectValue placeholder="Aucun" /></SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="none">Aucun</SelectItem>
-                                        <SelectItem value="Nouveauté">Nouveauté</SelectItem>
-                                        <SelectItem value="Bestseller">Bestseller</SelectItem>
-                                        <SelectItem value="Édition limitée">Édition limitée</SelectItem>
-                                        <SelectItem value="Promo">Promo</SelectItem>
-                                    </SelectContent>
-                                </Select>
-                            </div>
-                        </div>
-                        {subcategoriesByCategory[form.category] && (
-                            <div className="space-y-1.5">
-                                <Label>Sous-catégorie (optionnel)</Label>
-                                <Select value={form.subcategory} onValueChange={(v) => set("subcategory", v === "none" ? "" : v)}>
-                                    <SelectTrigger data-testid="product-subcategory-select"><SelectValue placeholder="Choisir une sous-catégorie" /></SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="none">Aucune</SelectItem>
-                                        {subcategoriesByCategory[form.category].map((s) => (
-                                            <SelectItem key={s.id} value={s.id}>
-                                                <span className="flex items-center gap-2">
-                                                    <i className={`fa-solid ${s.icon} text-primary text-xs`} />
-                                                    {s.name}
-                                                </span>
-                                            </SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
-                            </div>
-                        )}
-                        <div className="space-y-1.5">
-                            <Label htmlFor="desc">Description</Label>
-                            <Textarea
-                                id="desc"
-                                rows={4}
-                                value={form.description}
-                                onChange={(e) => set("description", e.target.value)}
-                                placeholder="Décrivez les matériaux, avantages, dimensions…"
-                            />
-                        </div>
-                        <div className="space-y-1.5">
-                            <Label htmlFor="search-keywords">Mots-clés de recherche (optionnel)</Label>
-                            <Input
-                                id="search-keywords"
-                                data-testid="product-keywords-input"
-                                value={form.searchKeywords}
-                                onChange={(e) => set("searchKeywords", e.target.value)}
-                                placeholder="Ex : ordinateur, macbook, pc portable (séparés par des virgules)"
-                            />
-                            <p className="text-xs text-muted-foreground">
-                                Le client trouvera ce produit en cherchant ces mots, même s&apos;ils ne sont pas dans le nom.
-                            </p>
-                        </div>
-                    </div>
-                </div>
-
-                <div className="bg-card rounded-2xl p-5 md:p-6 shadow-card border border-border/50">
-                    <h3 className="font-display text-lg font-medium mb-1">Prix</h3>
-                    <p className="text-xs text-muted-foreground mb-5">Prix en francs CFA (F), et si vous le souhaitez vos propres prix en euros et en dollars.</p>
-                    <div className="grid sm:grid-cols-2 gap-4">
-                        <div className="space-y-1.5">
-                            <Label htmlFor="price">Prix de vente *</Label>
-                            <div className="relative">
-                                <Input id="price" type="number" min="0" step="500" value={form.price} onChange={(e) => set("price", e.target.value)} placeholder="25000" className="pr-10" />
-                                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">F</span>
-                            </div>
-                        </div>
-                        <div className="space-y-1.5">
-                            <Label htmlFor="priceEur">Prix en euros (optionnel)</Label>
-                            <div className="relative">
-                                <Input id="priceEur" data-testid="price-eur-input" type="number" min="0" step="0.5" value={form.priceEur} onChange={(e) => set("priceEur", e.target.value)} className="pr-10" />
-                                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">€</span>
-                            </div>
-                            <p className="text-[11px] text-muted-foreground">Affiché et débité pour les clients d&apos;Europe.</p>
-                        </div>
-                        <div className="space-y-1.5">
-                            <Label htmlFor="priceUsd">Prix en dollars (optionnel)</Label>
-                            <div className="relative">
-                                <Input id="priceUsd" data-testid="price-usd-input" type="number" min="0" step="0.5" value={form.priceUsd} onChange={(e) => set("priceUsd", e.target.value)} className="pr-10" />
-                                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">$</span>
-                            </div>
-                            <p className="text-[11px] text-muted-foreground">Affiché et débité pour les clients USA / Canada.</p>
-                        </div>
-                    </div>
-                    <p className="mt-4 text-xs text-muted-foreground">
-                        Si vous laissez vide, la conversion automatique s&apos;applique : 9 000 F = 17 € = 19 $.
-                    </p>
-                </div>
-
-                <div className="bg-card rounded-2xl p-5 md:p-6 shadow-card border border-border/50">
-                    <h3 className="font-display text-lg font-medium mb-1">Photos du produit <span className="text-primary">({photos.length}/5)</span></h3>
-                    <p className="text-xs text-muted-foreground mb-5">Ajoutez jusqu&apos;à 5 photos : téléphone, exemples ou URL. La première est la photo principale.</p>
-                    <div className="space-y-4">
-                        <input
-                            ref={fileRef}
-                            type="file"
-                            accept="image/*"
-                            multiple
-                            className="hidden"
-                            onChange={onPhotoSelected}
-                            data-testid="product-photo-input"
-                        />
-                        <Button
-                            type="button"
-                            size="lg"
-                            disabled={uploading || photos.length >= MAX_PHOTOS}
-                            onClick={() => fileRef.current?.click()}
-                            className="w-full h-14 rounded-xl bg-ink text-ink-foreground hover:bg-ink/90 text-base"
-                            data-testid="upload-photo-btn"
-                        >
-                            <Camera className="h-5 w-5" />
-                            {uploading ? "Chargement des photos…" : photos.length >= MAX_PHOTOS ? "Maximum 5 photos atteint" : "Ajouter des photos depuis votre téléphone"}
-                        </Button>
-
-                        {/* Photos sélectionnées */}
-                        {photos.length > 0 && (
-                            <div className="grid grid-cols-3 sm:grid-cols-5 gap-2" data-testid="selected-photos-grid">
-                                {photos.map((src, i) => (
-                                    <div key={i} className="space-y-1">
-                                        <div className="relative group aspect-square rounded-lg overflow-hidden bg-muted border-2 border-border">
-                                            <img src={src} alt="" className="h-full w-full object-cover" />
-                                            {i === 0 && (
-                                                <span className="absolute bottom-1 left-1 text-[9px] font-bold bg-primary text-primary-foreground px-1.5 py-0.5 rounded-full">
-                                                    Principale
-                                                </span>
-                                            )}
-                                            <button
-                                                type="button"
-                                                onClick={() => removePhoto(i)}
-                                                data-testid={`remove-photo-${i}`}
-                                                aria-label="Supprimer la photo"
-                                                className="absolute top-1 right-1 h-6 w-6 rounded-full bg-black/60 text-white flex items-center justify-center text-xs hover:bg-destructive transition-colors"
-                                            >
-                                                <i className="fa-solid fa-xmark" />
-                                            </button>
-                                            {i !== 0 && (
-                                                <button
-                                                    type="button"
-                                                    onClick={() => makeMain(i)}
-                                                    data-testid={`make-main-photo-${i}`}
-                                                    aria-label="Définir comme principale"
-                                                    title="Définir comme photo principale"
-                                                    className="absolute bottom-1 right-1 h-6 w-6 rounded-full bg-black/60 text-white flex items-center justify-center text-[10px] hover:bg-primary transition-colors"
-                                                >
-                                                    <i className="fa-solid fa-star" />
-                                                </button>
-                                            )}
-                                        </div>
-                                        {form.colors.length > 0 && (
-                                            <div className="flex justify-center gap-1 flex-wrap" data-testid={`photo-color-picker-${i}`}>
-                                                {form.colors.map((c) => (
-                                                    <button
-                                                        type="button"
-                                                        key={c}
-                                                        onClick={() => assignPhotoColor(i, c)}
-                                                        data-testid={`photo-${i}-color-${c.replace("#", "")}`}
-                                                        aria-label={`Associer cette couleur à la photo ${i + 1}`}
-                                                        className={`h-4 w-4 rounded-full border transition-all ${photoColors[i] === c ? "ring-2 ring-primary ring-offset-1 border-primary scale-110" : "border-border opacity-50 hover:opacity-100"}`}
-                                                        style={{ background: c }}
-                                                    />
-                                                ))}
-                                            </div>
-                                        )}
-                                    </div>
-                                ))}
-                            </div>
-                        )}
-                        {photos.length > 0 && form.colors.length > 0 && (
-                            <p className="text-[11px] text-muted-foreground">
-                                Astuce : cliquez sur un point de couleur sous une photo pour l&apos;associer —
-                                le client verra cette photo en choisissant la couleur.
-                            </p>
-                        )}
-
-                        <p className="text-xs text-muted-foreground">Ou choisissez parmi les exemples :</p>
-                        <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
-                            {SAMPLE_IMAGES.map((src) => (
-                                <button
-                                    type="button"
-                                    key={src}
-                                    onClick={() => addSample(src)}
-                                    className={`aspect-square rounded-lg overflow-hidden bg-muted border-2 transition-all ${photos.includes(src) ? "border-primary scale-95" : "border-transparent"}`}
-                                >
-                                    <img src={src} alt="" className="h-full w-full object-cover" />
-                                </button>
-                            ))}
-                        </div>
-                        <div className="space-y-1.5">
-                            <Label htmlFor="image-url">Ou ajoutez une photo par URL</Label>
-                            <div className="flex gap-2">
-                                <div className="relative flex-1">
-                                    <ImagePlus className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                                    <Input
-                                        id="image-url"
-                                        value={urlInput}
-                                        onChange={(e) => setUrlInput(e.target.value)}
-                                        placeholder="https://…"
-                                        className="pl-9"
-                                    />
-                                </div>
-                                <Button
-                                    type="button"
-                                    variant="outline"
-                                    disabled={!urlInput.trim() || photos.length >= MAX_PHOTOS}
-                                    onClick={() => { addSample(urlInput.trim()); setUrlInput(""); }}
-                                    data-testid="add-url-photo-btn"
-                                >
-                                    Ajouter
-                                </Button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <div className="bg-card rounded-2xl p-5 md:p-6 shadow-card border border-border/50">
-                    <h3 className="font-display text-lg font-medium mb-1">Variantes (optionnel)</h3>
-                    <p className="text-xs text-muted-foreground mb-4">Sélectionnez les couleurs disponibles.</p>
-                    <div className="flex flex-wrap gap-3">
-                        {COLOR_PALETTE.map((c) => (
-                            <div key={c.hex} className="flex flex-col items-center gap-1 w-12">
-                                <button
-                                    type="button"
-                                    onClick={() => toggleColor(c.hex)}
-                                    title={c.name}
-                                    className={`h-10 w-10 rounded-full border-2 transition-all ${form.colors.includes(c.hex) ? "border-primary scale-110 ring-2 ring-primary/30" : "border-border"}`}
-                                    style={{ background: c.hex }}
-                                    aria-label={c.name}
-                                />
-                                <span className={`text-[9px] leading-none text-center ${form.colors.includes(c.hex) ? "text-primary font-semibold" : "text-muted-foreground"}`}>{c.name}</span>
-                            </div>
-                        ))}
-                    </div>
-
-                    <Separator className="my-5" />
-
-                    <p className="text-sm font-medium mb-1">
-                        Tailles disponibles {form.sizes.length > 0 && <span className="text-primary">({form.sizes.length})</span>}
-                    </p>
-                    <p className="text-xs text-muted-foreground mb-3">
-                        Facultatif — le client pourra choisir sa taille sur la fiche produit.
-                    </p>
-                    <div className="flex flex-wrap gap-2 mb-4" data-testid="letter-sizes">
-                        {LETTER_SIZES.map((s) => (
-                            <button
-                                type="button"
-                                key={s}
-                                onClick={() => toggleSize(s)}
-                                data-testid={`seller-size-${s}`}
-                                className={`h-9 min-w-[44px] px-3 rounded-full border text-sm font-medium transition-colors ${form.sizes.includes(s) ? "bg-ink text-ink-foreground border-ink" : "border-border hover:border-foreground"}`}
-                            >
-                                {s}
-                            </button>
-                        ))}
-                    </div>
-                    <p className="text-xs text-muted-foreground mb-2">Tailles numériques (pointures, âges… de 1 à 55) :</p>
-                    <div className="grid grid-cols-8 sm:grid-cols-11 gap-1.5" data-testid="numeric-sizes">
-                        {NUMERIC_SIZES.map((s) => (
-                            <button
-                                type="button"
-                                key={s}
-                                onClick={() => toggleSize(s)}
-                                data-testid={`seller-size-${s}`}
-                                className={`h-8 rounded-lg border text-xs font-medium transition-colors ${form.sizes.includes(s) ? "bg-ink text-ink-foreground border-ink" : "border-border hover:border-foreground"}`}
-                            >
-                                {s}
-                            </button>
-                        ))}
-                    </div>
-                    {form.sizes.length > 0 && (
-                        <p className="mt-3 text-xs text-muted-foreground">
-                            Sélection : <span className="font-medium text-foreground">{sortSizes(form.sizes).join(", ")}</span>
-                        </p>
-                    )}
-                </div>
-
+                <GeneralInfoSection form={form} set={set} />
+                <PricingSection form={form} set={set} />
+                <PhotosSection
+                    photos={photos}
+                    photoColors={photoColors}
+                    colors={form.colors}
+                    uploading={uploading}
+                    urlInput={urlInput}
+                    setUrlInput={setUrlInput}
+                    onFilesSelected={onPhotoSelected}
+                    onRemove={removePhoto}
+                    onMakeMain={makeMain}
+                    onAddSample={addSample}
+                    onAssignColor={assignPhotoColor}
+                />
+                <VariantsSection
+                    colors={form.colors}
+                    sizes={form.sizes}
+                    onToggleColor={toggleColor}
+                    onToggleSize={toggleSize}
+                />
                 <div className="bg-card rounded-2xl p-5 md:p-6 shadow-card border border-border/50 flex items-center justify-between">
                     <div>
                         <p className="font-medium text-sm">Publier immédiatement</p>
@@ -569,61 +265,7 @@ export default function AddProduct() {
             {/* Preview */}
             <aside className="space-y-4">
                 <div className="sticky top-24 space-y-4">
-                    <div className="bg-card rounded-2xl p-5 shadow-card border border-border/50">
-                        <p className="text-xs uppercase tracking-widest text-muted-foreground mb-3 flex items-center gap-2">
-                            <Sparkles className="h-3.5 w-3.5 text-primary" />
-                            Aperçu en direct
-                        </p>
-                        <div className="aspect-[4/5] rounded-xl overflow-hidden bg-muted relative mb-3">
-                            {mainImage ? (
-                                <img src={mainImage} alt="" className="h-full w-full object-cover" />
-                            ) : (
-                                <div className="h-full w-full flex items-center justify-center text-muted-foreground">
-                                    <Package className="h-10 w-10 opacity-40" />
-                                </div>
-                            )}
-                            {form.badge && (
-                                <Badge className="absolute top-3 left-3 bg-background text-foreground hover:bg-background rounded-full">
-                                    {form.badge}
-                                </Badge>
-                            )}
-                        </div>
-                        {photos.length > 1 && (
-                            <div className="flex gap-1.5 mb-3">
-                                {photos.slice(0, 5).map((src, i) => (
-                                    <span key={i} className={`h-9 w-9 rounded-md overflow-hidden border ${i === 0 ? "border-primary" : "border-border"}`}>
-                                        <img src={src} alt="" className="h-full w-full object-cover" />
-                                    </span>
-                                ))}
-                            </div>
-                        )}
-                        {catObj && (
-                            <p className="text-xs text-muted-foreground mb-1">
-                                <i className={`fa-solid ${catObj.icon} text-primary text-[10px] mr-1.5`} />
-                                {catObj.name}
-                            </p>
-                        )}
-                        <p className="font-medium text-sm mb-1 line-clamp-2">{form.name || "Nom du produit"}</p>
-                        {form.colors.length > 0 && (
-                            <div className="flex gap-1 mb-2">
-                                {form.colors.map((c) => (
-                                    <span key={c} className="h-4 w-4 rounded-full border border-border" style={{ background: c }} />
-                                ))}
-                            </div>
-                        )}
-                        <div className="flex items-baseline gap-2">
-                            <span className="font-display text-lg font-semibold">{form.price ? formatPrice(Number(form.price)) : "0 F"}</span>
-                            {form.oldPrice && <span className="text-xs text-muted-foreground line-through">{formatPrice(Number(form.oldPrice))}</span>}
-                        </div>
-                        {(form.priceEur || form.priceUsd) && (
-                            <p className="text-xs text-muted-foreground mt-1" data-testid="preview-multi-currency">
-                                {form.priceEur && <>Europe : <span className="font-medium text-foreground">{form.priceEur} €</span></>}
-                                {form.priceEur && form.priceUsd && " · "}
-                                {form.priceUsd && <>USA/Canada : <span className="font-medium text-foreground">${form.priceUsd}</span></>}
-                            </p>
-                        )}
-                    </div>
-
+                    <ProductPreview form={form} photos={photos} mainImage={mainImage} />
                     <div className="flex flex-col gap-2">
                         <Button type="submit" size="lg" className="bg-primary hover:bg-primary/90 text-primary-foreground shadow-warm rounded-full h-12" data-testid="submit-product-btn">
                             <Upload className="h-4 w-4" /> {isEdit ? "Mettre à jour le produit" : "Publier le produit"}

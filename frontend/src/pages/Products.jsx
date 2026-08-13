@@ -65,7 +65,8 @@ export default function Products() {
         return list;
     }, [products, priceRange, selectedCats, categoryId, sortBy, searchQuery, activeSub]);
 
-    const FiltersPanel = () => (
+    // JSX simple (pas un composant imbriqué : évite le re-montage à chaque rendu)
+    const filtersPanel = (
         <div className="space-y-8">
             <div>
                 <h4 className="font-display text-lg mb-4">{t("Catégories")}</h4>
@@ -140,7 +141,7 @@ export default function Products() {
                             </SheetTrigger>
                             <SheetContent side="left" className="w-[300px] overflow-y-auto">
                                 <SheetHeader><SheetTitle>{t("Filtres")}</SheetTitle></SheetHeader>
-                                <div className="mt-6"><FiltersPanel /></div>
+                                <div className="mt-6">{filtersPanel}</div>
                             </SheetContent>
                         </Sheet>
                         <Select value={sortBy} onValueChange={setSortBy}>
@@ -212,7 +213,7 @@ export default function Products() {
                             <Filter className="h-4 w-4" />
                             <h3 className="font-medium">{t("Filtres")}</h3>
                         </div>
-                        <FiltersPanel />
+                        {filtersPanel}
                     </div>
                 </aside>
 

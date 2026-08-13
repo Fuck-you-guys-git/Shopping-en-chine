@@ -40,7 +40,6 @@ export default function RetryOrder() {
                 setError("Commande introuvable ou expirée.");
             }
         })();
-        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [orderId]);
 
     return (

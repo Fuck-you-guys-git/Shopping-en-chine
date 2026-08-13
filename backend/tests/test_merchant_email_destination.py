@@ -53,11 +53,11 @@ def _now():
 
 
 def test_audit_merchant_email_constant():
-    """MERCHANT_EMAIL doit être une constante hardcodée, pas os.environ."""
+    """La destination marchande doit être fixée dans le code, pas via os.environ."""
     src = Path("/app/backend/email_service.py").read_text()
-    assert 'MERCHANT_EMAIL = "commands@shoppingenchine.com"' in src, \
-        "MERCHANT_EMAIL n'est pas une constante hardcodée"
-    # Vérifie qu'aucune ligne ne fait MERCHANT_EMAIL = os.environ...
+    assert '"commands@shoppingenchine.com"' in src, \
+        "commands@shoppingenchine.com absent des destinataires marchands"
+    # Vérifie qu'aucune ligne ne fait MERCHANT_EMAIL/MERCHANT_RECIPIENTS = os.environ...
     for line in src.splitlines():
         stripped = line.strip()
         if stripped.startswith("MERCHANT_EMAIL") and "=" in stripped:

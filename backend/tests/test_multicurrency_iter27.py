@@ -4,7 +4,8 @@ Verifies:
 - Seller login + product create with priceEur/priceUsd (persisted via GET)
 - Stripe checkout for EUR (qty=1) charges 25.0 and USD (qty=2) charges 60.0
   when explicit prices are set (session is created only, no payment).
-- Fallback: product without priceEur/priceUsd at 9000 F → USD checkout gives 32.0.
+- Fallback: product without priceEur/priceUsd at 9000 F → USD checkout gives 19.0
+  (barème marchand : 9000 F CFA = 17 EUR = 19 USD).
 - Cleanup: delete test products.
 """
 import os
@@ -16,8 +17,7 @@ frontend_env = dotenv_values("/app/frontend/.env")
 BASE_URL = (os.environ.get("REACT_APP_BACKEND_URL")
             or frontend_env.get("REACT_APP_BACKEND_URL")).rstrip("/")
 
-SELLER_EMAIL = "Modou.ba.568@gmail.com"
-SELLER_PWD = "40881215.Com"
+from creds import SELLER_EMAIL, SELLER_PASSWORD as SELLER_PWD
 
 
 @pytest.fixture(scope="module")
@@ -152,7 +152,7 @@ def test_fallback_usd_when_no_explicit_price(hdr):
     order = db.orders.find_one({"stripe_session_id": sid})
     assert order is not None
     assert order["charged_currency"] == "USD"
-    assert order["charged_amount"] == 32.0, f"Expected 32.0 USD fallback, got {order['charged_amount']}"
+    assert order["charged_amount"] == 19.0, f"Expected 19.0 USD fallback (9000 F = 19 $), got {order['charged_amount']}"
 
 
 def test_cleanup(hdr):

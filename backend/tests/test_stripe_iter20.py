@@ -49,9 +49,9 @@ class TestRegression:
         assert r.status_code == 200
         products = r.json()["products"]
         assert isinstance(products, list) and len(products) >= 1
-        ids = [p["id"] for p in products]
-        # p1 seed must exist for the frontend product page SEO test
-        assert "p1" in ids, f"seed product p1 missing (found ids={ids[:5]})"
+        # Catalogue réel (plus de seed p1) : chaque produit expose id/name/price
+        for p in products[:3]:
+            assert p.get("id") and p.get("name") and p.get("price") is not None
 
     def test_login_seller(self, client, creds):
         r = client.post(f"{BASE_URL}/api/auth/login",
@@ -67,17 +67,22 @@ class TestStripe:
     session_id = None
 
     def test_checkout_creates_order(self, client):
+        # Utilise le premier produit réel du catalogue (plus de seed p1)
+        products = client.get(f"{BASE_URL}/api/products").json()["products"]
+        assert products, "catalogue vide — impossible de tester le checkout"
         payload = {
             "origin_url": BASE_URL,
             "customer": {"name": "TEST_QA", "email": "test@example.com", "city": "Dakar"},
-            "items": [{"product_id": "p1", "qty": 1}],
+            "items": [{"product_id": products[0]["id"], "qty": 1}],
         }
         r = client.post(f"{BASE_URL}/api/payments/stripe/checkout", json=payload)
         assert r.status_code == 200, r.text
         data = r.json()
-        assert data["checkout_url"].startswith("https://checkout.stripe.com")
+        # Checkout embarqué : client_secret présent (checkout_url peut être None)
+        assert data.get("client_secret") or data.get("checkout_url")
         assert data["session_id"].startswith("cs_")
-        assert data["order_id"].startswith("ord_")
+        # Numéros de commande séquentiels (ex : "1031") depuis next_order_number
+        assert str(data["order_id"]).strip()
         TestStripe.order_id = data["order_id"]
         TestStripe.session_id = data["session_id"]
 

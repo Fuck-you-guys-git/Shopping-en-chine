@@ -5,8 +5,7 @@ import requests
 
 BASE_URL = os.environ.get("REACT_APP_BACKEND_URL", "https://paxity-payment-web.preview.emergentagent.com").rstrip("/")
 API = f"{BASE_URL}/api"
-SELLER_EMAIL = "Modou.ba.568@gmail.com"
-SELLER_PASSWORD = "40881215.Com"
+from creds import SELLER_EMAIL, SELLER_PASSWORD
 DEMO_ORDER_ID = "ord_demo12345678"
 
 

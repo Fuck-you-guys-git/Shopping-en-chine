@@ -1,32 +1,24 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import {
-    Check, CreditCard, ShieldCheck, ArrowLeft, Phone, Loader2, XCircle, AlertTriangle,
-} from "lucide-react";
+import { Check, ArrowLeft, XCircle, AlertTriangle, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Separator } from "@/components/ui/separator";
 import { useCart } from "@/context/CartContext";
-import { formatPrice } from "@/components/ProductCard";
 import { toast } from "sonner";
 import { paxityAPI, stripeAPI } from "@/lib/api";
 import { paxityDirectPayin, paxityDirectAvailable } from "@/lib/paxityDirect";
-import { OrderSummary } from "@/components/OrderSummary";
 import { StripeEmbedded } from "@/components/StripeEmbedded";
 import { DeliveryOptions } from "@/components/DeliveryOptions";
 import { orderNo } from "@/lib/utils";
-import { t, getLocale, unitAmount, fmtAmount, cartDisplayTotal } from "@/lib/locale";
-import { COUNTRIES, findCountry, countryName, STATES } from "@/lib/countries";
-
-const OPERATOR_META = {
-    "orange-money": { label: "Orange Money", color: "#FF7900", bg: "bg-[#FF7900]/10" },
-    wave: { label: "Wave", color: "#1DC7FA", bg: "bg-[#1DC7FA]/10" },
-    mtn: { label: "MTN", color: "#FFCC00", bg: "bg-[#FFCC00]/15" },
-    moov: { label: "Moov", color: "#0060A9", bg: "bg-[#0060A9]/10" },
-    card: { label: "Carte", color: "#111", bg: "bg-secondary" },
-};
+import { t, getLocale } from "@/lib/locale";
+import { findCountry, countryName, STATES } from "@/lib/countries";
+import { OPERATOR_META } from "@/components/checkout/operatorMeta";
+import { CheckoutSuccess } from "@/components/checkout/CheckoutSuccess";
+import { CheckoutPending } from "@/components/checkout/CheckoutPending";
+import { AddressStep } from "@/components/checkout/AddressStep";
+import { PaymentMethodPicker } from "@/components/checkout/PaymentMethodPicker";
+import { StripeCardPanel } from "@/components/checkout/StripeCardPanel";
+import { PaxityPhoneForm } from "@/components/checkout/PaxityPhoneForm";
+import { CheckoutSummary } from "@/components/checkout/CheckoutSummary";
 
 // La transaction en attente est persistée : si le client part payer dans
 // l'app Wave/Orange Money et que le navigateur recharge la page au retour,
@@ -139,7 +131,8 @@ export default function Checkout() {
                     toast.error(t("Paiement échoué"), { description: t("Veuillez réessayer") });
                 }
             } catch (e) {
-                // ignore transient errors
+                // Erreur réseau passagère pendant le polling : on retentera au tick suivant
+                console.debug("[Paxity] polling status indisponible, nouvelle tentative…", e?.message);
             }
         };
         checkNow();
@@ -369,113 +362,20 @@ export default function Checkout() {
 
     // ---------- Success screen ----------
     if (complete) {
-        return (
-            <div className="container mx-auto px-5 py-24 text-center">
-                <div className="max-w-lg mx-auto">
-                    <div className="h-20 w-20 mx-auto rounded-full bg-success/10 text-success flex items-center justify-center mb-6">
-                        <Check className="h-10 w-10" />
-                    </div>
-                    <h1 className="font-display text-4xl sm:text-5xl mb-3" data-testid="order-confirmed-title">{t("Votre commande est confirmée 🎉")}</h1>
-                    <p className="text-muted-foreground mb-2">
-                        {t("Merci ! Votre paiement de")} <span className="font-semibold text-foreground">{formatPrice(transaction?.amount ?? total)}</span> {t("a bien été reçu. Nous préparons votre commande pour l'expédition depuis la Chine.")}
-                    </p>
-                    {transaction?.order_id && (
-                        <p className="text-xs font-mono text-muted-foreground mb-8">{t("Commande")} {orderNo(transaction.order_id)}</p>
-                    )}
-                    {transaction?.order_id && <OrderSummary orderId={transaction.order_id} />}
-                    <div className="flex flex-wrap gap-3 justify-center mt-8">
-                        {transaction?.order_id && (
-                            <Button asChild size="lg" className="rounded-full bg-primary text-primary-foreground hover:bg-primary/90" data-testid="track-order-btn">
-                                <Link to={`/suivi/${transaction.order_id}`}>{t("Suivre ma commande")}</Link>
-                            </Button>
-                        )}
-                        <Button asChild size="lg" className="rounded-full bg-ink text-ink-foreground hover:bg-ink/90">
-                            <Link to="/">{t("Retour à l'accueil")}</Link>
-                        </Button>
-                        <Button asChild size="lg" variant="outline" className="rounded-full">
-                            <Link to="/boutique">{t("Continuer les achats")}</Link>
-                        </Button>
-                    </div>
-                </div>
-            </div>
-        );
+        return <CheckoutSuccess transaction={transaction} total={total} />;
     }
 
     // ---------- Pending screen ----------
     if (transaction && transaction.status === "pending") {
         return (
-            <div className="container mx-auto px-5 py-24 text-center">
-                <div className="max-w-lg mx-auto">
-                    <div className="h-20 w-20 mx-auto rounded-full bg-primary/10 text-primary flex items-center justify-center mb-6">
-                        <Loader2 className="h-10 w-10 animate-spin" />
-                    </div>
-                    <h1 className="font-display text-3xl sm:text-4xl mb-3">{t("Paiement en cours…")}</h1>
-                    <p className="text-muted-foreground mb-2">
-                        {t("Ouvrez l'application")} <span className="font-semibold text-foreground">{transaction.operator_label || operatorIconMeta.label}</span> {t("sur votre téléphone et validez la transaction.")}
-                    </p>
-                    <p className="text-xs text-muted-foreground mb-2" data-testid="paxity-return-hint">
-                        {t("Après validation, revenez sur cette page : votre confirmation s'affichera automatiquement et vous recevrez un email. Vous pouvez fermer la page de paiement.")}
-                    </p>
-                    {transaction.payment_link && (
-                        <div className="my-6 space-y-4">
-                            <Button
-                                size="lg"
-                                className="rounded-full bg-ink text-ink-foreground hover:bg-ink/90"
-                                onClick={() => openPayWindow(transaction.payment_link)}
-                                data-testid="paxity-payment-link-btn"
-                            >
-                                {t("Payer maintenant")}
-                            </Button>
-                            {transaction.qr_code && (
-                                <div className="flex justify-center">
-                                    <img
-                                        src={transaction.qr_code.startsWith("data:") ? transaction.qr_code : `data:image/png;base64,${transaction.qr_code}`}
-                                        alt="QR code de paiement"
-                                        className="h-40 w-40 rounded-lg border border-border bg-white p-2"
-                                        data-testid="paxity-qr-code"
-                                    />
-                                </div>
-                            )}
-                        </div>
-                    )}
-                    <p className="text-sm text-muted-foreground mb-6">
-                        {t("Après le paiement,")} <span className="font-medium text-foreground">{t("revenez sur cet onglet")}</span>{t(": votre confirmation s'affichera ici automatiquement.")}
-                    </p>
-                    <div className="mb-8">
-                        <Button
-                            size="lg"
-                            variant="outline"
-                            onClick={manualCheck}
-                            disabled={checkingNow}
-                            className="rounded-full border-primary text-primary hover:bg-primary hover:text-primary-foreground"
-                            data-testid="paxity-manual-check-btn"
-                        >
-                            {checkingNow ? (
-                                <><Loader2 className="h-4 w-4 animate-spin" /> {t("Vérification…")}</>
-                            ) : (
-                                <><Check className="h-4 w-4" /> {t("J'ai payé — Vérifier")}</>
-                            )}
-                        </Button>
-                    </div>
-                    <div className="inline-flex items-center gap-2 text-xs text-muted-foreground bg-secondary/50 rounded-full px-3 py-1.5">
-                        <span className="relative flex h-2 w-2">
-                            <span className="absolute inline-flex h-full w-full rounded-full bg-primary opacity-75 animate-ping" />
-                            <span className="relative inline-flex h-2 w-2 rounded-full bg-primary" />
-                        </span>
-                        {t("En attente de confirmation Paxity")}
-                    </div>
-                    <div className="mt-6">
-                        <button
-                            type="button"
-                            onClick={() => { localStorage.removeItem(PENDING_TX_KEY); setTransaction(null); }}
-                            className="text-xs text-muted-foreground underline hover:text-foreground"
-                            data-testid="paxity-cancel-pending-btn"
-                        >
-                            {t("Annuler et choisir un autre moyen de paiement")}
-                        </button>
-                    </div>
-                </div>
-            </div>
+            <CheckoutPending
+                transaction={transaction}
+                operatorLabel={operatorIconMeta.label}
+                onOpenPay={openPayWindow}
+                onManualCheck={manualCheck}
+                checkingNow={checkingNow}
+                onCancel={() => { localStorage.removeItem(PENDING_TX_KEY); setTransaction(null); }}
+            />
         );
     }
 
@@ -528,68 +428,17 @@ export default function Checkout() {
             <div className="grid lg:grid-cols-[1fr_380px] gap-10">
                 <div className="space-y-8 order-2 lg:order-1">
                     {step === 1 && (
-                        <div className="space-y-5 bg-card p-6 md:p-8 rounded-2xl shadow-card">
-                            <h2 className="font-display text-2xl">{t("Adresse de livraison")}</h2>
-                            <div className="grid sm:grid-cols-2 gap-4">
-                                <div className="space-y-1.5"><Label>{t("Prénom")}</Label><Input required value={buyer.firstName} onChange={(e) => setBuyer({ ...buyer, firstName: e.target.value })} /></div>
-                                <div className="space-y-1.5"><Label>{t("Nom")}</Label><Input required value={buyer.lastName} onChange={(e) => setBuyer({ ...buyer, lastName: e.target.value })} /></div>
-                                <div className="space-y-1.5 sm:col-span-2"><Label>Email</Label><Input required type="email" value={buyer.email} onChange={(e) => setBuyer({ ...buyer, email: e.target.value })} /></div>
-                                <div className="space-y-1.5 sm:col-span-2"><Label>{t("Adresse")}</Label><Input required value={buyer.address} onChange={(e) => setBuyer({ ...buyer, address: e.target.value })} /></div>
-                                <div className="space-y-1.5"><Label>{t("Code postal")}</Label><Input value={buyer.zip} onChange={(e) => setBuyer({ ...buyer, zip: e.target.value })} /></div>
-                                <div className="space-y-1.5"><Label>{t("Ville")}</Label><Input required value={buyer.city} onChange={(e) => setBuyer({ ...buyer, city: e.target.value })} /></div>
-                                <div className="space-y-1.5 sm:col-span-2">
-                                    <Label>{t("Pays")}</Label>
-                                    <Select value={buyer.country} onValueChange={changeCountry}>
-                                        <SelectTrigger data-testid="country-select">
-                                            <SelectValue placeholder={t("Choisissez votre pays")} />
-                                        </SelectTrigger>
-                                        <SelectContent className="max-h-[300px]">
-                                            {COUNTRIES.map((c) => (
-                                                <SelectItem key={c.code} value={c.code} data-testid={`country-option-${c.code}`}>
-                                                    {c.flag} {countryName(c)} (+{c.dial})
-                                                </SelectItem>
-                                            ))}
-                                        </SelectContent>
-                                    </Select>
-                                </div>
-                                {STATES[buyer.country] && (
-                                    <div className="space-y-1.5 sm:col-span-2">
-                                        <Label>{buyer.country === "CA" ? t("Province") : t("État")}</Label>
-                                        <Select value={buyer.state} onValueChange={(s) => setBuyer({ ...buyer, state: s })}>
-                                            <SelectTrigger data-testid="state-select">
-                                                <SelectValue placeholder={buyer.country === "CA" ? t("Choisissez votre province") : t("Choisissez votre état")} />
-                                            </SelectTrigger>
-                                            <SelectContent className="max-h-[300px]">
-                                                {STATES[buyer.country].map((s) => (
-                                                    <SelectItem key={s} value={s} data-testid={`state-option-${s.replace(/\s+/g, "-")}`}>
-                                                        {s}
-                                                    </SelectItem>
-                                                ))}
-                                            </SelectContent>
-                                        </Select>
-                                    </div>
-                                )}
-                                <div className="space-y-1.5 sm:col-span-2">
-                                    <Label>{t("Téléphone")}</Label>
-                                    <div className="flex">
-                                        <span data-testid="phone-prefix" className="inline-flex items-center gap-1 px-3 rounded-l-md border border-r-0 border-input bg-muted/60 text-sm text-foreground whitespace-nowrap">
-                                            {selectedCountry?.flag} +{prefix}
-                                        </span>
-                                        <Input required type="tel" value={buyer.phone} onChange={(e) => setBuyer({ ...buyer, phone: e.target.value })} className="rounded-l-none" data-testid="phone-input" />
-                                    </div>
-                                </div>
-                            </div>
-                            <Button
-                                type="button"
-                                onClick={() => {
-                                    if (!buyerValid()) { toast.error(t("Veuillez remplir tous les champs requis")); return; }
-                                    setStep(2);
-                                }}
-                                className="w-full sm:w-auto bg-ink text-ink-foreground hover:bg-ink/90 rounded-full h-11 px-8"
-                            >
-                                {t("Continuer")}
-                            </Button>
-                        </div>
+                        <AddressStep
+                            buyer={buyer}
+                            setBuyer={setBuyer}
+                            prefix={prefix}
+                            selectedCountry={selectedCountry}
+                            onCountryChange={changeCountry}
+                            onContinue={() => {
+                                if (!buyerValid()) { toast.error(t("Veuillez remplir tous les champs requis")); return; }
+                                setStep(2);
+                            }}
+                        />
                     )}
 
                     {step === 2 && (
@@ -638,181 +487,45 @@ export default function Checkout() {
                                 </div>
                             )}
 
-                            {/* Method picker */}
-                            <div>
-                                <p className="text-sm font-medium mb-3">{t("Choisissez votre moyen de paiement")}</p>
-                                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                                    {paxityConfig?.methods?.map((m) => {
-                                        const meta = OPERATOR_META[m.icon] || OPERATOR_META.card;
-                                        const active = paymentMethod === m.code;
-                                        return (
-                                            <button
-                                                key={m.code}
-                                                type="button"
-                                                onClick={() => {
-                                                    setPaymentMethod(m.code);
-                                                    if (m.prefix !== "*") setPrefix(m.prefix);
-                                                }}
-                                                className={`flex flex-col items-center gap-1.5 p-3 rounded-xl border-2 transition-all ${active ? "border-primary bg-primary/5" : "border-border hover:border-foreground/30"}`}
-                                            >
-                                                <span className={`h-10 w-10 rounded-full flex items-center justify-center ${meta.bg}`}>
-                                                    {m.icon === "card" ? (
-                                                        <CreditCard className="h-4 w-4" style={{ color: meta.color }} />
-                                                    ) : (
-                                                        <Phone className="h-4 w-4" style={{ color: meta.color }} />
-                                                    )}
-                                                </span>
-                                                <span className="text-xs font-medium text-center leading-tight">{m.label}</span>
-                                            </button>
-                                        );
-                                    })}
-                                    <button
-                                        type="button"
-                                        data-testid="stripe-card-method-btn"
-                                        onClick={() => setPaymentMethod("CARD")}
-                                        className={`flex flex-col items-center gap-1.5 p-3 rounded-xl border-2 transition-all ${paymentMethod === "CARD" ? "border-primary bg-primary/5" : "border-border hover:border-foreground/30"}`}
-                                    >
-                                        <span className="h-10 w-10 rounded-full flex items-center justify-center bg-indigo-500/10">
-                                            <CreditCard className="h-4 w-4 text-indigo-600" />
-                                        </span>
-                                        <span className="text-xs font-medium text-center leading-tight">{t("Carte bancaire")}</span>
-                                    </button>
-                                </div>
-                            </div>
+                            <PaymentMethodPicker
+                                methods={paxityConfig?.methods}
+                                value={paymentMethod}
+                                onSelect={(m) => {
+                                    setPaymentMethod(m.code);
+                                    if (m.prefix !== "*") setPrefix(m.prefix);
+                                }}
+                                onSelectCard={() => setPaymentMethod("CARD")}
+                            />
 
-                            {/* Card payment (Stripe) */}
                             {paymentMethod === "CARD" && (
-                                <div className="space-y-4" data-testid="stripe-card-panel">
-                                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                                        <ShieldCheck className="h-4 w-4 text-success" />
-                                        {t("Paiement sécurisé via Stripe · Chiffrement bout-en-bout")}
-                                    </div>
-                                    {getLocale().currency !== "XOF" && (
-                                        <p className="text-[11px] text-muted-foreground" data-testid="stripe-currency-note">
-                                            {t("Vous payez par carte dans votre devise :")} <span className="font-medium text-foreground">{fmtAmount(cartDisplayTotal(items))}</span>
-                                        </p>
-                                    )}
-                                    <div className="flex gap-2 pt-2">
-                                        <Button type="button" variant="outline" onClick={() => setStep(2)} className="rounded-full h-11 px-6">{t("Retour")}</Button>
-                                        <Button
-                                            type="button"
-                                            data-testid="stripe-pay-btn"
-                                            onClick={handleStripeCheckout}
-                                            disabled={processing}
-                                            className="bg-primary hover:bg-primary/90 text-primary-foreground rounded-full h-11 px-8 flex-1 sm:flex-none shadow-warm"
-                                        >
-                                            {processing ? (
-                                                <><Loader2 className="h-4 w-4 animate-spin" /> {t("Chargement…")}</>
-                                            ) : (
-                                                <>{t("Payer par carte")} {fmtAmount(cartDisplayTotal(items))}</>
-                                            )}
-                                        </Button>
-                                    </div>
-                                </div>
+                                <StripeCardPanel
+                                    items={items}
+                                    processing={processing}
+                                    onBack={() => setStep(2)}
+                                    onPay={handleStripeCheckout}
+                                />
                             )}
 
-                            {/* Phone form */}
                             {selectedMethod && (
-                                <form onSubmit={handlePayment} className="space-y-4">
-                                    <div className="grid grid-cols-[100px_1fr] gap-2">
-                                        <div className="space-y-1.5">
-                                            <Label>{t("Indicatif")}</Label>
-                                            <div className="relative">
-                                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">+</span>
-                                                <Input value={prefix} onChange={(e) => setPrefix(e.target.value.replace(/\D/g, ""))} className="pl-6" />
-                                            </div>
-                                        </div>
-                                        <div className="space-y-1.5">
-                                            <Label>{t("Numéro de téléphone")}</Label>
-                                            <Input
-                                                required
-                                                type="tel"
-                                                value={buyer.phone}
-                                                onChange={(e) => setBuyer({ ...buyer, phone: e.target.value })}
-                                            />
-                                            <p className="text-[11px] text-muted-foreground">
-                                                {(() => {
-                                                    const digits = buyer.phone.replace(/\D/g, "").length;
-                                                    const expected = { "221": `9 ${t("chiffres")}`, "225": `10 ${t("chiffres")}`, "226": `8 ${t("chiffres")}`, "227": `8 ${t("chiffres")}`, "228": `8 ${t("chiffres")}`, "233": `9 ${t("chiffres")}`, "237": `9 ${t("chiffres")}` }[prefix] || `8 à 10 ${t("chiffres")}`;
-                                                    return `+${prefix} — ${t("attendu :")} ${expected} · ${t("saisi :")} ${digits}`;
-                                                })()}
-                                            </p>
-                                        </div>
-                                    </div>
-                                    <div className="space-y-1.5">
-                                        <Label>
-                                            {t("Code OTP")} <span className="text-muted-foreground text-xs">{t("(facultatif)")}</span>
-                                        </Label>
-                                        <Input
-                                            data-testid="paxity-otp-input"
-                                            value={otp}
-                                            onChange={(e) => setOtp(e.target.value)}
-                                            placeholder={t("Laissez vide si non requis")}
-                                            className="font-mono tracking-wider"
-                                        />
-                                        <p className="text-[11px] text-muted-foreground">
-                                            {t("Après validation, vous recevrez un lien de paiement à confirmer. Si votre opérateur vous a déjà fourni un code, saisissez-le ici.")}
-                                        </p>
-                                    </div>
-
-                                    <div className="flex items-center gap-2 text-xs text-muted-foreground pt-2">
-                                        <ShieldCheck className="h-4 w-4 text-success" />
-                                        {t("Paiement sécurisé via Paxity · Chiffrement bout-en-bout")}
-                                    </div>
-
-                                    <div className="flex gap-2 pt-2">
-                                        <Button type="button" variant="outline" onClick={() => setStep(2)} className="rounded-full h-11 px-6">{t("Retour")}</Button>
-                                        <Button
-                                            type="submit"
-                                            disabled={processing || !paxityConfig?.configured}
-                                            className="bg-primary hover:bg-primary/90 text-primary-foreground rounded-full h-11 px-8 flex-1 sm:flex-none shadow-warm"
-                                        >
-                                            {processing ? (
-                                                <>
-                                                    <Loader2 className="h-4 w-4 animate-spin" />
-                                                    {t("Traitement…")}
-                                                </>
-                                            ) : (
-                                                <>{t("Payer")} {formatPrice(total)}</>
-                                            )}
-                                        </Button>
-                                    </div>
-                                </form>
+                                <PaxityPhoneForm
+                                    buyer={buyer}
+                                    setBuyer={setBuyer}
+                                    prefix={prefix}
+                                    setPrefix={setPrefix}
+                                    otp={otp}
+                                    setOtp={setOtp}
+                                    processing={processing}
+                                    disabled={!paxityConfig?.configured}
+                                    total={total}
+                                    onSubmit={handlePayment}
+                                    onBack={() => setStep(2)}
+                                />
                             )}
                         </div>
                     )}
                 </div>
 
-                <aside className="order-1 lg:order-2">
-                    <div className="sticky top-24 bg-secondary/40 rounded-2xl p-6 space-y-4">
-                        <h3 className="font-display text-xl">{t("Votre commande")}</h3>
-                        <div className="space-y-3 max-h-[280px] overflow-y-auto">
-                            {items.map((it) => (
-                                <div key={it.line || it.id} className="flex gap-3">
-                                    <div className="relative h-14 w-14 rounded-lg overflow-hidden bg-muted shrink-0">
-                                        {it.image ? <img src={it.image} alt="" className="h-full w-full object-cover" /> : null}
-                                        <span className="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-ink text-ink-foreground text-[10px] font-medium flex items-center justify-center">{it.qty}</span>
-                                    </div>
-                                    <div className="flex-1 min-w-0">
-                                        <p className="text-sm font-medium truncate">{it.name}</p>
-                                        {it.size && <p className="text-xs text-muted-foreground">{t("Taille")} {it.size}</p>}
-                                    </div>
-                                    <span className="text-sm font-medium">{fmtAmount(unitAmount(it) * it.qty)}</span>
-                                </div>
-                            ))}
-                        </div>
-                        <Separator />
-                        <div className="space-y-2 text-sm">
-                            <div className="flex justify-between"><span className="text-muted-foreground">{t("Sous-total")}</span><span>{fmtAmount(cartDisplayTotal(items))}</span></div>
-                            <div className="flex justify-between"><span className="text-muted-foreground">{t("Livraison Chine → Monde entier")}</span><span className="text-muted-foreground">{t("10–20 jours")}</span></div>
-                        </div>
-                        <Separator />
-                        <div className="flex justify-between items-baseline">
-                            <span className="font-medium">{t("Total")}</span>
-                            <span className="font-display text-2xl font-semibold">{fmtAmount(cartDisplayTotal(items))}</span>
-                        </div>
-                    </div>
-                </aside>
+                <CheckoutSummary items={items} />
             </div>
         </div>
     );
