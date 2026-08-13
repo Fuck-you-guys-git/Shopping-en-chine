@@ -552,3 +552,10 @@ Payments were failing with a **DNS error** because `backend/paxity_router.py` ha
 - Dès que le user vérifie le domaine sur resend.com/domains (DNS SPF/DKIM), les clients reçoivent AUTOMATIQUEMENT, sans redéploiement de code (mais prod doit avoir cette version du code → redéployer une fois).
 - TESTÉ (iteration_29, 100%, 5/5 pytest /app/backend/tests/test_email_fallback.py) : webhook SUCCESS → emails marchand+client acceptés par Resend (ids retournés), flags DB ok, idempotence ok (2e webhook = 0 renvoi), cleanup fait.
 - ACTION USER REQUISE : ajouter et vérifier shoppingenchine.com sur https://resend.com/domains (ajouter les enregistrements DNS SPF + DKIM chez son registrar). SANS ÇA les clients ne recevront toujours rien (limite Resend, pas un bug code).
+
+## Update — Feb 2026 (Aperçu de partage avec logo — Open Graph)
+- Généré /app/frontend/public/og-image.png (1200×630, 37KB, PIL + LiberationSans-Bold : badge S terracotta #c64c3a, SHOPPING EN CHINE, tagline livraison monde + paiements, shoppingenchine.com, fond crème #f4f1ec) et logo512.png (512×512 carré, favicon/apple-touch-icon).
+- index.html : og:image (URL ABSOLUE https://shoppingenchine.com/og-image.png — WhatsApp/FB scrapent la prod), og:url, og:site_name, og:image:width/height/alt, twitter:card summary_large_image + title/description/image, favicon+apple-touch-icon → logo512.png.
+- ATTENTION : frontend dev server NE recharge PAS public/index.html à chaud → supervisorctl restart frontend nécessaire. Vérifié servi (grep og:image OK, /og-image.png 200).
+- NOTE : WhatsApp/Facebook mettent l'aperçu en cache — après redéploiement, utiliser https://developers.facebook.com/tools/debug/ (bouton Scrape Again) pour forcer le rafraîchissement.
+- EN ATTENTE USER : choix a/b/c sur la gestion de la fenêtre Paxity (fermeture auto actuelle / même onglet / iframe) — question posée, pas encore répondue.
