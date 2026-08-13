@@ -11,6 +11,7 @@ from __future__ import annotations
 import asyncio
 import logging
 import os
+from datetime import datetime, timezone
 
 import resend
 from motor.motor_asyncio import AsyncIOMotorDatabase
@@ -150,6 +151,39 @@ def _wrap(inner: str) -> str:
 OFFICIAL_SENDER = "serviceclients@shoppingenchine.com"
 FALLBACK_SENDER = "onboarding@resend.dev"  # sandbox : ne livre qu'au propriétaire du compte
 
+# ---------------------------------------------------------------------------
+# Journal des envois (collection email_log) — traçabilité de CHAQUE tentative.
+# Consultable par le vendeur via GET /api/emails/log ; le statut de livraison
+# (delivered / bounced) est mis à jour par le webhook Resend /api/emails/resend-webhook.
+# ---------------------------------------------------------------------------
+_log_client = None
+
+
+def _log_db():
+    global _log_client
+    if _log_client is None:
+        from motor.motor_asyncio import AsyncIOMotorClient
+        _log_client = AsyncIOMotorClient(os.environ["MONGO_URL"])[os.environ["DB_NAME"]]
+    return _log_client
+
+
+async def _log_send(tag: str, to, subject: str, sender: str,
+                    resend_id: str | None = None, error: str | None = None) -> None:
+    """Best-effort : ne doit JAMAIS faire échouer l'envoi lui-même."""
+    try:
+        await _log_db().email_log.insert_one({
+            "tag": tag,
+            "to": to if isinstance(to, list) else [to],
+            "subject": subject,
+            "from": sender,
+            "resend_id": resend_id,
+            "delivery_status": "sent" if resend_id else "send_failed",
+            "error": error,
+            "at": datetime.now(timezone.utc).isoformat(),
+        })
+    except Exception:
+        logger.debug("[Email] journal email_log indisponible")
+
 
 async def _send_raw(params: dict, tag: str) -> dict:
     """
@@ -158,24 +192,35 @@ async def _send_raw(params: dict, tag: str) -> dict:
     sandbox (le marchand reçoit au moins la notification) et logge un
     avertissement explicite. Dès que le domaine est vérifié sur
     https://resend.com/domains, les clients reçoivent automatiquement.
+    Chaque tentative (succès ou échec) est journalisée dans email_log.
     """
+    to, subject = params.get("to"), params.get("subject", "")
+    sender = OFFICIAL_SENDER
     try:
-        return await asyncio.to_thread(
+        email = await asyncio.to_thread(
             resend.Emails.send,
             {**params, "from": f"Shopping en Chine <{OFFICIAL_SENDER}>"},
         )
     except Exception as e:
-        if "not verified" in str(e).lower():
-            logger.warning(
-                f"[Email:{tag}] Domaine shoppingenchine.com NON VÉRIFIÉ chez Resend — "
-                f"repli sur {FALLBACK_SENDER} (livraison limitée au compte Resend). "
-                "Vérifiez le domaine sur https://resend.com/domains pour atteindre les clients."
-            )
-            return await asyncio.to_thread(
+        if "not verified" not in str(e).lower():
+            await _log_send(tag, to, subject, sender, error=str(e))
+            raise
+        logger.warning(
+            f"[Email:{tag}] Domaine shoppingenchine.com NON VÉRIFIÉ chez Resend — "
+            f"repli sur {FALLBACK_SENDER} (livraison limitée au compte Resend). "
+            "Vérifiez le domaine sur https://resend.com/domains pour atteindre les clients."
+        )
+        sender = FALLBACK_SENDER
+        try:
+            email = await asyncio.to_thread(
                 resend.Emails.send,
                 {**params, "from": f"Shopping en Chine <{FALLBACK_SENDER}>"},
             )
-        raise
+        except Exception as e2:
+            await _log_send(tag, to, subject, sender, error=str(e2))
+            raise
+    await _log_send(tag, to, subject, sender, resend_id=email.get("id"))
+    return email
 
 
 async def _send(to: str, subject: str, html: str, tag: str) -> bool:

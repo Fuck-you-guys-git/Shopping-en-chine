@@ -80,3 +80,8 @@ export const ordersAPI = {
     bulkTracking: (orderIds, step) =>
         api.put("/orders/bulk-tracking", { order_ids: orderIds, step }).then((r) => r.data),
 };
+
+// --------- Journal des emails (vendeur) ---------
+export const emailsAPI = {
+    log: (limit = 100) => api.get(`/emails/log?limit=${limit}`).then((r) => r.data),
+};

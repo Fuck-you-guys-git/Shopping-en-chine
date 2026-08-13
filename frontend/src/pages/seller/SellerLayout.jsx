@@ -1,5 +1,5 @@
 import { Link, NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
-import { LayoutDashboard, Package, PlusCircle, ShoppingBag, Store, Bell, Search, LogOut } from "lucide-react";
+import { LayoutDashboard, Package, PlusCircle, ShoppingBag, Store, Bell, Search, LogOut, Mail } from "lucide-react";
 import { useState, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -19,6 +19,7 @@ const buildNav = (base) => [
     { to: `${base}/commandes`, icon: ShoppingBag, label: "Commandes", badge: true },
     { to: `${base}/produits`, icon: Package, label: "Produits" },
     { to: `${base}/ajouter`, icon: PlusCircle, label: "Ajouter un produit" },
+    { to: `${base}/emails`, icon: Mail, label: "Emails" },
 ];
 
 const SidebarContent = ({ onNavigate }) => {
@@ -138,6 +139,7 @@ const LayoutInner = () => {
         [`${base}/commandes`]: "Commandes en temps réel",
         [`${base}/produits`]: "Mes produits",
         [`${base}/ajouter`]: "Ajouter un produit",
+        [`${base}/emails`]: "Journal des emails",
         [`${base}/orders`]: "Commandes en temps réel",
         [`${base}/products`]: "Mes produits",
         [`${base}/add`]: "Ajouter un produit",

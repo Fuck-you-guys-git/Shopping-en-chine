@@ -612,3 +612,13 @@ Payments were failing with a **DNS error** because `backend/paxity_router.py` ha
 - TESTS RÉPARÉS (assertions obsolètes, pas de régression réelle) : test_multicurrency_iter27 (32→19 USD, barème actuel), test_iter22 (image=images[0] par design ; Stripe embarqué = client_secret), test_stripe_iter20 (plus de seed p1, order_id séquentiel), test_email_service + test_merchant_email_destination (MERCHANT_EMAIL constante code).
 - TESTÉ iteration_33 : 100% backend (91 pytest + curls) et 100% frontend (gate env, checkout 3 étapes multi-pays, Stripe embarqué chargé, AddProduct complet create/edit/delete, impression tickets blob, filtres boutique, tracking). data-testid ajoutés aux champs adresse (first-name-input, etc.).
 - BACKLOG REFACTORING restant (optionnel) : useMemo sur les values des 5 contextes ; découpe Navbar.jsx / seller Orders.jsx si besoin.
+
+## Update — Feb 2026 (RESET Resend + Journal des emails — testé e2e, statuts DELIVERED prouvés)
+- User : « emails pas toujours reçus » → deep search : pipeline preview OK (Resend acceptait tout), mais clé restreinte à l'envoi = impossible de vérifier la livraison. User a demandé suppression de l'ancienne clé.
+- NOUVELLE CLÉ RESEND (full access) fournie par le user et installée dans backend/.env (RESEND_API_KEY). Domaine shoppingenchine.com VÉRIFIÉ sur ce compte (vérifié par GET /domains).
+- E2E prouvé : webhook Paxity SUCCESS → email marchand (commands@ + Modou.ba.568@gmail.com) = DELIVERED, email client = DELIVERED (statuts lus via API Resend).
+- NOUVEAU : Journal des emails « une fois pour toutes » :
+  - email_service._send_raw journalise CHAQUE tentative dans la collection email_log (tag, to, subject, resend_id, delivery_status, error).
+  - /app/backend/emails_router.py : GET /api/emails/log (JWT vendeur, 401 sans token) avec rafraîchissement AUTO des statuts via API Resend (resend.Emails.get, tolérant 404 anciennes clés, abandon après 3 échecs si clé restreinte) ; POST /api/emails/resend-webhook (événements Resend delivered/bounced/complained, rang de statut anti-écrasement, insert si email inconnu).
+  - Frontend : page /vendeur/emails (pages/seller/Emails.jsx) + lien nav « Emails » (SellerLayout) + route /admin/emails + emailsAPI.log() dans lib/api.js. Badges : Envoyé/Délivré ✓/Ouvert/Rejeté ✗/Marqué spam/Échec (raison affichée).
+- PRODUCTION : au redéploiement, METTRE À JOUR l'env var RESEND_API_KEY du déploiement avec la nouvelle clé (re_d7vM...) sinon la prod continue avec l'ancienne clé morte.

@@ -105,6 +105,10 @@ from products_router import router as products_router, seed_products, migrate_ba
 api_router.include_router(auth_router)
 api_router.include_router(products_router)
 
+# ---- Journal des emails + webhook de livraison Resend ---------------------
+from emails_router import router as emails_router
+api_router.include_router(emails_router)
+
 # Include the api router in the main app
 app.include_router(api_router)
 

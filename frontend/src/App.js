@@ -28,6 +28,7 @@ import Dashboard from "@/pages/seller/Dashboard";
 import Orders from "@/pages/seller/Orders";
 import SellerProducts from "@/pages/seller/Products";
 import AddProduct from "@/pages/seller/AddProduct";
+import SellerEmails from "@/pages/seller/Emails";
 import SellerLogin from "@/pages/seller/Login";
 import { ComingSoon, GATE_ENABLED, isSiteUnlocked } from "@/components/ComingSoon";
 
@@ -122,6 +123,7 @@ function App() {
                                     <Route path="produits" element={<SellerProducts />} />
                                     <Route path="ajouter" element={<AddProduct />} />
                                     <Route path="modifier/:editId" element={<AddProduct />} />
+                                    <Route path="emails" element={<SellerEmails />} />
                                 </Route>
                                 <Route
                                     path="/admin"
@@ -136,6 +138,7 @@ function App() {
                                     <Route path="produits" element={<SellerProducts />} />
                                     <Route path="ajouter" element={<AddProduct />} />
                                     <Route path="modifier/:editId" element={<AddProduct />} />
+                                    <Route path="emails" element={<SellerEmails />} />
                                     <Route path="orders" element={<Orders />} />
                                     <Route path="products" element={<SellerProducts />} />
                                     <Route path="add" element={<AddProduct />} />
