@@ -545,3 +545,10 @@ Payments were failing with a **DNS error** because `backend/paxity_router.py` ha
 - TESTÉ E2E (iteration_28.json, 100% pass) : clic Payer maintenant → fenêtre ouverte → webhook SUCCESS → fenêtre FERMÉE AUTO en ~1-2s + écran confirmation affiché + DB à jour. Seed qa_close_1 nettoyé.
 - Fixes mineurs testing agent : key={it.line || it.id} dans le récap Checkout, <img> conditionnel si image vide (Checkout + CartDrawer).
 - IMPORTANT pour le user : la prod shoppingenchine.com doit être REDÉPLOYÉE pour bénéficier de tout ça. Sur mobile, si l'onglet boutique est en arrière-plan, la fermeture peut prendre quelques secondes de plus (throttling navigateur).
+
+## Update — Feb 2026 (BUG : clients ne reçoivent pas l'email de confirmation — FIXÉ, iteration_29)
+- RCA double : (a) SENDER_EMAIL=onboarding@resend.dev (sandbox Resend → livraison UNIQUEMENT au propriétaire du compte, jamais aux clients) ; (b) domaine shoppingenchine.com NON VÉRIFIÉ chez Resend (envoi depuis serviceclients@ rejeté « domain is not verified »). Clé Resend = restreinte send-only (impossible de lister les domaines par API, 401 restricted_api_key).
+- FIX : email_service.py — _send_raw() essaie D'ABORD serviceclients@shoppingenchine.com, et si « not verified » → repli auto sur onboarding@resend.dev + WARNING log explicite. Utilisé par les emails marchand ET client. SENDER_EMAIL env mis à jour (variable code supprimée, constantes OFFICIAL_SENDER/FALLBACK_SENDER).
+- Dès que le user vérifie le domaine sur resend.com/domains (DNS SPF/DKIM), les clients reçoivent AUTOMATIQUEMENT, sans redéploiement de code (mais prod doit avoir cette version du code → redéployer une fois).
+- TESTÉ (iteration_29, 100%, 5/5 pytest /app/backend/tests/test_email_fallback.py) : webhook SUCCESS → emails marchand+client acceptés par Resend (ids retournés), flags DB ok, idempotence ok (2e webhook = 0 renvoi), cleanup fait.
+- ACTION USER REQUISE : ajouter et vérifier shoppingenchine.com sur https://resend.com/domains (ajouter les enregistrements DNS SPF + DKIM chez son registrar). SANS ÇA les clients ne recevront toujours rien (limite Resend, pas un bug code).

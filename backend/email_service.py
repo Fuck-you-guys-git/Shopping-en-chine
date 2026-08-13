@@ -18,7 +18,6 @@ from motor.motor_asyncio import AsyncIOMotorDatabase
 logger = logging.getLogger(__name__)
 
 RESEND_API_KEY = os.environ.get("RESEND_API_KEY", "")
-SENDER_EMAIL = os.environ.get("SENDER_EMAIL", "onboarding@resend.dev")
 MERCHANT_EMAIL = os.environ.get("MERCHANT_EMAIL", "")
 
 if RESEND_API_KEY:
@@ -97,13 +96,12 @@ async def maybe_send_order_confirmation(db: AsyncIOMotorDatabase, order_id: str)
         return False
 
     params = {
-        "from": f"Shopping en Chine <{SENDER_EMAIL}>",
         "to": [MERCHANT_EMAIL],
         "subject": f"Nouvelle commande payée — {_order_no(order.get('id'))} ({_fmt_price(order.get('amount', 0))})",
         "html": _order_html(order),
     }
     try:
-        email = await asyncio.to_thread(resend.Emails.send, params)
+        email = await _send_raw(params, "merchant")
         logger.info(f"[Email] Order confirmation sent for {order_id} (id={email.get('id')})")
         return True
     except Exception:
@@ -146,14 +144,40 @@ def _wrap(inner: str) -> str:
     """
 
 
+OFFICIAL_SENDER = "serviceclients@shoppingenchine.com"
+FALLBACK_SENDER = "onboarding@resend.dev"  # sandbox : ne livre qu'au propriétaire du compte
+
+
+async def _send_raw(params: dict, tag: str) -> dict:
+    """
+    Envoie via Resend en essayant D'ABORD l'adresse officielle du domaine.
+    Si le domaine n'est pas encore vérifié chez Resend, replie sur l'adresse
+    sandbox (le marchand reçoit au moins la notification) et logge un
+    avertissement explicite. Dès que le domaine est vérifié sur
+    https://resend.com/domains, les clients reçoivent automatiquement.
+    """
+    try:
+        return await asyncio.to_thread(
+            resend.Emails.send,
+            {**params, "from": f"Shopping en Chine <{OFFICIAL_SENDER}>"},
+        )
+    except Exception as e:
+        if "not verified" in str(e).lower():
+            logger.warning(
+                f"[Email:{tag}] Domaine shoppingenchine.com NON VÉRIFIÉ chez Resend — "
+                f"repli sur {FALLBACK_SENDER} (livraison limitée au compte Resend). "
+                "Vérifiez le domaine sur https://resend.com/domains pour atteindre les clients."
+            )
+            return await asyncio.to_thread(
+                resend.Emails.send,
+                {**params, "from": f"Shopping en Chine <{FALLBACK_SENDER}>"},
+            )
+        raise
+
+
 async def _send(to: str, subject: str, html: str, tag: str) -> bool:
     try:
-        email = await asyncio.to_thread(resend.Emails.send, {
-            "from": f"Shopping en Chine <{SENDER_EMAIL}>",
-            "to": [to],
-            "subject": subject,
-            "html": html,
-        })
+        email = await _send_raw({"to": [to], "subject": subject, "html": html}, tag)
         logger.info(f"[Email:{tag}] sent to {to} (id={email.get('id')})")
         return True
     except Exception:
