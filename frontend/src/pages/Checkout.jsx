@@ -63,6 +63,13 @@ export default function Checkout() {
     const [processing, setProcessing] = useState(false);
     const [transaction, setTransaction] = useState(null); // { transaction_id, status, order_id, ... }
     const [complete, setComplete] = useState(false);
+
+    // Remonter en haut de page à chaque changement d'étape (adresse → livraison
+    // → paiement) et à l'affichage des écrans attente/confirmation : sur mobile,
+    // le clic « Continuer » se fait en bas de page et la vue restait en bas.
+    useEffect(() => {
+        window.scrollTo(0, 0); // forme universelle (compatible tous mobiles)
+    }, [step, complete, transaction?.status]);
     const [checkingNow, setCheckingNow] = useState(false);
     const [stripeClientSecret, setStripeClientSecret] = useState(null);
 

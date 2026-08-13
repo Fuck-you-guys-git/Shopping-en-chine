@@ -661,3 +661,8 @@ Payments were failing with a **DNS error** because `backend/paxity_router.py` ha
   2. Checkout.jsx : confirmation persistée dans sessionStorage (COMPLETE_TX_KEY = sec_completed_paxity_tx_v1) — restaurée au montage SI panier vide ; supprimée si panier plein (nouvelle commande) et au démarrage d'un nouveau paiement (handlePayment/handleStripeCheckout).
 - TESTÉ Playwright : confirmation stable après 9s ✓, survit à un rechargement complet ✓, nouvelle commande avec panier plein → formulaire normal + marqueur nettoyé ✓.
 - ⚠️ REDEPLOY requis.
+
+## Update — Feb 2026 (scroll haut de page entre les étapes du checkout)
+- User (vidéo) : après « Continuer » sur mobile, la vue restait en bas de page (position du bouton) au lieu de montrer le haut de l'étape suivante.
+- Fix : Checkout.jsx — useEffect window.scrollTo(0,0) sur [step, complete, transaction?.status] (placé APRÈS les déclarations de transaction/complete pour éviter une TDZ). Testé : passage étape 2 → scrollY≈0.
+- ⚠️ REDEPLOY requis.
