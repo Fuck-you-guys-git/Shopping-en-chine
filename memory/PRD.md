@@ -777,3 +777,11 @@ Payments were failing with a **DNS error** because `backend/paxity_router.py` ha
 - Les 2 boutons d'impression (bulk + dialog) passent par le même printTickets → un seul template.
 - TESTÉ : popup Blob ouvert via Playwright sur commande #1057 — screenshot du ticket conforme à la photo, texte « 14 août 2026, EXPÉDIER À, QUANTITÉ, OUVRÉS » parfait, source ASCII pur.
 - ⚠️ CRITIQUE : le user voit encore les caractères illisibles en PRODUCTION car elle tourne avec l'ancien code → REDEPLOY OBLIGATOIRE.
+
+## Update — Feb 2026 (E-ticket : lisibilité + variantes sous le produit)
+- User (photo ticket #1258, 7 articles) : texte trop fin/petit illisible ; tailles/couleurs doivent être SOUS le nom du produit.
+- CAUSE : mode « dense » (7-12 articles) réduisait les polices (12px/10.5px) et passait les variantes en ligne (flex-direction:row).
+- FIX Orders.jsx (CSS ticket) : tailles/graisses augmentées partout (nom article 16px/800 normal, 14px dense, 11.5px ultra ; adresses 600 ; qty 800 ; règles 2px). Variantes TOUJOURS en colonne sous le nom (suppression des overrides row dense/ultra).
+- FIX colors.js : nearestColorName(hex) — jamais de code hex affiché : hex hors palette → couleur de la palette la plus proche (distance RGB, ex #000000→Noir, #7B1F2B→Bordeaux). Utilisé dans le ticket ET le dialog commande (remplace colorName||hex).
+- TESTÉ : screenshot ticket 7 articles avec variantes — gras lisible, « Taille 41 · Noir » et « Bordeaux » sous les noms, tout tient sur l'étiquette 100×150. Commande de test supprimée.
+- ⚠️ REDEPLOY requis.

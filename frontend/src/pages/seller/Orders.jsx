@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useSeller } from "@/context/SellerContext";
 import { formatCfa as formatPrice } from "@/lib/locale";
-import { colorName } from "@/lib/colors";
+import { nearestColorName } from "@/lib/colors";
 import { toast } from "sonner";
 
 const timeAgo = (ts) => {
@@ -34,10 +34,11 @@ const ticketHtml = (o) => {
     const dateStr = new Date(o.createdAt).toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" });
     const itemRow = (it) => {
         const [nm, ...rest] = String(it.name || "").split(" — ");
-        // Variante : champs structurés (couleur/taille) prioritaires, sinon suffixe du nom
+        // Variante : champs structurés (couleur/taille) prioritaires, sinon suffixe du nom.
+        // Couleur toujours en toutes lettres (jamais de code hex).
         const structured = [
             it.size ? `Taille ${it.size}` : null,
-            it.color ? (colorName(it.color) || it.color) : null,
+            it.color ? nearestColorName(it.color) || null : null,
         ].filter(Boolean).join(" · ");
         const variant = structured || rest.join(" — ");
         const qty = Number(it.qty) || 1; // coercition numérique : aucune injection HTML possible
@@ -111,57 +112,56 @@ const printTickets = (ordersToPrint) => {
         .top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:3mm}
         .ship{font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:.5px;margin-bottom:3mm;border:1.5px solid #000;padding:1.5mm 2.5mm;align-self:flex-start}
         .brand{font-weight:800;font-size:20px;letter-spacing:.5px}
-        .meta{font-size:12px;font-weight:500;text-align:right;line-height:1.4}
+        .meta{font-size:13px;font-weight:700;text-align:right;line-height:1.4}
         .cols{display:flex;gap:5mm}
         .col{flex:1;min-width:0}
-        .label{font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:1px;margin-bottom:1mm}
-        .who{font-size:15px;font-weight:700;line-height:1.3}
-        .addr{font-size:14px;font-weight:400;line-height:1.35}
-        .rule{border-top:1.5px solid #000;margin:3mm 0 2.5mm}
-        .items-head{display:flex;justify-content:space-between;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:1px;margin-bottom:2mm}
-        .item{display:flex;align-items:center;gap:3mm;margin-bottom:2mm}
+        .label{font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:1px;margin-bottom:1mm}
+        .who{font-size:16px;font-weight:800;line-height:1.3}
+        .addr{font-size:14px;font-weight:600;line-height:1.35}
+        .rule{border-top:2px solid #000;margin:3mm 0 2.5mm}
+        .items-head{display:flex;justify-content:space-between;font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:1px;margin-bottom:2mm}
+        .item{display:flex;align-items:flex-start;gap:3mm;margin-bottom:2.2mm}
+        /* Taille / couleur TOUJOURS sous le nom du produit (jamais en ligne) */
         .item-txt{flex:1;min-width:0;display:flex;flex-direction:column}
-        .item-name{font-size:15px;font-weight:700;line-height:1.3}
-        .item-var{font-size:13px;font-weight:400;line-height:1.3}
-        .item-qty{font-size:13px;font-weight:600;white-space:nowrap;margin-left:auto}
+        .item-name{font-size:16px;font-weight:800;line-height:1.25}
+        .item-var{font-size:13px;font-weight:700;line-height:1.3}
+        .item-qty{font-size:14px;font-weight:800;white-space:nowrap;margin-left:auto}
         /* Mode DENSE (7-12 articles) : tout tient sur la meme etiquette */
-        .ticket--dense .brand{font-size:16px}
-        .ticket--dense .meta{font-size:11px}
+        .ticket--dense .brand{font-size:17px}
+        .ticket--dense .meta{font-size:12px}
         .ticket--dense .top{margin-bottom:2mm}
-        .ticket--dense .ship{font-size:10.5px;margin-bottom:2mm}
-        .ticket--dense .label{font-size:10px;margin-bottom:.5mm}
-        .ticket--dense .who{font-size:13px}
-        .ticket--dense .addr{font-size:11.5px;line-height:1.3}
+        .ticket--dense .ship{font-size:11px;margin-bottom:2mm}
+        .ticket--dense .label{font-size:10.5px;margin-bottom:.5mm}
+        .ticket--dense .who{font-size:14px}
+        .ticket--dense .addr{font-size:12.5px;line-height:1.3}
         .ticket--dense .rule{margin:2mm 0 1.5mm}
-        .ticket--dense .items-head{font-size:10px;margin-bottom:1.5mm}
-        .ticket--dense .item{margin-bottom:1.2mm;gap:2mm}
-        .ticket--dense .item-txt{flex-direction:row;align-items:baseline;gap:4px;flex-wrap:wrap}
-        .ticket--dense .item-name{font-size:12px}
-        .ticket--dense .item-var{font-size:10.5px}
-        .ticket--dense .item-qty{font-size:11px}
+        .ticket--dense .items-head{font-size:11px;margin-bottom:1.5mm}
+        .ticket--dense .item{margin-bottom:1.4mm;gap:2mm}
+        .ticket--dense .item-name{font-size:14px}
+        .ticket--dense .item-var{font-size:11.5px}
+        .ticket--dense .item-qty{font-size:12px}
         .ticket--dense .thanks{font-size:11px;margin-bottom:1mm}
         .ticket--dense .fbrand{font-size:11px}
         .ticket--dense .fline{font-size:10px;line-height:1.35}
         /* Mode ULTRA (13+ articles) */
-        .ticket--ultra .brand{font-size:14px}
-        .ticket--ultra .meta{font-size:10px}
+        .ticket--ultra .brand{font-size:15px}
+        .ticket--ultra .meta{font-size:10.5px}
         .ticket--ultra .top{margin-bottom:1.5mm}
-        .ticket--ultra .ship{font-size:9.5px;margin-bottom:1.5mm}
-        .ticket--ultra .label{font-size:9px;margin-bottom:.5mm}
-        .ticket--ultra .who{font-size:11.5px}
-        .ticket--ultra .addr{font-size:10.5px;line-height:1.25}
+        .ticket--ultra .ship{font-size:10px;margin-bottom:1.5mm}
+        .ticket--ultra .label{font-size:9.5px;margin-bottom:.5mm}
+        .ticket--ultra .who{font-size:12px}
+        .ticket--ultra .addr{font-size:11px;line-height:1.25}
         .ticket--ultra .rule{margin:1.5mm 0 1mm}
-        .ticket--ultra .items-head{font-size:9px;margin-bottom:1mm}
-        .ticket--ultra .item{margin-bottom:.8mm;gap:2mm}
-        .ticket--ultra .item-txt{flex-direction:row;align-items:baseline;gap:3px;flex-wrap:wrap}
-        .ticket--ultra .item-name{font-size:10.5px}
-        .ticket--ultra .item-var{font-size:9.5px}
-        .ticket--ultra .item-qty{font-size:9.5px}
+        .ticket--ultra .items-head{font-size:9.5px;margin-bottom:1mm}
+        .ticket--ultra .item{margin-bottom:1mm;gap:2mm}
+        .ticket--ultra .item-name{font-size:11.5px}
+        .ticket--ultra .item-var{font-size:10px}
+        .ticket--ultra .item-qty{font-size:10.5px}
         .ticket--ultra .thanks{font-size:10px;margin-bottom:.5mm}
         .ticket--ultra .fbrand{font-size:10px}
         .ticket--ultra .fline{font-size:9px;line-height:1.3}
         .foot{text-align:center;margin-top:1mm}
-        .thanks{font-size:14px;font-weight:400;margin-bottom:2mm}
+        .thanks{font-size:14px;font-weight:700;margin-bottom:2mm}
         .fbrand{font-size:14px;font-weight:800;letter-spacing:.5px;margin-bottom:.5mm}
         .fline{font-size:13px;font-weight:400;line-height:1.45}
         @media screen{body{padding:16px;background:#eee}.ticket{margin:0 auto 14px;background:#fff;box-shadow:0 1px 6px rgba(0,0,0,.2)}.print-hint{display:block;max-width:100mm;margin:0 auto 12px;padding:10px 14px;background:#fff8e1;border:1px solid #e0c36a;border-radius:8px;font-size:13px;line-height:1.5}}
@@ -468,10 +468,10 @@ export default function Orders() {
                                                     <p className="text-xs text-muted-foreground flex items-center gap-1.5 flex-wrap" data-testid={`order-item-variant-${i}`}>
                                                         Qté {it.qty}
                                                         {it.size && <span>· Taille {it.size}</span>}
-                                                        {it.color ? (
+                                                        {it.color && nearestColorName(it.color) ? (
                                                             <span className="inline-flex items-center gap-1">
                                                                 · <span className="inline-block h-3 w-3 rounded-full border border-border shrink-0" style={{ background: it.color }} />
-                                                                {colorName(it.color) || it.color}
+                                                                {nearestColorName(it.color)}
                                                             </span>
                                                         ) : (!it.size && variantFromName ? <span>· {variantFromName}</span> : null)}
                                                     </p>

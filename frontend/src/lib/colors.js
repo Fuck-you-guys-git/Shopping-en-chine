@@ -25,3 +25,21 @@ export const COLOR_PALETTE = [
 
 export const colorName = (hex) =>
     COLOR_PALETTE.find((c) => c.hex.toLowerCase() === (hex || "").toLowerCase())?.name || "";
+
+// Nom de couleur JAMAIS en hex : pour un code hors palette, retourne la
+// couleur de la palette la plus proche (distance RGB). "" si hex invalide.
+export const nearestColorName = (hex) => {
+    const exact = colorName(hex);
+    if (exact) return exact;
+    const m = /^#?([0-9a-f]{6})$/i.exec(String(hex || "").trim());
+    if (!m) return "";
+    const [r, g, b] = [0, 2, 4].map((i) => parseInt(m[1].slice(i, i + 2), 16));
+    let best = "";
+    let bestD = Infinity;
+    for (const c of COLOR_PALETTE) {
+        const [r2, g2, b2] = [1, 3, 5].map((i) => parseInt(c.hex.slice(i, i + 2), 16));
+        const d = (r - r2) ** 2 + (g - g2) ** 2 + (b - b2) ** 2;
+        if (d < bestD) { bestD = d; best = c.name; }
+    }
+    return best;
+};
