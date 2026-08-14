@@ -24,6 +24,9 @@ import { CheckoutSummary } from "@/components/checkout/CheckoutSummary";
 // l'app Wave/Orange Money et que le navigateur recharge la page au retour,
 // on restaure l'attente et on affiche la confirmation dès que c'est payé.
 const PENDING_TX_KEY = "sec_pending_paxity_tx_v1";
+// Paiement par carte (Stripe) désactivé à la demande du marchand.
+// Repasser à true pour réafficher le bouton « Carte bancaire » au checkout.
+const CARD_PAYMENT_ENABLED = false;
 // Confirmation persistée en session : survit au remontage du composant
 // (changement de langue/devise) et au rechargement de la page.
 const COMPLETE_TX_KEY = "sec_completed_paxity_tx_v1";
@@ -568,10 +571,10 @@ export default function Checkout() {
                                     setPaymentMethod(m.code);
                                     if (m.prefix !== "*") setPrefix(m.prefix);
                                 }}
-                                onSelectCard={() => setPaymentMethod("CARD")}
+                                onSelectCard={CARD_PAYMENT_ENABLED ? () => setPaymentMethod("CARD") : undefined}
                             />
 
-                            {paymentMethod === "CARD" && (
+                            {CARD_PAYMENT_ENABLED && paymentMethod === "CARD" && (
                                 <StripeCardPanel
                                     items={items}
                                     processing={processing}

@@ -28,17 +28,20 @@ export const PaymentMethodPicker = ({ methods = [], value, onSelect, onSelectCar
                     </button>
                 );
             })}
-            <button
-                type="button"
-                data-testid="stripe-card-method-btn"
-                onClick={onSelectCard}
-                className={`flex flex-col items-center gap-1.5 p-3 rounded-xl border-2 transition-all ${value === "CARD" ? "border-primary bg-primary/5" : "border-border hover:border-foreground/30"}`}
-            >
-                <span className="h-10 w-10 rounded-full flex items-center justify-center bg-indigo-500/10">
-                    <CreditCard className="h-4 w-4 text-indigo-600" />
-                </span>
-                <span className="text-xs font-medium text-center leading-tight">{t("Carte bancaire")}</span>
-            </button>
+            {/* Paiement par carte (Stripe) : affiché seulement si activé */}
+            {onSelectCard && (
+                <button
+                    type="button"
+                    data-testid="stripe-card-method-btn"
+                    onClick={onSelectCard}
+                    className={`flex flex-col items-center gap-1.5 p-3 rounded-xl border-2 transition-all ${value === "CARD" ? "border-primary bg-primary/5" : "border-border hover:border-foreground/30"}`}
+                >
+                    <span className="h-10 w-10 rounded-full flex items-center justify-center bg-indigo-500/10">
+                        <CreditCard className="h-4 w-4 text-indigo-600" />
+                    </span>
+                    <span className="text-xs font-medium text-center leading-tight">{t("Carte bancaire")}</span>
+                </button>
+            )}
         </div>
     </div>
 );

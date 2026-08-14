@@ -666,3 +666,10 @@ Payments were failing with a **DNS error** because `backend/paxity_router.py` ha
 - User (vidéo) : après « Continuer » sur mobile, la vue restait en bas de page (position du bouton) au lieu de montrer le haut de l'étape suivante.
 - Fix : Checkout.jsx — useEffect window.scrollTo(0,0) sur [step, complete, transaction?.status] (placé APRÈS les déclarations de transaction/complete pour éviter une TDZ). Testé : passage étape 2 → scrollY≈0.
 - ⚠️ REDEPLOY requis.
+
+## Update — Feb 2026 (Poids retiré + Stripe désactivé au checkout)
+- Fiche produit : ligne « Poids · 280 g » supprimée (ProductDetail.jsx onglet Caractéristiques).
+- Paiement carte (Stripe) RETIRÉ du checkout à la demande du user : flag CARD_PAYMENT_ENABLED=false dans Checkout.jsx (repasser à true pour réactiver — tout le code Stripe backend+frontend est conservé). PaymentMethodPicker n'affiche le bouton Carte que si onSelectCard est fourni.
+- Testé : bouton Carte absent, 5 méthodes mobile money intactes, checkout complet OK.
+- NOTE : les clients Europe/USA n'ont plus d'option carte — mobile money uniquement.
+- ⚠️ REDEPLOY requis.

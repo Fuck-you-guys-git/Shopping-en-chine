@@ -355,7 +355,6 @@ export default function ProductDetail() {
                                 {[
                                     [t("Référence"), `SEC-${product.id.toUpperCase()}`],
                                     ["Catégorie", category?.name],
-                                    [t("Poids"), "280 g"],
                                     [t("Origine"), t("Chine · Contrôle qualité UE")],
                                     [t("Matériaux"), t("Premium, hypoallergéniques")],
                                 ].map(([k, v]) => (
