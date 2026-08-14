@@ -30,6 +30,18 @@ async def next_order_number(db) -> str:
     return str(999 + doc["seq"])
 
 
+async def next_test_order_number(db) -> str:
+    """Numéro de commande de TEST (environnement de preview) : TEST-101, TEST-102…
+    Compteur séparé — ne consomme JAMAIS le compteur réel des vraies commandes."""
+    doc = await db.counters.find_one_and_update(
+        {"_id": "test_order_number"},
+        {"$inc": {"seq": 1}},
+        upsert=True,
+        return_document=ReturnDocument.AFTER,
+    )
+    return f"TEST-{100 + doc['seq']}"
+
+
 class BulkTrackingUpdate(BaseModel):
     order_ids: list[str]
     step: str

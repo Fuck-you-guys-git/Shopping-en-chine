@@ -724,3 +724,13 @@ Payments were failing with a **DNS error** because `backend/paxity_router.py` ha
 - NOTE : pas de décrément automatique du stock à la commande (non demandé) — gestion manuelle par le vendeur.
 - TESTÉ : API create/get/list OK (stock persisté), screenshot fiche produit stock=0 → bandeau + bouton « Out of stock » désactivé ✓, formulaire vendeur affiche la section Stock ✓. Produit de test supprimé.
 - ⚠️ REDEPLOY requis pour la production.
+
+## Update — Feb 2026 (les commandes de TEST ne consomment plus de vrais numéros)
+- User (screenshot emails) : #1057/#1058 (tests preview) mélangés avec #1254 (vraie commande prod) dans la boîte mail → « ne donne plus jamais de numéros de commande aux tests ».
+- CAUSE : preview et production ont chacune leur compteur ; les 2 environnements envoient les emails à la même boîte marchand.
+- FIX : détection d'environnement au moment de la création de commande — _is_test_env(request) (paxity_router.py) : host x-forwarded-host contient .preview.emergentagent.com ou localhost/127. → order.is_test=True (payin mobile ET card/init).
+- _finalize_order_number : si order.is_test → next_test_order_number (orders_router.py, compteur séparé db.counters _id=test_order_number) → TEST-101, TEST-102… Le VRAI compteur (order_number) n'est jamais touché par les tests.
+- Emails (email_service.py) : _test_tag(order) préfixe « [TEST] » les sujets (marchand, client, relance panier, suivi) pour toute commande is_test / TEST-xxx / tmp_. _order_no affiche #TEST-101.
+- Frontend utils.js orderNo() : TEST-xxx → « #TEST-101 » (dashboard vendeur).
+- TESTÉ e2e preview : webhook succès sur commande is_test → id TEST-101, compteur réel inchangé (59), email « [TEST] Nouvelle commande payée — #TEST-101 » ✓ ; commande prod-like (sans flag) → #1059 séquentiel, email normal ✓. Régression : 31 tests verts + nouveau tests/test_test_order_numbers.py (5 verts).
+- ⚠️ REDEPLOY requis (sans effet visible en prod : shoppingenchine.com n'est jamais détecté comme test).

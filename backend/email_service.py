@@ -41,7 +41,15 @@ def _fmt_price(amount) -> str:
 def _order_no(order_id) -> str:
     """Numéro de commande affiché : #1000 (anciens ids ord_xxx inchangés)."""
     s = str(order_id or "")
-    return f"#{s}" if s.isdigit() else s
+    return f"#{s}" if (s.isdigit() or s.startswith("TEST-")) else s
+
+
+def _test_tag(order) -> str:
+    """Préfixe [TEST] pour les commandes de l'environnement de preview —
+    évite toute confusion avec les vraies commandes dans la boîte mail."""
+    oid = str((order or {}).get("id") or "")
+    is_test = (order or {}).get("is_test") or oid.startswith(("TEST-", "tmp_"))
+    return "[TEST] " if is_test else ""
 
 
 def _order_html(order: dict) -> str:
@@ -102,7 +110,7 @@ async def maybe_send_order_confirmation(db: AsyncIOMotorDatabase, order_id: str)
 
     params = {
         "to": MERCHANT_RECIPIENTS,
-        "subject": f"Nouvelle commande payée — {_order_no(order.get('id'))} ({_fmt_price(order.get('amount', 0))})",
+        "subject": f"{_test_tag(order)}Nouvelle commande payée — {_order_no(order.get('id'))} ({_fmt_price(order.get('amount', 0))})",
         "html": _order_html(order),
     }
     try:
@@ -293,7 +301,7 @@ async def maybe_send_customer_confirmation(db: AsyncIOMotorDatabase, order_id: s
         </p>
         {f'<p style="margin:22px 0 0;text-align:center;"><a href="{track_link}" style="display:inline-block;background:#c64c3a;color:#ffffff;padding:14px 34px;border-radius:99px;text-decoration:none;font-size:15px;font-weight:bold;">Suivre ma commande</a></p>' if track_link else ''}
     """
-    ok = await _send(to, f"Commande confirmée — {_order_no(order.get('id'))}", _wrap(inner), "customer-confirm")
+    ok = await _send(to, f"{_test_tag(order)}Commande confirmée — {_order_no(order.get('id'))}", _wrap(inner), "customer-confirm")
     if not ok:
         await db.orders.update_one({"id": order_id}, {"$set": {"customer_email_sent": False}})
     return ok
@@ -319,7 +327,7 @@ async def send_recovery_email(db: AsyncIOMotorDatabase, order: dict) -> bool:
         {f'<p style="margin:0;"><a href="{retry_link}" style="display:inline-block;background:#c64c3a;color:#fff;padding:12px 24px;border-radius:99px;text-decoration:none;font-size:15px;font-weight:bold;">Reprendre ma commande en 1 clic</a></p>' if retry_link else ''}
         <p style="margin:18px 0 0;font-size:12px;color:#999;">Wave, Orange Money, MTN ou carte bancaire acceptés.</p>
     """
-    return await _send(to, "Votre panier vous attend — Shopping en Chine", _wrap(inner), "recovery")
+    return await _send(to, f"{_test_tag(order)}Votre panier vous attend — Shopping en Chine", _wrap(inner), "recovery")
 
 
 async def send_tracking_update(order: dict, step_label: str) -> bool:
@@ -338,4 +346,4 @@ async def send_tracking_update(order: dict, step_label: str) -> bool:
         </p>
         {f'<p style="margin:0;"><a href="{track_link}" style="display:inline-block;background:#1d1d1d;color:#fff;padding:10px 20px;border-radius:99px;text-decoration:none;font-size:14px;">Voir le suivi complet</a></p>' if track_link else ''}
     """
-    return await _send(to, f"Suivi de commande — {step_label}", _wrap(inner), "tracking")
+    return await _send(to, f"{_test_tag(order)}Suivi de commande — {step_label}", _wrap(inner), "tracking")

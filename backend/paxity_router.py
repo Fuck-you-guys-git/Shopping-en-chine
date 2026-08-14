@@ -45,7 +45,7 @@ from motor.motor_asyncio import AsyncIOMotorDatabase
 from pydantic import BaseModel, Field
 
 from email_service import maybe_send_order_confirmation, maybe_send_customer_confirmation
-from orders_router import next_order_number
+from orders_router import next_order_number, next_test_order_number
 
 logger = logging.getLogger(__name__)
 
@@ -93,6 +93,14 @@ def _public_ipn_url(request: Request) -> str:
         return ""
     proto = (request.headers.get("x-forwarded-proto") or "https").split(",")[0].strip()
     return f"{proto}://{host}/api/paxity/webhook"
+
+
+def _is_test_env(request: Request) -> bool:
+    """Environnement de test (preview Emergent / localhost) : les commandes
+    y reçoivent des numéros TEST-xxx et ne consomment JAMAIS un vrai numéro."""
+    host = (request.headers.get("x-forwarded-host") or request.headers.get("host") or "")
+    host = host.split(",")[0].strip().lower()
+    return ".preview.emergentagent.com" in host or host.startswith(("localhost", "127."))
 # Relative API paths on PAXITY_BASE_URL
 PAXITY_PAYIN_PATH = "/transaction/pay-in-mobile"
 PAXITY_BALANCE_PATH = "/paxity/balance"
@@ -489,11 +497,12 @@ def _validate_payin(payload: PaxityPayinRequest) -> dict:
 
 
 async def _persist_order(db: AsyncIOMotorDatabase, order_id: str, payload: PaxityPayinRequest,
-                         tx: "PaxityTransaction", currency: str) -> None:
+                         tx: "PaxityTransaction", currency: str, is_test: bool = False) -> None:
     """Persist the order first (source of truth even if Paxity is down)."""
     try:
         await db.orders.insert_one({
             "id": order_id,
+            "is_test": is_test,
             "customer": payload.customer.model_dump(),
             "items": [it.model_dump() for it in payload.items],
             "amount": payload.amount,
@@ -591,7 +600,12 @@ async def _finalize_order_number(db: AsyncIOMotorDatabase, order_id: str) -> str
     """
     if not str(order_id).startswith("tmp_"):
         return order_id
-    new_no = await next_order_number(db)
+    # Commande créée en preview/localhost → numéro TEST-xxx (compteur séparé)
+    order = await db.orders.find_one({"id": order_id}, {"_id": 0, "is_test": 1})
+    if order and order.get("is_test"):
+        new_no = await next_test_order_number(db)
+    else:
+        new_no = await next_order_number(db)
     res = await db.orders.update_one({"id": order_id}, {"$set": {"id": new_no, "tmp_id": order_id}})
     if res.matched_count:
         await db.paxity_transactions.update_many({"order_id": order_id}, {"$set": {"order_id": new_no}})
@@ -651,7 +665,7 @@ async def create_payin(payload: PaxityPayinRequest, request: Request):
         description=payload.description,
     )
 
-    await _persist_order(db, order_id, payload, tx, currency)
+    await _persist_order(db, order_id, payload, tx, currency, _is_test_env(request))
 
     body = _build_payin_body(payload, method_meta, currency, order_id, request)
     logger.info(
@@ -889,7 +903,7 @@ async def init_card_payment(payload: PaxityCardInitRequest, request: Request):
         customer_email=payload.customer.email,
         description=payload.description,
     )
-    await _persist_order(db, order_id, payload, tx, currency)
+    await _persist_order(db, order_id, payload, tx, currency, _is_test_env(request))
     try:
         await db.paxity_transactions.insert_one(tx.model_dump(mode="json"))
     except Exception:
