@@ -734,3 +734,12 @@ Payments were failing with a **DNS error** because `backend/paxity_router.py` ha
 - Frontend utils.js orderNo() : TEST-xxx → « #TEST-101 » (dashboard vendeur).
 - TESTÉ e2e preview : webhook succès sur commande is_test → id TEST-101, compteur réel inchangé (59), email « [TEST] Nouvelle commande payée — #TEST-101 » ✓ ; commande prod-like (sans flag) → #1059 séquentiel, email normal ✓. Régression : 31 tests verts + nouveau tests/test_test_order_numbers.py (5 verts).
 - ⚠️ REDEPLOY requis (sans effet visible en prod : shoppingenchine.com n'est jamais détecté comme test).
+
+## Update — Feb 2026 (Corrections sécurité : XSS e-tickets + hooks React)
+- Orders.jsx : document.write avait déjà été remplacé (Blob URL + esc()) lors du fix UTF-8 ; durci it.qty via Number(it.qty)||1 → plus aucune interpolation non échappée dans le HTML du ticket.
+- CartContext.jsx : addItem/removeItem/updateQty/clear mémoïsés en useCallback (identités stables) — cause racine des deps manquantes.
+- PaymentSuccess.jsx : deps [sessionId, clear] ; RetryOrder.jsx : deps [orderId, addItem, clear, navigate, products] (garde ran.current). Checkout.jsx était déjà conforme (audit eslint react-hooks/exhaustive-deps : 0 warning sur tout src/).
+- data-testid ajoutés (remarques agent de test) : cart-remove-{line}, cart-clear-btn, cart-checkout-btn, paxity-method-btn-{code}.
+- TESTÉ : testing agent iteration_34.json — 100% frontend, 0 erreur console. Panier (ajout 2 sources, +/- qty, suppression, vidage), checkout 3 étapes (arrêt avant paiement réel), impression tickets vendeur (blob HTML inspecté : 0 <script>, nom client échappé), rupture de stock OK.
+- Reste au backlog refactoring : découpage des grosses fonctions de paxity_router.py (non demandé explicitement).
+- ⚠️ REDEPLOY requis pour la production.

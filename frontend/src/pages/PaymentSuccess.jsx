@@ -45,7 +45,7 @@ export default function PaymentSuccess() {
         };
         poll();
         return () => { cancelled = true; };
-    }, [sessionId]);
+    }, [sessionId, clear]);
 
     return (
         <div className="container mx-auto px-5 py-24 max-w-lg text-center" data-testid="payment-success-page">

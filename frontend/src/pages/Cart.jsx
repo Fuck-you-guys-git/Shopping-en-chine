@@ -73,7 +73,7 @@ export default function Cart() {
                                             {t("En stock")}
                                         </p>
                                     </div>
-                                    <button onClick={() => removeItem(item.line)} className="text-muted-foreground hover:text-destructive shrink-0">
+                                    <button data-testid={`cart-remove-${item.line}`} onClick={() => removeItem(item.line)} className="text-muted-foreground hover:text-destructive shrink-0">
                                         <Trash2 className="h-4 w-4" />
                                     </button>
                                 </div>
@@ -92,7 +92,7 @@ export default function Cart() {
                             </div>
                         </div>
                     ))}
-                    <button onClick={clear} className="text-xs text-muted-foreground hover:text-destructive">{t("Vider le panier")}</button>
+                    <button data-testid="cart-clear-btn" onClick={clear} className="text-xs text-muted-foreground hover:text-destructive">{t("Vider le panier")}</button>
                 </div>
 
                 <aside>
@@ -129,7 +129,7 @@ export default function Cart() {
                             <span className="font-display text-3xl font-semibold">{fmtAmount(cartDisplayTotal(items) * (discount > 0 ? 0.9 : 1))}</span>
                         </div>
                         <Button asChild size="lg" className="w-full bg-ink text-ink-foreground hover:bg-ink/90 rounded-full h-12">
-                            <Link to="/commande">{t("Passer commande")}</Link>
+                            <Link data-testid="cart-checkout-btn" to="/commande">{t("Passer commande")}</Link>
                         </Button>
                         <div className="flex items-center justify-center gap-4 text-muted-foreground opacity-70">
                             <i className="fa-brands fa-cc-visa text-2xl" />

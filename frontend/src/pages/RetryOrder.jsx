@@ -40,7 +40,7 @@ export default function RetryOrder() {
                 setError("Commande introuvable ou expirée.");
             }
         })();
-    }, [orderId]);
+    }, [orderId, addItem, clear, navigate, products]);
 
     return (
         <div className="container mx-auto px-5 py-24 text-center" data-testid="retry-order-page">

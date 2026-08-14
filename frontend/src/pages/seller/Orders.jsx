@@ -28,13 +28,14 @@ const ticketHtml = (o) => {
     const itemRow = (it) => {
         const [nm, ...rest] = String(it.name || "").split(" — ");
         const variant = rest.join(" — ");
+        const qty = Number(it.qty) || 1; // coercition numérique : aucune injection HTML possible
         return `
             <div class="item">
                 <span class="item-txt">
                     <span class="item-name">${esc(nm)}</span>
                     ${variant ? `<span class="item-var">${esc(variant)}</span>` : ""}
                 </span>
-                <span class="item-qty">${it.qty} sur ${it.qty}</span>
+                <span class="item-qty">${qty} sur ${qty}</span>
             </div>`;
     };
 

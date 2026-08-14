@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useMemo, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 
 const CartContext = createContext(null);
 const STORAGE_KEY = "sec_cart_v1";
@@ -23,7 +23,9 @@ export const CartProvider = ({ children }) => {
         localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
     }, [items]);
 
-    const addItem = (product, qty = 1, size = null, color = null) => {
+    // Fonctions mémoïsées (identité stable) : utilisables sans risque dans les
+    // tableaux de dépendances des useEffect (polling paiement, restauration panier…)
+    const addItem = useCallback((product, qty = 1, size = null, color = null) => {
         // On ne stocke pas la galerie complète (base64 lourdes) dans le panier
         const { images: _images, ...slim } = product;
         const line = lineKey(product.id, size, color);
@@ -36,14 +38,14 @@ export const CartProvider = ({ children }) => {
             }
             return [...prev, { ...slim, qty, size: size || undefined, color: color || undefined, line }];
         });
-    };
+    }, []);
 
-    const removeItem = (line) => setItems((prev) => prev.filter((i) => i.line !== line));
-    const updateQty = (line, qty) =>
+    const removeItem = useCallback((line) => setItems((prev) => prev.filter((i) => i.line !== line)), []);
+    const updateQty = useCallback((line, qty) =>
         setItems((prev) =>
             prev.map((i) => (i.line === line ? { ...i, qty: Math.max(1, qty) } : i)),
-        );
-    const clear = () => setItems([]);
+        ), []);
+    const clear = useCallback(() => setItems([]), []);
 
     const subtotal = useMemo(
         () => items.reduce((s, i) => s + i.price * i.qty, 0),

@@ -14,6 +14,7 @@ export const PaymentMethodPicker = ({ methods = [], value, onSelect, onSelectCar
                     <button
                         key={m.code}
                         type="button"
+                        data-testid={`paxity-method-btn-${m.code}`}
                         onClick={() => onSelect(m)}
                         className={`flex flex-col items-center gap-1.5 p-3 rounded-xl border-2 transition-all ${active ? "border-primary bg-primary/5" : "border-border hover:border-foreground/30"}`}
                     >
