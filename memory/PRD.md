@@ -769,3 +769,11 @@ Payments were failing with a **DNS error** because `backend/paxity_router.py` ha
 - Traductions EN ajoutées (Choose a color, Please choose a color…).
 - TESTÉ : card/init persiste color/size ✓, webhook → TEST-102 ✓, dialog Dashboard affiche « Qté 1 · Taille M · 🔴 Rouge » (screenshot) ✓, fiche produit bloque sans couleur (toast) ✓, carte boutique « Choose a color » ✓. Régression pytest verte. Données de test nettoyées.
 - ⚠️ REDEPLOY requis pour la production.
+
+## Update — Feb 2026 (E-ticket : modèle photo + correctif DÉFINITIF caractères illisibles)
+- User (photo d'un ticket imprimé) : « utilise ce modèle pour le e-ticket et plus jamais de &$):)/ (caractères illisibles), règle ça pour de bon ».
+- CORRECTIF DÉFINITIF mojibake : esc() (Orders.jsx) convertit désormais TOUT caractère non-ASCII (é, à, û, ·, –…) en entité HTML numérique (&#233;…). Tous les textes statiques du template (Expédier à, Quantité, jours ouvrés, réglages d'impression) sont écrits en entités ; commentaires CSS ASCII-ifiés. => Le document d'impression est 100 % ASCII : l'encodage ne peut plus se casser quel que soit le navigateur/pilote (meta charset + blob charset conservés en plus).
+- Modèle photo restauré : encadré noir autour de « Livraison : STANDARD/EXPRESS (…) » (.ship avec border + align-self:flex-start), en-têtes « ARTICLES / QUANTITÉ » sans compteur. Le reste (marque + n°/date, colonnes EXPÉDIER À/FACTURER À, « 1 sur 1 », pied Merci pour votre achat/Guangzhou) était déjà conforme.
+- Les 2 boutons d'impression (bulk + dialog) passent par le même printTickets → un seul template.
+- TESTÉ : popup Blob ouvert via Playwright sur commande #1057 — screenshot du ticket conforme à la photo, texte « 14 août 2026, EXPÉDIER À, QUANTITÉ, OUVRÉS » parfait, source ASCII pur.
+- ⚠️ CRITIQUE : le user voit encore les caractères illisibles en PRODUCTION car elle tourne avec l'ancien code → REDEPLOY OBLIGATOIRE.

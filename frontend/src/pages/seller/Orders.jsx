@@ -21,7 +21,13 @@ const timeAgo = (ts) => {
 };
 
 // --- Tickets colis imprimables — étiquette 100 × 150 mm (4 × 6 pouces), 1 commande = 1 page ---
-const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+// CORRECTIF DÉFINITIF anti-caractères illisibles (« aoÃ»t », « &$):)/ ») :
+// esc() convertit AUSSI tout caractère non-ASCII (é, à, û, ·, –…) en entité HTML
+// numérique (&#233;…). Le HTML du ticket est donc 100 % ASCII : l'encodage ne
+// peut plus JAMAIS se casser, quel que soit le navigateur ou le pilote d'imprimante.
+const esc = (s) => String(s ?? "")
+    .replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]))
+    .replace(/[\u0080-\uFFFF]/g, (c) => `&#${c.codePointAt(0)};`);
 
 const ticketHtml = (o) => {
     const addr = [o.address, o.city].filter(Boolean);
@@ -49,29 +55,32 @@ const ticketHtml = (o) => {
     // resserre automatiquement (dense >6 articles, ultra >12).
     const density = o.items.length > 12 ? " ticket--ultra" : o.items.length > 6 ? " ticket--dense" : "";
 
+    // Modèle validé par le marchand (photo de référence) : encadré Livraison,
+    // colonnes EXPÉDIER À / FACTURER À, tableau ARTICLES / QUANTITÉ, pied centré.
+    // Tous les accents statiques sont en entités HTML (ASCII pur).
     return `
     <div class="ticket${density}">
         <div class="top">
             <span class="brand">SHOPPING EN CHINE</span>
             <span class="meta">Commande ${esc(orderNo(o.id))}<br/>${esc(dateStr)}</span>
         </div>
-        <p class="ship">Livraison : ${o.deliveryMode === "express" ? "EXPRESS (5–7 jours ouvrés)" : "STANDARD (15–20 jours ouvrés)"}</p>
+        <p class="ship">Livraison : ${o.deliveryMode === "express" ? "EXPRESS (5&#8211;7 jours ouvr&#233;s)" : "STANDARD (15&#8211;20 jours ouvr&#233;s)"}</p>
         <div class="cols">
             <div class="col">
-                <p class="label">Expédier à</p>
+                <p class="label">Exp&#233;dier &#224;</p>
                 <p class="who">${esc(o.customer)}</p>
                 ${addr.map((l) => `<p class="addr">${esc(l)}</p>`).join("")}
                 ${o.phone ? `<p class="addr">${esc(o.phone)}</p>` : ""}
             </div>
             <div class="col">
-                <p class="label">Facturer à</p>
+                <p class="label">Facturer &#224;</p>
                 <p class="who">${esc(o.customer)}</p>
                 ${addr.map((l) => `<p class="addr">${esc(l)}</p>`).join("")}
             </div>
         </div>
         <div class="rule"></div>
         <div class="items">
-            <div class="items-head"><span>Articles (${o.items.length})</span><span>Quantité</span></div>
+            <div class="items-head"><span>Articles</span><span>Quantit&#233;</span></div>
             ${o.items.map(itemRow).join("")}
         </div>
         <div class="rule"></div>
@@ -87,20 +96,20 @@ const ticketHtml = (o) => {
 
 const printTickets = (ordersToPrint) => {
     if (!ordersToPrint.length) return false;
-    const html = `<!doctype html><html><head><meta charset="utf-8"><title>Tickets colis — Shopping en Chine</title><style>
-        /* Étiquette 100 × 150 mm (4 × 6 pouces) — une commande par page.
-           Le ticket occupe 100% de la page (100vw × 100vh) pour couvrir
-           TOUTE la feuille et rester centré quelle que soit l'imprimante. */
+    const html = `<!doctype html><html><head><meta charset="utf-8"><title>Tickets colis - Shopping en Chine</title><style>
+        /* Etiquette 100 x 150 mm (4 x 6 pouces) - une commande par page.
+           Le ticket occupe 100% de la page pour couvrir toute la feuille
+           et rester centre quelle que soit l'imprimante. */
         @page{size:100mm 150mm;margin:0}
         *{box-sizing:border-box}
         body{font-family:Arial,Helvetica,sans-serif;margin:0;padding:0;color:#000;background:#fff}
         p{margin:0}
-        /* 1 ticket = EXACTEMENT 1 étiquette 100x150mm, contenu centré
-           au milieu de l'étiquette (94mm centré + marge haute). */
+        /* 1 ticket = exactement 1 etiquette 100x150mm, contenu centre
+           au milieu de l'etiquette (94mm centre + marge haute). */
         .ticket{width:94mm;height:142mm;margin:4mm auto 0;padding:5mm;display:flex;flex-direction:column;overflow:hidden;page-break-after:always;break-after:page;border:1px solid #999;color:#000}
         .ticket:last-child{page-break-after:auto;break-after:auto}
         .top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:3mm}
-        .ship{font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:.5px;margin-bottom:3mm}
+        .ship{font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:.5px;margin-bottom:3mm;border:1.5px solid #000;padding:1.5mm 2.5mm;align-self:flex-start}
         .brand{font-weight:800;font-size:20px;letter-spacing:.5px}
         .meta{font-size:12px;font-weight:500;text-align:right;line-height:1.4}
         .cols{display:flex;gap:5mm}
@@ -115,7 +124,7 @@ const printTickets = (ordersToPrint) => {
         .item-name{font-size:15px;font-weight:700;line-height:1.3}
         .item-var{font-size:13px;font-weight:400;line-height:1.3}
         .item-qty{font-size:13px;font-weight:600;white-space:nowrap;margin-left:auto}
-        /* Mode DENSE (7-12 articles) : tout tient sur la même étiquette */
+        /* Mode DENSE (7-12 articles) : tout tient sur la meme etiquette */
         .ticket--dense .brand{font-size:16px}
         .ticket--dense .meta{font-size:11px}
         .ticket--dense .top{margin-bottom:2mm}
@@ -158,7 +167,7 @@ const printTickets = (ordersToPrint) => {
         @media screen{body{padding:16px;background:#eee}.ticket{margin:0 auto 14px;background:#fff;box-shadow:0 1px 6px rgba(0,0,0,.2)}.print-hint{display:block;max-width:100mm;margin:0 auto 12px;padding:10px 14px;background:#fff8e1;border:1px solid #e0c36a;border-radius:8px;font-size:13px;line-height:1.5}}
         @media print{.ticket{border:none}.print-hint{display:none}}
     </style></head><body>
-    <div class="print-hint"><b>Réglages d'impression :</b> Papier/étiquette <b>100 × 150 mm (4×6")</b> · Échelle <b>100%</b> (pas « Ajuster à la page ») · Marges <b>Aucune</b>.</div>
+    <div class="print-hint"><b>R&#233;glages d'impression :</b> Papier/&#233;tiquette <b>100 &#215; 150 mm (4&#215;6")</b> &#183; &#201;chelle <b>100%</b> (pas &#171; Ajuster &#224; la page &#187;) &#183; Marges <b>Aucune</b>.</div>
     ${ordersToPrint.map(ticketHtml).join("")}</body></html>`;
     // Pas de document.write (risque XSS / API dépréciée) : le HTML est servi
     // via une URL Blob same-origin, ce qui permet d'appeler print() sur l'onglet.
