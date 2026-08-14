@@ -105,7 +105,7 @@ async def _lookup_country(ip: str) -> str | None:
 
 
 @router.get("/geo")
-async def detect_geo(request: Request):
+async def detect_geo(request: Request) -> dict:
     ip = _client_ip(request)
     if not ip or not _is_public(ip):
         return DEFAULT

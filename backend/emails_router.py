@@ -84,7 +84,7 @@ async def _refresh_pending_statuses(db: AsyncIOMotorDatabase, docs: list[dict]) 
 
 
 @router.get("/log")
-async def list_email_log(request: Request, limit: int = 50):
+async def list_email_log(request: Request, limit: int = 50) -> dict:
     """Dernières tentatives d'envoi (réservé au vendeur connecté)."""
     await get_current_seller(request)
     limit = max(1, min(int(limit), 200))
@@ -94,8 +94,44 @@ async def list_email_log(request: Request, limit: int = 50):
     return {"emails": docs}
 
 
+def _should_skip_downgrade(existing: dict | None, status: str) -> bool:
+    """N'écrase pas un statut plus « avancé » (ex : delivered après opened)."""
+    return bool(
+        existing
+        and _STATUS_RANK.get(status, 0) < _STATUS_RANK.get(existing.get("delivery_status"), 0)
+    )
+
+
+def _build_status_update(etype: str, status: str, data: dict) -> dict:
+    """Champs à écrire dans le journal pour cet événement Resend."""
+    update = {
+        "delivery_status": status,
+        "last_event": etype,
+        "last_event_at": datetime.now(timezone.utc).isoformat(),
+    }
+    bounce = data.get("bounce") or {}
+    if bounce.get("message"):
+        update["bounce_reason"] = bounce["message"]
+    return update
+
+
+async def _upsert_email_log(db, email_id: str, data: dict, update: dict) -> None:
+    """Met à jour la ligne du journal ; la crée si l'email prédate le journal."""
+    res = await db.email_log.update_one({"resend_id": email_id}, {"$set": update})
+    if res.matched_count == 0:
+        await db.email_log.insert_one({
+            "tag": "unknown",
+            "to": data.get("to") or [],
+            "subject": data.get("subject", ""),
+            "from": data.get("from", ""),
+            "resend_id": email_id,
+            "at": data.get("created_at") or datetime.now(timezone.utc).isoformat(),
+            **update,
+        })
+
+
 @router.post("/resend-webhook")
-async def resend_webhook(request: Request):
+async def resend_webhook(request: Request) -> dict:
     """Réception des événements de livraison Resend (delivered, bounced…)."""
     try:
         event = await request.json()
@@ -109,31 +145,13 @@ async def resend_webhook(request: Request):
         return {"status": "ignored"}
 
     db = _db(request)
-    doc = await db.email_log.find_one({"resend_id": email_id}, {"delivery_status": 1})
-    # N'écrase pas un statut plus « avancé » (ex : delivered après opened)
-    if doc and _STATUS_RANK.get(status, 0) < _STATUS_RANK.get(doc.get("delivery_status"), 0):
+    existing = await db.email_log.find_one({"resend_id": email_id}, {"delivery_status": 1})
+    if _should_skip_downgrade(existing, status):
         return {"status": "ok"}
 
-    update = {
-        "delivery_status": status,
-        "last_event": etype,
-        "last_event_at": datetime.now(timezone.utc).isoformat(),
-    }
-    bounce = data.get("bounce") or {}
-    if bounce.get("message"):
-        update["bounce_reason"] = bounce["message"]
-    res = await db.email_log.update_one({"resend_id": email_id}, {"$set": update})
-    if res.matched_count == 0:
-        # Email envoyé avant la mise en place du journal : on le trace quand même
-        await db.email_log.insert_one({
-            "tag": "unknown",
-            "to": data.get("to") or [],
-            "subject": data.get("subject", ""),
-            "from": data.get("from", ""),
-            "resend_id": email_id,
-            "at": data.get("created_at") or datetime.now(timezone.utc).isoformat(),
-            **update,
-        })
+    update = _build_status_update(etype, status, data)
+    await _upsert_email_log(db, email_id, data, update)
     if status in ("bounced", "complained"):
+        bounce = data.get("bounce") or {}
         logger.warning(f"[Email] {etype} pour {data.get('to')} (id={email_id}) — {bounce.get('message', '')}")
     return {"status": "ok"}

@@ -105,7 +105,7 @@ class LoginPayload(BaseModel):
 
 
 @router.post("/login")
-async def login(payload: LoginPayload, request: Request, response: Response):
+async def login(payload: LoginPayload, request: Request, response: Response) -> dict:
     db = _db(request)
     email = payload.email.strip().lower()
     ip = (request.client.host if request.client else "?")
@@ -144,12 +144,12 @@ async def login(payload: LoginPayload, request: Request, response: Response):
 
 
 @router.get("/me")
-async def me(request: Request):
+async def me(request: Request) -> dict:
     user = await get_current_seller(request)
     return user
 
 
 @router.post("/logout")
-async def logout(response: Response):
+async def logout(response: Response) -> dict:
     response.delete_cookie("access_token", path="/")
     return {"ok": True}

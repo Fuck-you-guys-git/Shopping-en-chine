@@ -97,7 +97,7 @@ def test_webhook_success_triggers_email(db):
     order = db.orders.find_one({"id": ORDER_ID}, {"_id": 0})
     assert order is not None
     assert order["status"] == "success", f"order status={order.get('status')}"
-    assert order.get("confirmation_email_sent") is True, order
+    assert order.get("confirmation_email_sent") == True, order
 
     after = _log_count_for_order()
     assert after == before + 1, f"Expected exactly one new log line; before={before} after={after}"
@@ -117,7 +117,7 @@ def test_webhook_idempotence_no_second_email(db):
     time.sleep(2)
 
     order = db.orders.find_one({"id": ORDER_ID}, {"_id": 0})
-    assert order["confirmation_email_sent"] is True
+    assert order["confirmation_email_sent"] == True
     assert order["status"] == "success"
 
     after = _log_count_for_order()

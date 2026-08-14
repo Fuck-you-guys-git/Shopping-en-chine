@@ -743,3 +743,16 @@ Payments were failing with a **DNS error** because `backend/paxity_router.py` ha
 - TESTÉ : testing agent iteration_34.json — 100% frontend, 0 erreur console. Panier (ajout 2 sources, +/- qty, suppression, vidage), checkout 3 étapes (arrêt avant paiement réel), impression tickets vendeur (blob HTML inspecté : 0 <script>, nom client échappé), rupture de stock OK.
 - Reste au backlog refactoring : découpage des grosses fonctions de paxity_router.py (non demandé explicitement).
 - ⚠️ REDEPLOY requis pour la production.
+
+## Update — Feb 2026 (Rapport qualité de code appliqué — backend)
+- « Variable non définie » : aucune en production (pyflakes) ; c'était la variable inutilisée `before` dans test_email_fallback.py → supprimée. tracking_router.py:58 est un `is None` idiomatique (acceptable selon la note du rapport) → inchangé.
+- paxity_router.py refactoré : _extract_error_message → stratégie mapping (_msg_from_value + _STATUS_FALLBACK_MSG) ; create_payin → _new_payin_tx / _raise_payin_upstream_errors / _payin_response (~35 lignes) ; paxity_webhook → _parse_webhook_ids / _match_webhook_tx / _handle_payment_success / _handle_status_change ; diagnostic → _diag_base_result / _diag_check_dns / _diag_probe_http. Comportement identique.
+- emails_router.resend_webhook → _should_skip_downgrade / _build_status_update / _upsert_email_log.
+- email_service : _items_rows_html + _customer_block_html (templates partagés marchand/client) ; maybe_send_customer_confirmation scindé en _claim_customer_email (décision atomique) + _customer_confirmation_html (template) + envoi.
+- products_router._process_images → _image_sources + _prune_orphan_images.
+- stripe_router : dataclass StripeOrderData (8 params → 3) sur _persist_stripe_order.
+- Tests : test_product_images.py réécrit en 7 petits tests avec fixtures pytest ; `is True/False` → `== True/False` dans tous les tests ; imports/variables inutilisés supprimés ; type hints de retour ajoutés à 19 signatures de routers.
+- NOUVEAU tests/conftest.py : fixture require_stripe → les 6 tests Stripe sont SKIPPÉS avec raison claire tant que le compte Stripe live refuse les charges ("Your account cannot currently make live charges") — Stripe est retiré du checkout (Paxity actif). Ils se réactiveront seuls si Stripe redevient opérationnel.
+- test_email_fallback.test_webhook_idempotent rendu robuste au parallélisme xdist (compte email_log par sujet de commande au lieu du log supervisor partagé).
+- TESTÉ : suite complète 95 verts / 0 échec / 7 skips ; pyflakes 0 ; endpoints externes products/config/webhook = 200 ; diagnostic Paxity OK (dns+http+auth 200).
+- ⚠️ REDEPLOY requis pour la production.

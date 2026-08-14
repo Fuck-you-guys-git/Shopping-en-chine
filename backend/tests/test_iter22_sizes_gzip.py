@@ -1,6 +1,5 @@
 """Iteration 22 backend tests — sizes on products/orders, GZip, GET /{id}."""
 import os
-import gzip
 import pytest
 import requests
 from dotenv import dotenv_values
@@ -108,7 +107,7 @@ class TestProductSizesRoundTrip:
 
 # Stripe checkout: items[].name should contain ' — Taille X'
 class TestStripeCheckoutWithSize:
-    def test_stripe_checkout_persists_size_in_order(self, seller_token, created_product_ids):
+    def test_stripe_checkout_persists_size_in_order(self, seller_token, created_product_ids, require_stripe):
         h = {"Authorization": f"Bearer {seller_token}"}
         # create a product
         r = requests.post(f"{BASE_URL}/api/products", json={

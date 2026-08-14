@@ -31,9 +31,9 @@ class TestPaxityDiagnostic:
         r = requests.get(f"{API}/paxity/diagnostic", timeout=30)
         assert r.status_code == 200, r.text
         d = r.json()
-        assert d["configured"] is True
-        assert d["dns_ok"] is True, f"DNS failed: {d}"
-        assert d["http_reachable"] is True, f"HTTP not reachable: {d}"
+        assert d["configured"] == True
+        assert d["dns_ok"] == True, f"DNS failed: {d}"
+        assert d["http_reachable"] == True, f"HTTP not reachable: {d}"
         assert d["http_status"] == 200, f"http_status={d['http_status']} preview={d.get('response_preview')}"
         assert d["auth_test_status"] == 200, f"auth failed: {d}"
         assert "SHOPPING EN CHINE" in (d.get("response_preview") or ""), \
@@ -85,7 +85,7 @@ class TestPaxityPayinValidation:
         methods = r.json()["methods"]
         codes = {m["code"] for m in methods}
         assert codes == {"OMSN", "OMCI", "WAVESN", "WAVECI", "MTNCI"}, codes
-        assert all(m["requires_otp"] is False for m in methods)
+        assert all(m["requires_otp"] == False for m in methods)
 
 
 class TestPaxityPayinLive:

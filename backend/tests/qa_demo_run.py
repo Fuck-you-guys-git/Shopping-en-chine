@@ -64,7 +64,7 @@ async def main() -> int:
         deleted = await db.orders.delete_one({"id": ORDER_ID})
         results["deleted_count"] = deleted.deleted_count
 
-        ok = (first is True and flag is True and second is False and deleted.deleted_count == 1)
+        ok = (first == True and flag == True and second == False and deleted.deleted_count == 1)
         results["ALL_PASS"] = ok
         for k, v in results.items():
             print(f"{k}: {v}")

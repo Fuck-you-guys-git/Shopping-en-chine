@@ -12,8 +12,6 @@ Les vérifications côté logs (destinataire commands@..., pas de bafatoumata,
 pas de fallback NON VÉRIFIÉ) sont faites via un test bash séparé.
 """
 import os
-import sys
-import time
 import asyncio
 from datetime import datetime, timezone
 from pathlib import Path
@@ -165,7 +163,7 @@ def test_seed_webhook_and_verify(db_factory):
         order = await db.orders.find_one({"id": ORDER_ID}, {"_id": 0})
         assert order is not None
         assert order["status"] == "success", f"order status={order['status']}"
-        assert order.get("confirmation_email_sent") is True, "flag confirmation_email_sent absent/false"
+        assert order.get("confirmation_email_sent") == True, "flag confirmation_email_sent absent/false"
 
     asyncio.run(_flow())
 

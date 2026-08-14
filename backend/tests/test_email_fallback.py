@@ -96,23 +96,21 @@ def test_setup_seed(db):
 
 
 def test_webhook_success_triggers_emails(db):
-    # Mark log start point via marker line count
-    before = _read_log_tail(lines=1_000_000).count("\n")
     r = requests.post(
         f"{BASE_URL}/api/paxity/webhook",
         json={"data": {"transactionId": PAXID, "status": "SUCCESS"}},
         timeout=20,
     )
     assert r.status_code == 200, r.text
-    assert r.json().get("received") is True
+    assert r.json().get("received") == True
 
     # Wait for async email sends
     time.sleep(8)
 
     doc = asyncio.get_event_loop().run_until_complete(db.orders.find_one({"id": ORDER_ID}, {"_id": 0}))
     assert doc["status"] == "success", f"order status={doc.get('status')}"
-    assert doc.get("confirmation_email_sent") is True, "merchant email flag missing"
-    assert doc.get("customer_email_sent") is True, "customer email flag missing"
+    assert doc.get("confirmation_email_sent") == True, "merchant email flag missing"
+    assert doc.get("customer_email_sent") == True, "customer email flag missing"
 
     log = _read_log_tail(lines=800)
     # Merchant + customer send lines
@@ -126,13 +124,17 @@ def test_webhook_success_triggers_emails(db):
 
 
 def test_webhook_idempotent(db):
-    log_before = _read_log_tail(lines=800)
-    # Count occurrences of send lines mentioning our order/customer email
-    def count(substr, text):
-        return text.count(substr)
+    """Un 2e webhook SUCCESS ne doit PAS renvoyer les emails (drapeaux atomiques).
+    Compte les entrées email_log propres à CETTE commande (robuste au parallélisme,
+    contrairement au comptage du log supervisor partagé entre tests xdist)."""
+    loop = asyncio.get_event_loop()
 
-    baseline_customer = count("customer-confirm] sent", log_before)
-    baseline_merchant = count(f"Order confirmation sent for {ORDER_ID}", log_before)
+    def count_order_emails():
+        return loop.run_until_complete(
+            db.email_log.count_documents({"subject": {"$regex": ORDER_ID}})
+        )
+
+    baseline = count_order_emails()
 
     r = requests.post(
         f"{BASE_URL}/api/paxity/webhook",
@@ -142,16 +144,14 @@ def test_webhook_idempotent(db):
     assert r.status_code == 200
     time.sleep(5)
 
-    log_after = _read_log_tail(lines=800)
-    after_customer = count("customer-confirm] sent", log_after)
-    after_merchant = count(f"Order confirmation sent for {ORDER_ID}", log_after)
-
-    assert after_customer == baseline_customer, (
-        f"Customer email sent again on 2nd webhook (before={baseline_customer} after={after_customer})"
+    after = count_order_emails()
+    assert after == baseline, (
+        f"Emails renvoyés au 2e webhook (before={baseline} after={after})"
     )
-    assert after_merchant == baseline_merchant, (
-        f"Merchant email sent again on 2nd webhook (before={baseline_merchant} after={after_merchant})"
-    )
+    # Les drapeaux d'envoi restent posés
+    doc = loop.run_until_complete(db.orders.find_one({"id": ORDER_ID}, {"_id": 0}))
+    assert doc.get("confirmation_email_sent") == True
+    assert doc.get("customer_email_sent") == True
 
 
 def test_send_raw_fallback_direct():

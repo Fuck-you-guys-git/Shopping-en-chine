@@ -41,7 +41,7 @@ class TestRegression:
         r = client.get(f"{BASE_URL}/api/paxity/config")
         assert r.status_code == 200
         data = r.json()
-        assert data["configured"] is True
+        assert data["configured"] == True
         assert isinstance(data["methods"], list) and len(data["methods"]) >= 3
 
     def test_products_list(self, client):
@@ -66,7 +66,7 @@ class TestStripe:
     order_id = None
     session_id = None
 
-    def test_checkout_creates_order(self, client):
+    def test_checkout_creates_order(self, client, require_stripe):
         # Utilise le premier produit réel du catalogue (plus de seed p1)
         products = client.get(f"{BASE_URL}/api/products").json()["products"]
         assert products, "catalogue vide — impossible de tester le checkout"
@@ -94,7 +94,7 @@ class TestStripe:
         })
         assert r.status_code == 400
 
-    def test_status_returns_pending(self, client):
+    def test_status_returns_pending(self, client, require_stripe):
         assert TestStripe.session_id, "prev test must have run"
         r = client.get(f"{BASE_URL}/api/payments/stripe/status/{TestStripe.session_id}")
         assert r.status_code == 200, r.text

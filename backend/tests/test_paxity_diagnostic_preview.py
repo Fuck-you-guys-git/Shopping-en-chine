@@ -4,7 +4,6 @@ READ-ONLY diagnostic + VALIDATION-only payin tests. NO real transactions.
 """
 import os
 import requests
-import pytest
 
 BASE_URL = os.environ.get("REACT_APP_BACKEND_URL", "https://paxity-payment-web.preview.emergentagent.com").rstrip("/")
 
@@ -26,7 +25,7 @@ def test_config_endpoint():
     r = requests.get(f"{BASE_URL}/api/paxity/config", timeout=15)
     assert r.status_code == 200
     data = r.json()
-    assert data.get("configured") is True
+    assert data.get("configured") == True
     assert data.get("currency") == "XOF"
     methods = data.get("methods") or data.get("payment_methods") or []
     assert len(methods) == 5, f"expected 5 methods, got {len(methods)}: {methods}"

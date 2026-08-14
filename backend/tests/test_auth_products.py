@@ -88,7 +88,7 @@ class TestProducts:
         assert created["name"] == payload["name"]
         assert created["price"] == payload["price"]
         assert created["id"].startswith("p_")
-        assert created.get("custom") is True
+        assert created.get("custom") == True
         pid = created["id"]
 
         # GET (verify persistence)

@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import logging
 import os
+from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Optional
 
@@ -72,7 +73,7 @@ def _unit_amount_for(product: dict, price_xof: int, cur: str, rate: float) -> in
     return int(round(price_xof / rate * 100))  # EUR/USD : centimes
 
 
-async def _build_stripe_lines(db, payload: StripeCheckoutRequest, cur: str, rate: float):
+async def _build_stripe_lines(db, payload: StripeCheckoutRequest, cur: str, rate: float) -> tuple:
     """Tarification côté serveur depuis le catalogue.
 
     Renvoie (line_items Stripe, order_items en base, total XOF, total débité).
@@ -127,33 +128,43 @@ def _create_stripe_session(payload: StripeCheckoutRequest, line_items: list, ord
         raise HTTPException(status_code=502, detail=f"Paiement carte indisponible : {getattr(e, 'user_message', None) or 'erreur Stripe'}")
 
 
-async def _persist_stripe_order(db, payload: StripeCheckoutRequest, order_id: str, session_id: str,
-                                order_items: list, amount: int, cur: str, charged_amount) -> None:
+@dataclass
+class StripeOrderData:
+    """Regroupe les données de commande Stripe (évite 8 paramètres positionnels)."""
+    order_id: str
+    session_id: str
+    order_items: list
+    amount: int
+    cur: str
+    charged_amount: float
+
+
+async def _persist_stripe_order(db, payload: StripeCheckoutRequest, data: StripeOrderData) -> None:
     """Persist order (source of truth) + transaction BEFORE redirect."""
     now = datetime.now(timezone.utc).isoformat()
     await db.orders.insert_one({
-        "id": order_id,
+        "id": data.order_id,
         "customer": payload.customer.model_dump(),
-        "items": order_items,
-        "amount": amount,
+        "items": data.order_items,
+        "amount": data.amount,
         "currency": "XOF",
-        "charged_currency": cur,
-        "charged_amount": charged_amount,
+        "charged_currency": data.cur,
+        "charged_amount": data.charged_amount,
         "status": "pending",
         "payment_method": "CARD",
         "delivery_mode": payload.delivery_mode or "standard",
-        "stripe_session_id": session_id,
+        "stripe_session_id": data.session_id,
         "created_at": now,
         "tracking_step": "ordered",
         "tracking_history": [{"step": "ordered", "at": now}],
     })
     await db.payment_transactions.insert_one({
-        "session_id": session_id,
-        "order_id": order_id,
-        "amount": amount,
+        "session_id": data.session_id,
+        "order_id": data.order_id,
+        "amount": data.amount,
         "currency": "xof",
-        "charged_currency": cur,
-        "charged_amount": charged_amount,
+        "charged_currency": data.cur,
+        "charged_amount": data.charged_amount,
         "status": "initiated",
         "payment_status": "pending",
         "created_at": now,
@@ -162,7 +173,7 @@ async def _persist_stripe_order(db, payload: StripeCheckoutRequest, order_id: st
 
 
 @router.post("/payments/stripe/checkout")
-async def create_stripe_checkout(payload: StripeCheckoutRequest, request: Request):
+async def create_stripe_checkout(payload: StripeCheckoutRequest, request: Request) -> dict:
     db = _db(request)
 
     # Devise de paiement : le client européen paie en EUR, l'américain en USD,
@@ -176,7 +187,14 @@ async def create_stripe_checkout(payload: StripeCheckoutRequest, request: Reques
 
     order_id = await next_order_number(db)
     session = _create_stripe_session(payload, line_items, order_id)
-    await _persist_stripe_order(db, payload, order_id, session.id, order_items, amount, cur, charged_amount)
+    await _persist_stripe_order(db, payload, StripeOrderData(
+        order_id=order_id,
+        session_id=session.id,
+        order_items=order_items,
+        amount=amount,
+        cur=cur,
+        charged_amount=charged_amount,
+    ))
 
     return {
         "client_secret": session.client_secret,
@@ -186,7 +204,7 @@ async def create_stripe_checkout(payload: StripeCheckoutRequest, request: Reques
     }
 
 
-async def _mark_paid(db, session_id: str, order_id: str | None = None):
+async def _mark_paid(db, session_id: str, order_id: str | None = None) -> None:
     """Idempotent: flip transaction + order to paid, then send emails once."""
     res = await db.payment_transactions.find_one_and_update(
         {"session_id": session_id, "payment_status": {"$ne": "paid"}},
@@ -204,7 +222,7 @@ async def _mark_paid(db, session_id: str, order_id: str | None = None):
 
 
 @router.get("/payments/stripe/status/{session_id}")
-async def stripe_status(session_id: str, request: Request):
+async def stripe_status(session_id: str, request: Request) -> dict:
     db = _db(request)
     record = await db.payment_transactions.find_one({"session_id": session_id}, {"_id": 0})
     if not record:
@@ -232,7 +250,7 @@ async def stripe_status(session_id: str, request: Request):
 
 
 @router.post("/stripe/webhook")
-async def stripe_webhook(request: Request):
+async def stripe_webhook(request: Request) -> dict:
     db = _db(request)
     payload = await request.body()
     sig = request.headers.get("stripe-signature", "")

@@ -1,5 +1,4 @@
 """Tests for the order tracking API (Où est mon colis ?)."""
-import os
 import uuid
 import requests
 from pymongo import MongoClient
@@ -65,7 +64,7 @@ class TestTrackOrder:
             assert data["order_id"] == order_id
             assert data["tracking_step"] == "ordered"
             assert data["tracking_step_index"] == 0
-            assert data["delivered"] is False
+            assert data["delivered"] == False
             assert data["amount"] == 85000
             assert data["city"] == "Dakar"
             assert len(data["steps"]) == 5
@@ -107,7 +106,7 @@ class TestUpdateTracking:
             # Advance to delivered
             requests.put(f"{API}/{order_id}", json={"step": "delivered"}, timeout=15)
             r3 = requests.get(f"{API}/{order_id}", timeout=15)
-            assert r3.json()["delivered"] is True
+            assert r3.json()["delivered"] == True
         finally:
             _cleanup(db, order_id)
 

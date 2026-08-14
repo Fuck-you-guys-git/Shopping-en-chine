@@ -48,7 +48,7 @@ class BulkTrackingUpdate(BaseModel):
 
 
 @router.get("")
-async def list_orders(request: Request):
+async def list_orders(request: Request) -> dict:
     """All real customer orders, newest first (seller dashboard)."""
     await get_current_seller(request)
     db = request.app.state.db
@@ -59,7 +59,7 @@ async def list_orders(request: Request):
 
 
 @router.put("/bulk-tracking")
-async def bulk_update_tracking(payload: BulkTrackingUpdate, request: Request):
+async def bulk_update_tracking(payload: BulkTrackingUpdate, request: Request) -> dict:
     """Set the tracking step for several orders in one call (seller auth)."""
     await get_current_seller(request)
     if payload.step not in TRACKING_STEPS:

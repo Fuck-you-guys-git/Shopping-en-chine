@@ -173,57 +173,53 @@ def _first_str(d: dict, *keys: str) -> Optional[str]:
     return None
 
 
+_AUTH_REFUSED_MSG = (
+    "Identifiants Paxity refusés (401). Vérifiez que PAXITY_API_KEY et "
+    "PAXITY_API_TOKEN sont corrects, actifs, et que votre compte marchand "
+    "est activé (une autorisation d'IP peut être requise côté Paxity)."
+)
+
+# Messages de repli par code HTTP (Paxity renvoie souvent un corps vide)
+_STATUS_FALLBACK_MSG: dict[int, str] = {
+    401: _AUTH_REFUSED_MSG,
+    403: _AUTH_REFUSED_MSG,
+    404: "Endpoint Paxity introuvable (404). Vérifiez PAXITY_BASE_URL.",
+    429: "Trop de requêtes vers Paxity (429). Réessayez dans un instant.",
+}
+
+
+def _msg_from_value(value: object) -> Optional[str]:
+    """Message d'erreur depuis une valeur hétérogène (str, dict ou liste)."""
+    if isinstance(value, str) and value:
+        return value
+    if isinstance(value, dict):
+        return _first_str(value, "message", "error", "detail", "description")
+    if isinstance(value, list) and value:
+        return _msg_from_value(value[0])
+    return None
+
+
 def _extract_error_message(data: object, status_code: int) -> str:
     """
     Dig through a Paxity error response to surface the real message.
     Handles: {"message": ...}, {"error": ...}, {"error": {"message": ...}},
     {"errors": [{"message": ...}]}, {"data": {"message": ...}}, and RFC 7807-style.
+    Stratégie : liste ordonnée d'extracteurs, puis repli par code HTTP.
     """
     if isinstance(data, dict):
-        # Direct fields
-        msg = _first_str(data, "message", "error_message", "detail", "description")
-        if msg:
-            return msg
-        # Nested error object
-        err = data.get("error")
-        if isinstance(err, dict):
-            msg = _first_str(err, "message", "detail", "description")
+        candidates = (
+            _first_str(data, "message", "error_message", "detail", "description"),
+            _msg_from_value(data.get("error")),
+            _msg_from_value(data.get("data")),
+            _msg_from_value(data.get("errors")),
+        )
+        for msg in candidates:
             if msg:
                 return msg
-        elif isinstance(err, str) and err:
-            return err
-        # Nested data object
-        dat = data.get("data")
-        if isinstance(dat, dict):
-            msg = _first_str(dat, "message", "error", "detail")
-            if msg:
-                return msg
-        # errors[] array
-        errs = data.get("errors")
-        if isinstance(errs, list) and errs:
-            first = errs[0]
-            if isinstance(first, dict):
-                msg = _first_str(first, "message", "detail", "description")
-                if msg:
-                    return msg
-            elif isinstance(first, str) and first:
-                return first
-        # Non-JSON preview
         raw_text = data.get("raw_text")
         if isinstance(raw_text, str) and raw_text:
             return raw_text[:200]
-    # Status-specific friendly fallbacks (Paxity often returns an empty body)
-    if status_code in (401, 403):
-        return (
-            "Identifiants Paxity refusés (401). Vérifiez que PAXITY_API_KEY et "
-            "PAXITY_API_TOKEN sont corrects, actifs, et que votre compte marchand "
-            "est activé (une autorisation d'IP peut être requise côté Paxity)."
-        )
-    if status_code == 404:
-        return "Endpoint Paxity introuvable (404). Vérifiez PAXITY_BASE_URL."
-    if status_code == 429:
-        return "Trop de requêtes vers Paxity (429). Réessayez dans un instant."
-    return f"Paxity a renvoyé une erreur ({status_code})"
+    return _STATUS_FALLBACK_MSG.get(status_code, f"Paxity a renvoyé une erreur ({status_code})")
 
 
 def _payload_root(data: object) -> dict:
@@ -374,7 +370,7 @@ async def _post_with_retry(url: str, headers: dict, json_body: dict) -> tuple[Op
 
 
 @router.get("/config")
-async def get_config():
+async def get_config() -> dict:
     """Frontend polls this to know which payment methods are enabled."""
     return {
         "configured": PAXITY_CONFIGURED,
@@ -390,13 +386,29 @@ async def get_config():
 
 
 @router.get("/diagnostic")
-async def diagnostic():
+async def diagnostic() -> dict:
     """
     Diagnostic endpoint — call this to check if the backend can reach the
     Paxity API from its current network. Use it when payments are failing:
         curl https://YOUR-DOMAIN/api/paxity/diagnostic
+    Chaque vérification (config, DNS, HTTP/auth) est une fonction dédiée.
     """
-    result = {
+    result = _diag_base_result()
+    if not PAXITY_BASE_URL:
+        result["http_error"] = (
+            "PAXITY_BASE_URL is empty. Add it to backend/.env (e.g. "
+            "PAXITY_BASE_URL=https://<your-paxity-host>/v1) and restart the backend."
+        )
+        return result
+    if not _diag_check_dns(result):
+        return result
+    await _diag_probe_http(result)
+    return result
+
+
+def _diag_base_result() -> dict:
+    """Structure de base du rapport de diagnostic (config actuelle)."""
+    return {
         "configured": PAXITY_CONFIGURED,
         "environment": PAXITY_ENV,
         "base_url": PAXITY_BASE_URL or "(unset — configure PAXITY_BASE_URL in backend/.env)",
@@ -413,24 +425,21 @@ async def diagnostic():
         "auth_test_body": None,
     }
 
-    if not PAXITY_BASE_URL:
-        result["http_error"] = (
-            "PAXITY_BASE_URL is empty. Add it to backend/.env (e.g. "
-            "PAXITY_BASE_URL=https://<your-paxity-host>/v1) and restart the backend."
-        )
-        return result
 
-    # 1) DNS lookup — use the host extracted from PAXITY_BASE_URL (no hardcode)
+def _diag_check_dns(result: dict) -> bool:
+    """Résolution DNS du host extrait de PAXITY_BASE_URL (aucun hardcode)."""
     try:
         socket.gethostbyname(PAXITY_HOST)
         result["dns_ok"] = True
+        return True
     except Exception as e:
         result["http_error"] = f"DNS lookup failed for {PAXITY_HOST!r}: {e}"
-        return result
+        return False
 
-    # 2) HTTP reachability + auth via the read-only balance endpoint. This
-    #    confirms our keys work WITHOUT creating a real transaction (posting to
-    #    pay-in-mobile would generate a genuine PENDING payment each call).
+
+async def _diag_probe_http(result: dict) -> None:
+    """HTTP + auth via l'endpoint balance (lecture seule : aucune transaction
+    réelle créée, contrairement à un POST pay-in-mobile). 200 = clés OK."""
     started = time.monotonic()
     try:
         async with httpx.AsyncClient(timeout=15.0) as client:
@@ -444,14 +453,9 @@ async def diagnostic():
     except Exception as e:
         result["http_error"] = f"{type(e).__name__}: {e}"
     result["latency_ms"] = int((time.monotonic() - started) * 1000)
-
-    # 3) Auth test — the balance call above IS the auth test (200 = keys OK,
-    #    401/403 = keys wrong). Surface a merchant-friendly summary.
     if result["http_reachable"] and PAXITY_CONFIGURED:
         result["auth_test_status"] = result["http_status"]
         result["auth_test_body"] = result["response_preview"]
-
-    return result
 
 
 # ---------------------------------------------------------------------------
@@ -637,8 +641,63 @@ async def _finalize_payin(db: AsyncIOMotorDatabase, tx: "PaxityTransaction", ord
     return order_id
 
 
+def _new_payin_tx(payload: PaxityPayinRequest, currency: str, order_id: str) -> "PaxityTransaction":
+    """Transaction pending initiale pour un PayIn mobile."""
+    return PaxityTransaction(
+        order_id=order_id,
+        amount=payload.amount,
+        currency=currency,
+        payment_method=payload.payment_method,
+        phone_number=payload.phone_number,
+        prefix_phone=payload.prefix_phone,
+        customer_name=payload.customer.name,
+        customer_email=payload.customer.email,
+        description=payload.description,
+    )
+
+
+async def _raise_payin_upstream_errors(db: AsyncIOMotorDatabase, tx: "PaxityTransaction",
+                                       order_id: str, resp, data: object,
+                                       transport_error: Optional[str], body: dict) -> None:
+    """Transforme les échecs transport/HTTP Paxity en HTTPException JSON propres."""
+    if transport_error or resp is None:
+        await _mark_payin_failed(db, tx, order_id, "error")
+        logger.error(f"[Paxity] Transport failure for order {order_id}: {transport_error}")
+        # 424 Failed Dependency (passerelle amont injoignable). On évite 502/504 :
+        # Cloudflare les réécrirait en page HTML, perdant le détail d'erreur FR.
+        raise HTTPException(
+            status_code=424,
+            detail=transport_error or "Aucune réponse de Paxity",
+        )
+    if resp.status_code >= 400:
+        await _mark_payin_failed(db, tx, order_id, "4xx")
+        message = _extract_error_message(data, resp.status_code)
+        logger.error(
+            f"[Paxity] {resp.status_code} order={order_id} — request={_redact(body)} response={data}"
+        )
+        raise HTTPException(status_code=resp.status_code, detail=str(message))
+
+
+def _payin_response(order_id: str, tx: "PaxityTransaction", payload: PaxityPayinRequest,
+                    currency: str, raw_status, data: object, method_meta: dict) -> dict:
+    """Corps de réponse renvoyé au frontend après un PayIn accepté."""
+    return {
+        "order_id": order_id,
+        "transaction_id": tx.id,
+        "status": tx.status,
+        "raw_status": raw_status,
+        "amount": payload.amount,
+        "currency": currency,
+        "paxity_transaction_id": tx.paxity_transaction_id,
+        "payment_link": tx.payment_link,
+        "qr_code": tx.qr_code,
+        "message": (data.get("message") if isinstance(data, dict) else None),
+        "requires_otp": bool(method_meta.get("requires_otp")),
+    }
+
+
 @router.post("/payin")
-async def create_payin(payload: PaxityPayinRequest, request: Request):
+async def create_payin(payload: PaxityPayinRequest, request: Request) -> dict:
     """
     Initiate a Paxity PayIn (customer pays merchant).
 
@@ -652,19 +711,7 @@ async def create_payin(payload: PaxityPayinRequest, request: Request):
     db = _db(request)
     # Id temporaire : le numéro séquentiel n'est attribué qu'au paiement confirmé
     order_id = f"tmp_{uuid.uuid4().hex[:10]}"
-
-    tx = PaxityTransaction(
-        order_id=order_id,
-        amount=payload.amount,
-        currency=currency,
-        payment_method=payload.payment_method,
-        phone_number=payload.phone_number,
-        prefix_phone=payload.prefix_phone,
-        customer_name=payload.customer.name,
-        customer_email=payload.customer.email,
-        description=payload.description,
-    )
-
+    tx = _new_payin_tx(payload, currency, order_id)
     await _persist_order(db, order_id, payload, tx, currency, _is_test_env(request))
 
     body = _build_payin_body(payload, method_meta, currency, order_id, request)
@@ -681,27 +728,7 @@ async def create_payin(payload: PaxityPayinRequest, request: Request):
     )
     data = _parse_payin_response(resp)
     root = _hydrate_tx_from_response(tx, data)
-
-    # Transport failure (all retries exhausted)
-    if transport_error or resp is None:
-        await _mark_payin_failed(db, tx, order_id, "error")
-        logger.error(f"[Paxity] Transport failure for order {order_id}: {transport_error}")
-        # Use 424 Failed Dependency (upstream gateway unreachable). We deliberately
-        # avoid 502/504 because Cloudflare rewrites those to its own HTML error
-        # page, which would strip our French error detail from the client.
-        raise HTTPException(
-            status_code=424,
-            detail=transport_error or "Aucune réponse de Paxity",
-        )
-
-    # HTTP error (>= 400) — surface Paxity's real message
-    if resp.status_code >= 400:
-        await _mark_payin_failed(db, tx, order_id, "4xx")
-        message = _extract_error_message(data, resp.status_code)
-        logger.error(
-            f"[Paxity] {resp.status_code} order={order_id} — request={_redact(body)} response={data}"
-        )
-        raise HTTPException(status_code=resp.status_code, detail=str(message))
+    await _raise_payin_upstream_errors(db, tx, order_id, resp, data, transport_error, body)
 
     # 2xx — parse status with comprehensive mapping (status lives in nested data)
     raw_status = root.get("status") if root else None
@@ -712,24 +739,11 @@ async def create_payin(payload: PaxityPayinRequest, request: Request):
         f"[Paxity] PayIn response order={order_id} status={tx.status} "
         f"paxity_id={tx.paxity_transaction_id} raw_status={raw_status}"
     )
-
-    return {
-        "order_id": order_id,
-        "transaction_id": tx.id,
-        "status": tx.status,
-        "raw_status": raw_status,
-        "amount": payload.amount,
-        "currency": currency,
-        "paxity_transaction_id": tx.paxity_transaction_id,
-        "payment_link": tx.payment_link,
-        "qr_code": tx.qr_code,
-        "message": (data.get("message") if isinstance(data, dict) else None),
-        "requires_otp": bool(method_meta.get("requires_otp")),
-    }
+    return _payin_response(order_id, tx, payload, currency, raw_status, data, method_meta)
 
 
 @router.get("/status/{transaction_id}")
-async def check_status(transaction_id: str, request: Request):
+async def check_status(transaction_id: str, request: Request) -> dict:
     """Poll the payment status (with a live refresh against Paxity while pending)."""
     db = _db(request)
     tx = await db.paxity_transactions.find_one({"id": transaction_id}, {"_id": 0})
@@ -791,7 +805,7 @@ async def _refresh_pending_tx(db: AsyncIOMotorDatabase, tx: dict) -> str:
     return tx.get("status", "pending")
 
 
-async def _watch_pending_tx(db: AsyncIOMotorDatabase, tx_id: str):
+async def _watch_pending_tx(db: AsyncIOMotorDatabase, tx_id: str) -> None:
     """
     Filet de sécurité serveur : après un paiement Wave/OM, le client peut ne
     jamais revenir sur le site (bloqué/fermé sur la page de retour paxity.io).
@@ -812,8 +826,54 @@ async def _watch_pending_tx(db: AsyncIOMotorDatabase, tx_id: str):
     logger.info(f"[Paxity] Watcher timeout tx={tx_id} (toujours pending après 15 min)")
 
 
+def _parse_webhook_ids(payload: dict) -> tuple[Optional[str], Optional[str], str]:
+    """Extrait (id transaction Paxity, n° de commande, statut normalisé) de l'IPN."""
+    root = _payload_root(payload)
+    paxity_tx_id = root.get("transactionId") or root.get("id") or root.get("txId")
+    order_id = (
+        root.get("idClient") or root.get("orderId")
+        or payload.get("idClient") or payload.get("orderId")
+    )
+    normalized = _map_status(root.get("status") or payload.get("status"))
+    return paxity_tx_id, order_id, normalized
+
+
+async def _match_webhook_tx(db: AsyncIOMotorDatabase, paxity_tx_id: Optional[str],
+                            order_id: Optional[str], update: dict) -> bool:
+    """Met à jour la transaction : par id Paxity d'abord, puis par n° de commande
+    (le widget carte crée la transaction AVANT que Paxity n'attribue son id)."""
+    if paxity_tx_id:
+        result = await db.paxity_transactions.update_one(
+            {"paxity_transaction_id": paxity_tx_id}, {"$set": update}
+        )
+        if result.matched_count:
+            return True
+    if order_id:
+        update_by_order = dict(update)
+        if paxity_tx_id:
+            update_by_order["paxity_transaction_id"] = paxity_tx_id
+        result = await db.paxity_transactions.update_one(
+            {"order_id": order_id}, {"$set": update_by_order}
+        )
+        return bool(result.matched_count)
+    return False
+
+
+async def _handle_payment_success(db: AsyncIOMotorDatabase, order_id: str) -> None:
+    """Paiement confirmé : numéro définitif, statut commande, emails (une fois)."""
+    order_id = await _finalize_order_number(db, order_id)
+    await db.orders.update_one({"id": order_id}, {"$set": {"status": "success"}})
+    await maybe_send_order_confirmation(db, order_id)
+    await maybe_send_customer_confirmation(db, order_id)
+
+
+async def _handle_status_change(db: AsyncIOMotorDatabase, order_id: str, normalized: str) -> None:
+    """Propage un statut non-succès (failed, pending…) sur la commande."""
+    await db.orders.update_one({"id": order_id}, {"$set": {"status": normalized}})
+
+
 @router.post("/webhook")
-async def paxity_webhook(request: Request):
+async def paxity_webhook(request: Request) -> dict:
     """
     Instant Payment Notification (IPN) endpoint.
     Paxity will POST here when a transaction status changes.
@@ -827,57 +887,31 @@ async def paxity_webhook(request: Request):
         payload = {}
     logger.info(f"[Paxity] Webhook received: {payload}")
 
-    root = _payload_root(payload)
-    paxity_tx_id = (
-        root.get("transactionId")
-        or root.get("id")
-        or root.get("txId")
-    )
-    order_id = root.get("idClient") or root.get("orderId") or payload.get("idClient") or payload.get("orderId")
-    normalized = _map_status(root.get("status") or payload.get("status"))
-
+    paxity_tx_id, order_id, normalized = _parse_webhook_ids(payload)
     update = {
         "status": normalized,
         "updated_at": datetime.now(timezone.utc).isoformat(),
         "webhook_payload": payload,
     }
+    if not await _match_webhook_tx(db, paxity_tx_id, order_id, update):
+        return {"received": True}
 
-    # Try to find by paxity id first, then by order id (le widget carte crée la
-    # transaction côté serveur AVANT que Paxity n'attribue son transactionId :
-    # si l'ID Paxity est inconnu, on retombe sur idClient = numéro de commande).
-    result = None
-    if paxity_tx_id:
-        result = await db.paxity_transactions.update_one(
-            {"paxity_transaction_id": paxity_tx_id}, {"$set": update}
+    if not order_id:
+        tx_doc = await db.paxity_transactions.find_one(
+            {"paxity_transaction_id": paxity_tx_id}, {"_id": 0, "order_id": 1}
         )
-    if (result is None or result.matched_count == 0) and order_id:
-        update_by_order = dict(update)
-        if paxity_tx_id:
-            update_by_order["paxity_transaction_id"] = paxity_tx_id
-        result = await db.paxity_transactions.update_one(
-            {"order_id": order_id}, {"$set": update_by_order}
-        )
-
-    if result is not None and result.matched_count:
-        if not order_id:
-            tx_doc = await db.paxity_transactions.find_one(
-                {"paxity_transaction_id": paxity_tx_id}, {"_id": 0, "order_id": 1}
-            )
-            order_id = (tx_doc or {}).get("order_id")
-        if order_id:
-            if normalized == "success":
-                # Numéro de commande définitif attribué au paiement confirmé
-                order_id = await _finalize_order_number(db, order_id)
-            await db.orders.update_one({"id": order_id}, {"$set": {"status": normalized}})
-            if normalized == "success":
-                await maybe_send_order_confirmation(db, order_id)
-                await maybe_send_customer_confirmation(db, order_id)
+        order_id = (tx_doc or {}).get("order_id")
+    if order_id:
+        if normalized == "success":
+            await _handle_payment_success(db, order_id)
+        else:
+            await _handle_status_change(db, order_id, normalized)
 
     return {"received": True}
 
 
 @router.post("/card/init")
-async def init_card_payment(payload: PaxityCardInitRequest, request: Request):
+async def init_card_payment(payload: PaxityCardInitRequest, request: Request) -> dict:
     """Prépare un paiement carte via le widget Paxity.
 
     Crée la commande + la transaction (pending), puis renvoie au frontend les
@@ -924,7 +958,7 @@ async def init_card_payment(payload: PaxityCardInitRequest, request: Request):
 
 
 @router.get("/orders/{order_id}")
-async def get_order(order_id: str, request: Request):
+async def get_order(order_id: str, request: Request) -> dict:
     """Fetch order details by id."""
     db = _db(request)
     order = await db.orders.find_one({"id": order_id}, {"_id": 0})

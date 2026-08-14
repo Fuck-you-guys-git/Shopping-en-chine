@@ -68,7 +68,7 @@ def test_create_product_with_multicurrency_persists(hdr):
     assert data["price"] == 9000
 
 
-def test_stripe_checkout_eur_uses_explicit_price(hdr):
+def test_stripe_checkout_eur_uses_explicit_price(hdr, require_stripe):
     pid = created_ids[0]
     r = requests.post(
         f"{BASE_URL}/api/payments/stripe/checkout",
@@ -97,7 +97,7 @@ def test_stripe_checkout_eur_uses_explicit_price(hdr):
     assert order["charged_amount"] == 25.0, f"Expected 25.0 EUR, got {order['charged_amount']}"
 
 
-def test_stripe_checkout_usd_qty2_uses_explicit_price(hdr):
+def test_stripe_checkout_usd_qty2_uses_explicit_price(hdr, require_stripe):
     pid = created_ids[0]
     r = requests.post(
         f"{BASE_URL}/api/payments/stripe/checkout",
@@ -121,7 +121,7 @@ def test_stripe_checkout_usd_qty2_uses_explicit_price(hdr):
     assert order["charged_amount"] == 60.0, f"Expected 60.0 USD, got {order['charged_amount']}"
 
 
-def test_fallback_usd_when_no_explicit_price(hdr):
+def test_fallback_usd_when_no_explicit_price(hdr, require_stripe):
     payload = {
         "name": "TEST_MC_fallback iter27",
         "category": "mode",

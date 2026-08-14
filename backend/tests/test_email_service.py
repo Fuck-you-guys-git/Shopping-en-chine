@@ -13,7 +13,6 @@ import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
-import pytest
 from dotenv import load_dotenv
 from motor.motor_asyncio import AsyncIOMotorClient
 
@@ -85,9 +84,9 @@ class TestEmailService:
         async def run():
             await self.db.orders.insert_one(_order_doc(ORDER_OK_ID, MERCHANT_EMAIL))
             ok = await maybe_send_customer_confirmation(self.db, ORDER_OK_ID)
-            assert ok is True, "Resend should accept owner's own email"
+            assert ok == True, "Resend should accept owner's own email"
             doc = await self.db.orders.find_one({"id": ORDER_OK_ID}, {"_id": 0})
-            assert doc["customer_email_sent"] is True
+            assert doc["customer_email_sent"] == True
             assert doc["customer"]["email"] == MERCHANT_EMAIL
         self.loop.run_until_complete(run())
 
@@ -95,18 +94,18 @@ class TestEmailService:
         """Second call returns False (no duplicate email)."""
         async def run():
             ok = await maybe_send_customer_confirmation(self.db, ORDER_OK_ID)
-            assert ok is False
+            assert ok == False
         self.loop.run_until_complete(run())
 
     def test_3_merchant_confirmation_and_idempotent(self):
         """Merchant email → MERCHANT_EMAIL; second call is no-op."""
         async def run():
             ok = await maybe_send_order_confirmation(self.db, ORDER_OK_ID)
-            assert ok is True
+            assert ok == True
             doc = await self.db.orders.find_one({"id": ORDER_OK_ID}, {"_id": 0})
-            assert doc["confirmation_email_sent"] is True
+            assert doc["confirmation_email_sent"] == True
             ok2 = await maybe_send_order_confirmation(self.db, ORDER_OK_ID)
-            assert ok2 is False
+            assert ok2 == False
         self.loop.run_until_complete(run())
 
     def test_4_resend_test_mode_rejects_third_party(self):
@@ -114,12 +113,12 @@ class TestEmailService:
         async def run():
             await self.db.orders.insert_one(_order_doc(ORDER_BAD_ID, "someone.else@example.com"))
             ok = await maybe_send_customer_confirmation(self.db, ORDER_BAD_ID)
-            assert ok is False, (
+            assert ok == False, (
                 "Expected False — Resend test mode rejects non-owner recipients "
                 "(this is why real customers get no email until domain is verified)"
             )
             doc = await self.db.orders.find_one({"id": ORDER_BAD_ID}, {"_id": 0})
-            assert doc["customer_email_sent"] is False, (
+            assert doc["customer_email_sent"] == False, (
                 "Flag must be released after failure so a later retry can succeed"
             )
         self.loop.run_until_complete(run())

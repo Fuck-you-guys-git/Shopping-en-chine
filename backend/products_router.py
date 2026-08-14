@@ -90,13 +90,25 @@ async def _store_image(db, product_id: str, src: str) -> Optional[str]:
     return f"/api/products/{product_id}/img/{image_id}?v={v}"
 
 
+def _image_sources(doc: dict) -> tuple[list, list]:
+    """Sources d'images du payload (max 5) + couleurs associées alignées."""
+    srcs = doc.get("images") or ([doc["image"]] if doc.get("image") else [])
+    colors = doc.get("image_colors") or []
+    return srcs[:5], colors
+
+
+async def _prune_orphan_images(db, product_id: str, stored: list) -> None:
+    """Supprime les binaires d'images qui ne sont plus référencés."""
+    keep_ids = [m.group(2) for m in (IMG_URL_RE.match(u) for u in stored) if m]
+    await db.product_images.delete_many({"product_id": product_id, "image_id": {"$nin": keep_ids}})
+
+
 async def _process_images(db, product_id: str, doc: dict) -> None:
     """Convertit les images du payload en URLs stockées + nettoie les orphelines.
     Maintient l'alignement du tableau image_colors (couleur associée à chaque photo)."""
-    srcs = doc.get("images") or ([doc["image"]] if doc.get("image") else [])
-    colors = doc.get("image_colors") or []
+    srcs, colors = _image_sources(doc)
     stored, stored_colors = [], []
-    for i, src in enumerate(srcs[:5]):
+    for i, src in enumerate(srcs):
         url = await _store_image(db, product_id, src)
         if url:
             stored.append(url)
@@ -104,8 +116,7 @@ async def _process_images(db, product_id: str, doc: dict) -> None:
     doc["images"] = stored
     doc["image_colors"] = stored_colors if any(stored_colors) else None
     doc["image"] = _thumb_url(stored[0]) if stored else ""
-    keep_ids = [m.group(2) for m in (IMG_URL_RE.match(u) for u in stored) if m]
-    await db.product_images.delete_many({"product_id": product_id, "image_id": {"$nin": keep_ids}})
+    await _prune_orphan_images(db, product_id, stored)
 
 
 async def migrate_base64_images(db) -> None:
@@ -172,7 +183,7 @@ class ProductPayload(BaseModel):
 
 
 @router.get("")
-async def list_products(request: Request):
+async def list_products(request: Request) -> dict:
     """Liste publique allégée : les galeries (base64 lourdes) sont exclues —
     la fiche produit charge la galerie complète via GET /products/{id}."""
     db = _db(request)
@@ -181,7 +192,7 @@ async def list_products(request: Request):
 
 
 @router.get("/{product_id}")
-async def get_product(product_id: str, request: Request):
+async def get_product(product_id: str, request: Request) -> dict:
     db = _db(request)
     doc = await db.products.find_one({"id": product_id}, {"_id": 0})
     if not doc:

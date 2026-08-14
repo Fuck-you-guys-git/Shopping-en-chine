@@ -44,7 +44,7 @@ class TestConfig:
         r = requests.get(f"{API}/paxity/config", timeout=15)
         assert r.status_code == 200
         for m in r.json()["methods"]:
-            assert m["requires_otp"] is False, f"{m['code']} requires_otp={m['requires_otp']}"
+            assert m["requires_otp"] == False, f"{m['code']} requires_otp={m['requires_otp']}"
 
 
 # ---- Validation (no live Paxity call reached) ----
@@ -87,4 +87,4 @@ class TestLiveOMSNNoOTP:
         assert "orange" in data["payment_link"].lower() or "sonatel" in data["payment_link"].lower(), \
             f"unexpected link host: {data['payment_link']}"
         assert data.get("qr_code"), "qr_code empty"
-        assert data.get("requires_otp") is False
+        assert data.get("requires_otp") == False
