@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useSeller } from "@/context/SellerContext";
 import { formatCfa as formatPrice } from "@/lib/locale";
+import { colorName } from "@/lib/colors";
 import { toast } from "sonner";
 
 const timeAgo = (ts) => {
@@ -27,7 +28,12 @@ const ticketHtml = (o) => {
     const dateStr = new Date(o.createdAt).toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" });
     const itemRow = (it) => {
         const [nm, ...rest] = String(it.name || "").split(" — ");
-        const variant = rest.join(" — ");
+        // Variante : champs structurés (couleur/taille) prioritaires, sinon suffixe du nom
+        const structured = [
+            it.size ? `Taille ${it.size}` : null,
+            it.color ? (colorName(it.color) || it.color) : null,
+        ].filter(Boolean).join(" · ");
+        const variant = structured || rest.join(" — ");
         const qty = Number(it.qty) || 1; // coercition numérique : aucune injection HTML possible
         return `
             <div class="item">
@@ -438,7 +444,10 @@ export default function Orders() {
                                 <div>
                                     <p className="text-xs uppercase tracking-widest text-muted-foreground mb-3">Articles ({selected.items.length})</p>
                                     <div className="space-y-2 max-h-52 overflow-y-auto">
-                                        {selected.items.map((it, i) => (
+                                        {selected.items.map((it, i) => {
+                                            const [base, ...rest] = String(it.name || "").split(" — ");
+                                            const variantFromName = rest.join(" — ");
+                                            return (
                                             <div key={`${it.product_id || it.name}-${i}`} className="flex items-center gap-3 p-2 rounded-lg hover:bg-muted/30">
                                                 <div className="h-12 w-12 rounded-lg bg-muted overflow-hidden shrink-0 flex items-center justify-center">
                                                     {it.image
@@ -446,12 +455,22 @@ export default function Orders() {
                                                         : <i className="fa-solid fa-box text-muted-foreground" />}
                                                 </div>
                                                 <div className="flex-1 min-w-0">
-                                                    <p className="text-sm font-medium truncate">{it.name}</p>
-                                                    <p className="text-xs text-muted-foreground">Qté {it.qty}</p>
+                                                    <p className="text-sm font-medium truncate">{base}</p>
+                                                    <p className="text-xs text-muted-foreground flex items-center gap-1.5 flex-wrap" data-testid={`order-item-variant-${i}`}>
+                                                        Qté {it.qty}
+                                                        {it.size && <span>· Taille {it.size}</span>}
+                                                        {it.color ? (
+                                                            <span className="inline-flex items-center gap-1">
+                                                                · <span className="inline-block h-3 w-3 rounded-full border border-border shrink-0" style={{ background: it.color }} />
+                                                                {colorName(it.color) || it.color}
+                                                            </span>
+                                                        ) : (!it.size && variantFromName ? <span>· {variantFromName}</span> : null)}
+                                                    </p>
                                                 </div>
                                                 <span className="text-sm font-medium whitespace-nowrap">{formatPrice(it.price * it.qty)}</span>
                                             </div>
-                                        ))}
+                                            );
+                                        })}
                                     </div>
                                 </div>
 

@@ -254,6 +254,9 @@ class PaxityOrderItem(BaseModel):
     name: str
     price: float
     qty: int = 1
+    # Variantes choisies par le client (affichées dans le dashboard, tickets, emails)
+    color: Optional[str] = None  # hex, ex : #C64C3A
+    size: Optional[str] = None
 
 
 class PaxityPayinRequest(BaseModel):

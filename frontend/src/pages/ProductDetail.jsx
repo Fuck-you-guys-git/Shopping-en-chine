@@ -56,8 +56,10 @@ export default function ProductDetail() {
         document.body.style.overflow = lightbox ? "hidden" : "";
         return () => { document.body.style.overflow = ""; };
     }, [lightbox]);
-    const [color, setColor] = useState(product?.colors?.[0]);
+    // Couleur OBLIGATOIRE : aucune pré-sélection, le client doit choisir
+    const [color, setColor] = useState(null);
     const [size, setSize] = useState(null);
+    const colorRef = useRef(null);
 
     if (!product) {
         if (!loaded) {
@@ -100,17 +102,28 @@ export default function ProductDetail() {
         related.push(...fill.slice(0, 4 - related.length));
     }
 
+    const soldOut = product.outOfStock === true || product.stock === 0;
+    const needsColor = Array.isArray(product.colors) && product.colors.length > 0;
+
+    // La couleur est obligatoire quand le produit en propose
+    const requireColor = () => {
+        if (needsColor && !color) {
+            toast.error(t("Veuillez choisir une couleur"), { description: t("Sélectionnez une couleur avant d'ajouter au panier.") });
+            colorRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+            return false;
+        }
+        return true;
+    };
+
     const handleAdd = () => {
-        if (soldOut) return;
+        if (soldOut || !requireColor()) return;
         addItem(product, qty, size, color);
         const details = [size ? `${t("Taille")} ${size}` : null, color ? colorName(color) : null].filter(Boolean).join(" · ");
         toast.success(t("Ajouté au panier"), { description: `${product.name}${details ? ` · ${details}` : ""} × ${qty}` });
     };
 
-    const soldOut = product.outOfStock === true || product.stock === 0;
-
     const handleBuyNow = () => {
-        if (soldOut) return;
+        if (soldOut || !requireColor()) return;
         addItem(product, qty, size, color);
         setDrawerOpen(false);
         navigate("/commande");
@@ -264,8 +277,15 @@ export default function ProductDetail() {
 
                         {/* Colors — cliquer une couleur affiche la photo associée */}
                         {product.colors && (
-                            <div className="mt-8">
-                                <p className="text-sm font-medium mb-3">{t("Couleur :")} <span className="text-muted-foreground font-normal">{colorName(color) || t("Sélectionnée")}</span></p>
+                            <div className="mt-8" ref={colorRef}>
+                                <p className="text-sm font-medium mb-3">
+                                    {t("Couleur :")}{" "}
+                                    {color ? (
+                                        <span className="text-muted-foreground font-normal">{colorName(color)}</span>
+                                    ) : (
+                                        <span className="text-destructive font-normal" data-testid="color-required-hint">{t("choisissez une couleur")} *</span>
+                                    )}
+                                </p>
                                 <div className="flex gap-2">
                                     {product.colors.map((c) => (
                                         <button

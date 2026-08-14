@@ -32,6 +32,8 @@ export default function RetryOrder() {
                     addItem(
                         p || { id: it.product_id, name: it.name, price: it.price, image: null },
                         it.qty || 1,
+                        it.size || null,
+                        it.color || null,
                     );
                 });
                 toast.success("Panier restauré ✦", { description: "Finalisez votre paiement." });

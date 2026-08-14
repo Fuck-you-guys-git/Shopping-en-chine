@@ -210,6 +210,10 @@ const EN = {
     "En stock": "In stock",
     "Rupture de stock": "Out of stock",
     "Ce produit est actuellement épuisé.": "This product is currently sold out.",
+    "Choisir la couleur": "Choose a color",
+    "choisissez une couleur": "choose a color",
+    "Veuillez choisir une couleur": "Please choose a color",
+    "Sélectionnez une couleur avant d'ajouter au panier.": "Select a color before adding to cart.",
     "Récapitulatif": "Summary",
     // Home
     "Tout, plus simple.": "Everything, made simple.",

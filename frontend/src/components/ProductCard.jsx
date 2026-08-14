@@ -11,11 +11,18 @@ export const formatPrice = (v) => formatMoney(v);
 export const ProductCard = ({ product, index = 0 }) => {
     const { addItem } = useCart();
     const soldOut = product.outOfStock === true || product.stock === 0;
+    // Couleur obligatoire : l'ajout rapide ouvre la fiche produit pour choisir
+    const needsColor = Array.isArray(product.colors) && product.colors.length > 0;
 
     const handleAdd = (e) => {
+        if (soldOut) {
+            e.preventDefault();
+            e.stopPropagation();
+            return;
+        }
+        if (needsColor) return; // laisse le lien ouvrir la fiche produit
         e.preventDefault();
         e.stopPropagation();
-        if (soldOut) return;
         addItem(product);
         toast.success(t("Ajouté au panier"), { description: product.name });
     };
@@ -71,7 +78,8 @@ export const ProductCard = ({ product, index = 0 }) => {
                     data-testid="product-card-add-btn"
                     className="mt-3 w-full bg-ink text-ink-foreground hover:bg-ink/90 rounded-full h-10 disabled:opacity-60"
                 >
-                    <ShoppingBag className="h-4 w-4" /> {soldOut ? t("Rupture de stock") : t("Ajouter au panier")}
+                    <ShoppingBag className="h-4 w-4" />{" "}
+                    {soldOut ? t("Rupture de stock") : needsColor ? t("Choisir la couleur") : t("Ajouter au panier")}
                 </Button>
             </div>
         </Link>

@@ -756,3 +756,16 @@ Payments were failing with a **DNS error** because `backend/paxity_router.py` ha
 - test_email_fallback.test_webhook_idempotent rendu robuste au parallélisme xdist (compte email_log par sujet de commande au lieu du log supervisor partagé).
 - TESTÉ : suite complète 95 verts / 0 échec / 7 skips ; pyflakes 0 ; endpoints externes products/config/webhook = 200 ; diagnostic Paxity OK (dns+http+auth 200).
 - ⚠️ REDEPLOY requis pour la production.
+
+## Update — Feb 2026 (Couleur obligatoire + affichage couleurs dans les commandes)
+- User : les couleurs ne s'affichent pas dans les commandes du Dashboard ; le choix de couleur ne doit pas être optionnel ; les nouvelles commandes doivent montrer la couleur choisie.
+- CAUSES : (1) PaxityOrderItem (backend) ne stockait pas color/size structurés, (2) SellerContext.mapOrder supprimait ces champs, (3) ProductCard permettait l'ajout rapide sans couleur, (4) ProductDetail pré-sélectionnait silencieusement la 1re couleur.
+- FIX backend : PaxityOrderItem += color (hex) + size (Optional) — s'applique au payin mobile ET au card/init.
+- FIX Checkout.jsx : items payload += color/size structurés (le nom garde aussi le libellé « — Taille M · Rouge »).
+- FIX ProductDetail.jsx : couleur OBLIGATOIRE — useState(null) (plus de pré-sélection), requireColor() bloque Ajouter/Acheter avec toast + scroll vers le sélecteur, hint rouge « choisissez une couleur * » (data-testid=color-required-hint).
+- FIX ProductCard.jsx : produit avec couleurs → le bouton devient « Choisir la couleur » et ouvre la fiche produit (pas d'ajout direct sans couleur).
+- FIX Dashboard : SellerContext.mapOrder transmet color/size ; Orders.jsx dialog affiche pastille couleur + nom (colorName) + taille (data-testid=order-item-variant-{i}), fallback sur le suffixe du nom pour les anciennes commandes ; ticket imprimé utilise les champs structurés en priorité.
+- BONUS : RetryOrder.jsx restaure aussi color/size dans le panier.
+- Traductions EN ajoutées (Choose a color, Please choose a color…).
+- TESTÉ : card/init persiste color/size ✓, webhook → TEST-102 ✓, dialog Dashboard affiche « Qté 1 · Taille M · 🔴 Rouge » (screenshot) ✓, fiche produit bloque sans couleur (toast) ✓, carte boutique « Choose a color » ✓. Régression pytest verte. Données de test nettoyées.
+- ⚠️ REDEPLOY requis pour la production.

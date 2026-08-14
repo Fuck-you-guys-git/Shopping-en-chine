@@ -299,6 +299,8 @@ export default function Checkout() {
                     name: itemLabel(it),
                     price: it.price,
                     qty: it.qty,
+                    color: it.color || undefined,
+                    size: it.size || undefined,
                 })),
             });
             // Écran d'attente + polling (mêmes mécanismes que le mobile money)
@@ -392,6 +394,8 @@ export default function Checkout() {
                     name: itemLabel(it),
                     price: it.price,
                     qty: it.qty,
+                    color: it.color || undefined,
+                    size: it.size || undefined,
                 })),
             };
 

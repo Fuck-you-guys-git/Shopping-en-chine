@@ -30,9 +30,12 @@ const mapOrder = (o, productsById) => ({
     address: o.customer?.address || null,
     items: (o.items || []).map((it) => ({
         id: it.product_id,
+        product_id: it.product_id,
         name: it.name,
         price: it.price,
         qty: it.qty || 1,
+        color: it.color || null,
+        size: it.size || null,
         image: productsById[it.product_id]?.image || null,
     })),
     total: o.amount || 0,
