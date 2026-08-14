@@ -785,3 +785,11 @@ Payments were failing with a **DNS error** because `backend/paxity_router.py` ha
 - FIX colors.js : nearestColorName(hex) — jamais de code hex affiché : hex hors palette → couleur de la palette la plus proche (distance RGB, ex #000000→Noir, #7B1F2B→Bordeaux). Utilisé dans le ticket ET le dialog commande (remplace colorName||hex).
 - TESTÉ : screenshot ticket 7 articles avec variantes — gras lisible, « Taille 41 · Noir » et « Bordeaux » sous les noms, tout tient sur l'étiquette 100×150. Commande de test supprimée.
 - ⚠️ REDEPLOY requis.
+
+## Update — Feb 2026 (Rapport qualité #2 appliqué — backend/tests)
+- « Variable non définie » : pyflakes confirme AUCUNE (faux positif de l'outil du rapport).
+- Comparaisons `is` signalées : 6/7 sont des `is None`/`is not None` — idiome Python CORRECT (PEP 8), inchangés volontairement. Seul vrai cas corrigé : products_router.py:262 `doc.get("custom") is False` → `doc.get("custom", True) == False` (comparaison de valeur, noqa E712 documenté).
+- Tests découpés (1 scénario = 1 test) : test_auth_products.py (CRUD → 5 tests + fixture created_product), test_orders_bulk.py (bulk → fixture bulk_targets avec restauration en teardown + 2 tests), test_iter22_sizes_gzip.py (Stripe size → fixture stripe_size_checkout + 2 tests, skip Stripe via conftest.skip_if_stripe_unavailable), test_merchant_email_destination.py (seed extrait en fixture seeded_order avec cleanup teardown).
+- Type hints ajoutés aux 5 fichiers de test ciblés (params + retours) ; test_multicurrency_iter27.py dédupliqué (_checkout + _find_order_by_session).
+- TESTÉ : suite complète 98 verts / 0 échec / 8 skips ; pyflakes 0 ; API OK.
+- Pas d'impact production (tests uniquement + 1 ligne équivalente) — redeploy non urgent mais recommandé au prochain lot.

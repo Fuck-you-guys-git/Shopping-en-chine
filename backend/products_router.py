@@ -259,7 +259,9 @@ async def delete_product(product_id: str, request: Request, seller: dict = Depen
         raise HTTPException(status_code=404, detail="Produit introuvable")
     await db.products.delete_one({"id": product_id})
     await db.product_images.delete_many({"product_id": product_id})
-    if doc.get("custom") is False:
+    # Produit du catalogue de départ (custom explicitement False) : on mémorise
+    # sa suppression pour ne pas le re-seeder au démarrage.
+    if doc.get("custom", True) == False:  # noqa: E712 — comparaison de valeur voulue (pas d'identité)
         await db.deleted_seed_products.update_one(
             {"product_id": product_id}, {"$set": {"product_id": product_id}}, upsert=True
         )
