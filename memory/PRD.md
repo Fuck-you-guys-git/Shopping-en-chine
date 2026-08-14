@@ -710,3 +710,7 @@ Payments were failing with a **DNS error** because `backend/paxity_router.py` ha
 - TESTÉ : 2 tentatives → tmp ; paiements confirmés → 1053 puis 1054 consécutifs ✓ ; polling client renvoie le numéro final ✓ ; tests régression verts.
 - NOTE : les trous EXISTANTS en prod (#1188→#1204) ne peuvent pas être comblés rétroactivement ; les nouvelles commandes payées seront consécutives.
 - ⚠️ REDEPLOY requis.
+
+## Update — Feb 2026 (charset e-ticket + re-vérification redirection)
+- BUG e-ticket : accents cassés (aoÃ»t, SÃ©nÃ©gal) — le HTML du ticket Blob n'avait PAS de <meta charset="utf-8"> et le Blob était type text/html sans charset → interprété Latin-1. FIX : meta charset + Blob "text/html;charset=utf-8" (Orders.jsx).
+- Redirection → confirmation RE-VÉRIFIÉE e2e en preview : webhook success + arrivée sur /commande (avec query params) → « Your order is confirmed » + numéro final #1056, accents OK, stable 10s. LE CODE EST BON — le user observe l'ancien comportement en PRODUCTION car le redeploy n'a pas encore été fait avec ces correctifs.

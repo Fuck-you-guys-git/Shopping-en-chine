@@ -80,7 +80,7 @@ const ticketHtml = (o) => {
 
 const printTickets = (ordersToPrint) => {
     if (!ordersToPrint.length) return false;
-    const html = `<!doctype html><html><head><title>Tickets colis — Shopping en Chine</title><style>
+    const html = `<!doctype html><html><head><meta charset="utf-8"><title>Tickets colis — Shopping en Chine</title><style>
         /* Étiquette 100 × 150 mm (4 × 6 pouces) — une commande par page.
            Le ticket occupe 100% de la page (100vw × 100vh) pour couvrir
            TOUTE la feuille et rester centré quelle que soit l'imprimante. */
@@ -155,7 +155,7 @@ const printTickets = (ordersToPrint) => {
     ${ordersToPrint.map(ticketHtml).join("")}</body></html>`;
     // Pas de document.write (risque XSS / API dépréciée) : le HTML est servi
     // via une URL Blob same-origin, ce qui permet d'appeler print() sur l'onglet.
-    const blobUrl = URL.createObjectURL(new Blob([html], { type: "text/html" }));
+    const blobUrl = URL.createObjectURL(new Blob([html], { type: "text/html;charset=utf-8" }));
     const w = window.open(blobUrl, "_blank");
     if (!w) {
         URL.revokeObjectURL(blobUrl);
