@@ -581,9 +581,34 @@ async def _mark_payin_failed(db: AsyncIOMotorDatabase, tx: "PaxityTransaction",
         logger.exception(f"[Paxity] Mongo write failed on {log_context} path")
 
 
-async def _finalize_payin(db: AsyncIOMotorDatabase, tx: "PaxityTransaction", order_id: str) -> None:
+async def _finalize_order_number(db: AsyncIOMotorDatabase, order_id: str) -> str:
+    """Attribue le numéro de commande définitif AU PAIEMENT CONFIRMÉ.
+
+    Les commandes sont créées avec un id temporaire (tmp_xxx) : le compteur
+    séquentiel n'est consommé que pour les paiements réussis, afin d'obtenir
+    des numéros consécutifs (#1219, #1220, …) sans trous dus aux tentatives
+    abandonnées. Idempotent (webhooks dupliqués).
+    """
+    if not str(order_id).startswith("tmp_"):
+        return order_id
+    new_no = await next_order_number(db)
+    res = await db.orders.update_one({"id": order_id}, {"$set": {"id": new_no, "tmp_id": order_id}})
+    if res.matched_count:
+        await db.paxity_transactions.update_many({"order_id": order_id}, {"$set": {"order_id": new_no}})
+        logger.info(f"[Paxity] Numéro de commande attribué : {order_id} → {new_no}")
+        return new_no
+    # Déjà finalisée par un autre événement (webhook + polling) : relire
+    doc = await db.orders.find_one({"tmp_id": order_id}, {"_id": 0, "id": 1})
+    return doc["id"] if doc else order_id
+
+
+async def _finalize_payin(db: AsyncIOMotorDatabase, tx: "PaxityTransaction", order_id: str) -> str:
     """Persiste le résultat 2xx : emails si succès, watcher serveur si en attente."""
     try:
+        if tx.status == "success":
+            # Succès immédiat (ex : OM avec OTP) : numéro définitif tout de suite
+            order_id = await _finalize_order_number(db, order_id)
+            tx.order_id = order_id
         await db.paxity_transactions.insert_one(tx.model_dump(mode="json"))
         await db.orders.update_one({"id": order_id}, {"$set": {"status": tx.status}})
         if tx.status == "success":
@@ -595,6 +620,7 @@ async def _finalize_payin(db: AsyncIOMotorDatabase, tx: "PaxityTransaction", ord
             asyncio.create_task(_watch_pending_tx(db, tx.id))
     except Exception:
         logger.exception("[Paxity] Mongo write failed on success path")
+    return order_id
 
 
 @router.post("/payin")
@@ -610,7 +636,8 @@ async def create_payin(payload: PaxityPayinRequest, request: Request):
     currency = (payload.currency or PAXITY_DEFAULT_CURRENCY).upper()
 
     db = _db(request)
-    order_id = await next_order_number(db)
+    # Id temporaire : le numéro séquentiel n'est attribué qu'au paiement confirmé
+    order_id = f"tmp_{uuid.uuid4().hex[:10]}"
 
     tx = PaxityTransaction(
         order_id=order_id,
@@ -729,6 +756,9 @@ async def _refresh_pending_tx(db: AsyncIOMotorDatabase, tx: dict) -> str:
             fresh = _map_status(root.get("status"))
             if fresh != tx["status"]:
                 now = datetime.now(timezone.utc).isoformat()
+                if fresh == "success":
+                    # Numéro de commande définitif attribué au paiement confirmé
+                    tx["order_id"] = await _finalize_order_number(db, tx["order_id"])
                 await db.paxity_transactions.update_one(
                     {"id": tx["id"]},
                     {"$set": {"status": fresh, "updated_at": now}},
@@ -821,6 +851,9 @@ async def paxity_webhook(request: Request):
             )
             order_id = (tx_doc or {}).get("order_id")
         if order_id:
+            if normalized == "success":
+                # Numéro de commande définitif attribué au paiement confirmé
+                order_id = await _finalize_order_number(db, order_id)
             await db.orders.update_one({"id": order_id}, {"$set": {"status": normalized}})
             if normalized == "success":
                 await maybe_send_order_confirmation(db, order_id)
@@ -843,7 +876,8 @@ async def init_card_payment(payload: PaxityCardInitRequest, request: Request):
     currency = (payload.currency or PAXITY_DEFAULT_CURRENCY).upper()
 
     db = _db(request)
-    order_id = await next_order_number(db)
+    # Id temporaire : le numéro séquentiel n'est attribué qu'au paiement confirmé
+    order_id = f"tmp_{uuid.uuid4().hex[:10]}"
     tx = PaxityTransaction(
         order_id=order_id,
         amount=payload.amount,

@@ -701,3 +701,12 @@ Payments were failing with a **DNS error** because `backend/paxity_router.py` ha
 - FIX : lib/paxityWidget.js — patchNetworkOnce() intercepte XMLHttpRequest + fetch et injecte redirectUrl dans toute requête vers */transaction/pay-in-car* (setCardRedirectUrl appelé par Checkout avec {origin}/commande).
 - PROUVÉ par interception Playwright : le payload sortant du widget contient bien redirectUrl (requête bloquée, aucun paiement réel). Filet de sécurité conservé : restauration PENDING_TX_KEY si le client revient manuellement.
 - ⚠️ REDEPLOY requis + test carte réel par le user en prod.
+
+## Update — Feb 2026 (numéros de commande consécutifs — attribués au paiement confirmé)
+- User : numéros non alignés (#1219, #1207, #1204…) car un numéro était consommé à CHAQUE tentative de checkout (paiements abandonnés inclus).
+- FIX (paxity_router.py) : les commandes sont créées avec un id temporaire tmp_{uuid10}. Le compteur next_order_number n'est consommé QUE lors de la confirmation du paiement via _finalize_order_number(db, order_id) — idempotent (webhooks dupliqués : champ tmp_id conservé pour relire le numéro final).
+- Points de finalisation : webhook (SUCCESS), _refresh_pending_tx (polling client + watcher serveur), _finalize_payin (succès immédiat OM/OTP). Les paxity_transactions.order_id sont renommées en même temps ; le polling /paxity/status renvoie le numéro FINAL au client.
+- Frontend : orderNo() affiche "—" pour les ids tmp_ (tentatives non payées dans le dashboard vendeur).
+- TESTÉ : 2 tentatives → tmp ; paiements confirmés → 1053 puis 1054 consécutifs ✓ ; polling client renvoie le numéro final ✓ ; tests régression verts.
+- NOTE : les trous EXISTANTS en prod (#1188→#1204) ne peuvent pas être comblés rétroactivement ; les nouvelles commandes payées seront consécutives.
+- ⚠️ REDEPLOY requis.
