@@ -11,6 +11,7 @@ import { DeliveryOptions } from "@/components/DeliveryOptions";
 import { orderNo } from "@/lib/utils";
 import { t, getLocale } from "@/lib/locale";
 import { findCountry, countryName, STATES } from "@/lib/countries";
+import { colorName } from "@/lib/colors";
 import { OPERATOR_META } from "@/components/checkout/operatorMeta";
 import { CheckoutSuccess } from "@/components/checkout/CheckoutSuccess";
 import { CheckoutPending } from "@/components/checkout/CheckoutPending";
@@ -26,6 +27,13 @@ import { CheckoutSummary } from "@/components/checkout/CheckoutSummary";
 const PENDING_TX_KEY = "sec_pending_paxity_tx_v1";
 // Paiement par carte : via le WIDGET PAXITY (Visa/Mastercard).
 const CARD_PAYMENT_ENABLED = true;
+
+// Libellé complet d'un article pour la commande : nom + taille + couleur
+// choisies par le client (visibles partout : dashboard vendeur, tickets, emails).
+const itemLabel = (it) => {
+    const opts = [it.size ? `Taille ${it.size}` : null, it.color ? colorName(it.color) : null].filter(Boolean);
+    return opts.length ? `${it.name} — ${opts.join(" · ")}` : it.name;
+};
 // Confirmation persistée en session : survit au remontage du composant
 // (changement de langue/devise) et au rechargement de la page.
 const COMPLETE_TX_KEY = "sec_completed_paxity_tx_v1";
@@ -282,7 +290,7 @@ export default function Checkout() {
                 },
                 items: items.map((it) => ({
                     product_id: it.id,
-                    name: it.size ? `${it.name} — Taille ${it.size}` : it.name,
+                    name: itemLabel(it),
                     price: it.price,
                     qty: it.qty,
                 })),
@@ -375,7 +383,7 @@ export default function Checkout() {
                 },
                 items: items.map((it) => ({
                     product_id: it.id,
-                    name: it.size ? `${it.name} — Taille ${it.size}` : it.name,
+                    name: itemLabel(it),
                     price: it.price,
                     qty: it.qty,
                 })),

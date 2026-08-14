@@ -1,5 +1,6 @@
 import { Separator } from "@/components/ui/separator";
 import { t, unitAmount, fmtAmount, cartDisplayTotal } from "@/lib/locale";
+import { colorName } from "@/lib/colors";
 
 // Récapitulatif du panier (colonne latérale du checkout)
 export const CheckoutSummary = ({ items }) => (
@@ -15,7 +16,18 @@ export const CheckoutSummary = ({ items }) => (
                         </div>
                         <div className="flex-1 min-w-0">
                             <p className="text-sm font-medium truncate">{it.name}</p>
-                            {it.size && <p className="text-xs text-muted-foreground">{t("Taille")} {it.size}</p>}
+                            {(it.size || it.color) && (
+                                <p className="text-xs text-muted-foreground flex items-center gap-1">
+                                    {it.size ? `${t("Taille")} ${it.size}` : ""}
+                                    {it.size && it.color ? " · " : ""}
+                                    {it.color ? (
+                                        <>
+                                            <span className="inline-block h-2.5 w-2.5 rounded-full border border-border" style={{ background: it.color }} />
+                                            {colorName(it.color)}
+                                        </>
+                                    ) : null}
+                                </p>
+                            )}
                         </div>
                         <span className="text-sm font-medium">{fmtAmount(unitAmount(it) * it.qty)}</span>
                     </div>

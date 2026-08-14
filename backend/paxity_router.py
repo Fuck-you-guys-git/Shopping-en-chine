@@ -500,6 +500,7 @@ async def _persist_order(db: AsyncIOMotorDatabase, order_id: str, payload: Paxit
             "currency": currency,
             "status": "pending",
             "payment_method": payload.payment_method,
+            "delivery_mode": getattr(payload, "delivery_mode", None) or "standard",
             "transaction_id": tx.id,
             "created_at": tx.created_at.isoformat(),
             "tracking_step": "ordered",

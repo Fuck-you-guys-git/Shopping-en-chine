@@ -4,9 +4,10 @@ import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { Input } from "@/components/ui/input";
 import { useState } from "react";
-import { useCart } from "@/context/CartContext";
-import { toast } from "sonner";
 import { t, unitAmount, fmtAmount, cartDisplayTotal } from "@/lib/locale";
+import { colorName } from "@/lib/colors";
+import { toast } from "sonner";
+import { useCart } from "@/context/CartContext";
 
 export default function Cart() {
     const { items, updateQty, removeItem, subtotal, clear } = useCart();
@@ -61,7 +62,16 @@ export default function Cart() {
                                         <Link to={`/produit/${item.id}`} className="font-display text-lg font-medium leading-snug hover:text-primary transition-colors">
                                             {item.name}
                                         </Link>
-                                        <p className="text-xs text-muted-foreground mt-1">{item.size ? `${t("Taille")} ${item.size} · ` : ""}{t("En stock")}</p>
+                                        <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1.5">
+                                            {item.size ? `${t("Taille")} ${item.size} · ` : ""}
+                                            {item.color ? (
+                                                <>
+                                                    <span className="inline-block h-3 w-3 rounded-full border border-border align-middle" style={{ background: item.color }} />
+                                                    {colorName(item.color)} ·{" "}
+                                                </>
+                                            ) : null}
+                                            {t("En stock")}
+                                        </p>
                                     </div>
                                     <button onClick={() => removeItem(item.line)} className="text-muted-foreground hover:text-destructive shrink-0">
                                         <Trash2 className="h-4 w-4" />

@@ -101,12 +101,13 @@ export default function ProductDetail() {
     }
 
     const handleAdd = () => {
-        addItem(product, qty, size);
-        toast.success(t("Ajouté au panier"), { description: `${product.name}${size ? ` · ${t("Taille")} ${size}` : ""} × ${qty}` });
+        addItem(product, qty, size, color);
+        const details = [size ? `${t("Taille")} ${size}` : null, color ? colorName(color) : null].filter(Boolean).join(" · ");
+        toast.success(t("Ajouté au panier"), { description: `${product.name}${details ? ` · ${details}` : ""} × ${qty}` });
     };
 
     const handleBuyNow = () => {
-        addItem(product, qty, size);
+        addItem(product, qty, size, color);
         setDrawerOpen(false);
         navigate("/commande");
     };

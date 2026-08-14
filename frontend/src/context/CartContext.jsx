@@ -4,7 +4,7 @@ const CartContext = createContext(null);
 const STORAGE_KEY = "sec_cart_v1";
 
 // Identifiant de ligne : même produit + tailles différentes = lignes séparées
-const lineKey = (id, size) => (size ? `${id}::${size}` : id);
+const lineKey = (id, size, color) => [id, size || "", color || ""].filter(Boolean).join("::");
 
 export const CartProvider = ({ children }) => {
     const [items, setItems] = useState(() => {
@@ -12,7 +12,7 @@ export const CartProvider = ({ children }) => {
             const raw = localStorage.getItem(STORAGE_KEY);
             const parsed = raw ? JSON.parse(raw) : [];
             // Migration : anciennes lignes sans `line`
-            return parsed.map((i) => ({ ...i, line: i.line || lineKey(i.id, i.size) }));
+            return parsed.map((i) => ({ ...i, line: i.line || lineKey(i.id, i.size, i.color) }));
         } catch {
             return [];
         }
@@ -23,10 +23,10 @@ export const CartProvider = ({ children }) => {
         localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
     }, [items]);
 
-    const addItem = (product, qty = 1, size = null) => {
+    const addItem = (product, qty = 1, size = null, color = null) => {
         // On ne stocke pas la galerie complète (base64 lourdes) dans le panier
         const { images: _images, ...slim } = product;
-        const line = lineKey(product.id, size);
+        const line = lineKey(product.id, size, color);
         setItems((prev) => {
             const found = prev.find((i) => i.line === line);
             if (found) {
@@ -34,7 +34,7 @@ export const CartProvider = ({ children }) => {
                     i.line === line ? { ...i, qty: i.qty + qty } : i,
                 );
             }
-            return [...prev, { ...slim, qty, size: size || undefined, line }];
+            return [...prev, { ...slim, qty, size: size || undefined, color: color || undefined, line }];
         });
     };
 

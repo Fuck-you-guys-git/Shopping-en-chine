@@ -685,3 +685,13 @@ Payments were failing with a **DNS error** because `backend/paxity_router.py` ha
 - TESTÉ : curl card/init OK ; webhook idClient inconnu-txid → tx+order success ✓ ; e2e Playwright : modale widget affichée avec formulaire carte « Montant à payer : 9000 XOF » ✓ ; pending screen derrière ✓ ; 7 tests régression verts.
 - NOTE : montant débité en XOF (les clients EU/US paient en XOF converti par leur banque).
 - ⚠️ REDEPLOY requis.
+
+## Update — Feb 2026 (livraison Express + couleur dans les commandes)
+- BUG 1 : les commandes Paxity (mobile money + carte widget) affichaient toujours « Standard » — _persist_order (paxity_router) n'enregistrait pas delivery_mode (Stripe le faisait). FIX : "delivery_mode": payload.delivery_mode or "standard" dans _persist_order (couvre payin + card/init).
+- BUG 2 : la couleur choisie par le client n'était jamais capturée. FIX chaîne complète :
+  - CartContext : lineKey(id, size, color), addItem(product, qty, size, color), champ color stocké.
+  - ProductDetail : handleAdd/handleBuyNow passent la couleur sélectionnée (hex).
+  - Checkout : helper itemLabel(it) → « Nom — Taille M · Bleu » (via colorName de lib/colors) utilisé dans payin ET cardInit → visible partout (dashboard, tickets, emails).
+  - Cart.jsx + CheckoutSummary : pastille + nom de couleur affichés.
+- TESTÉ : card/init express → order.delivery_mode=express ✓ ; e2e produit coloré → panier « Size M · Bleu » + color en localStorage ✓. Produits/commandes QA nettoyés.
+- ⚠️ REDEPLOY requis.
