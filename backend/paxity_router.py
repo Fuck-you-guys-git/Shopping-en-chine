@@ -266,6 +266,23 @@ class PaxityPayinRequest(BaseModel):
     items: list[PaxityOrderItem] = []
 
 
+class PaxityCardInitRequest(BaseModel):
+    """Initialisation d'un paiement CARTE via le widget Paxity.
+
+    Le widget (card-widget.iife.js) gère lui-même l'appel à Paxity côté
+    navigateur ; le backend crée d'abord la commande et la transaction, puis
+    renvoie les paramètres nécessaires au widget (idClient = n° de commande,
+    IPN, credentials marchands).
+    """
+    amount: float
+    currency: Optional[str] = None
+    description: str = "Commande Shopping en Chine"
+    delivery_mode: Optional[str] = "standard"
+    payment_method: str = "CARD"
+    customer: PaxityCustomer
+    items: list[PaxityOrderItem] = []
+
+
 class PaxityTransaction(BaseModel):
     id: str = Field(default_factory=lambda: f"tx_{uuid.uuid4().hex[:16]}")
     order_id: str
@@ -780,28 +797,81 @@ async def paxity_webhook(request: Request):
         "webhook_payload": payload,
     }
 
-    # Try to find by paxity id first, then by order id
-    tx_query = None
+    # Try to find by paxity id first, then by order id (le widget carte crée la
+    # transaction côté serveur AVANT que Paxity n'attribue son transactionId :
+    # si l'ID Paxity est inconnu, on retombe sur idClient = numéro de commande).
+    result = None
     if paxity_tx_id:
-        tx_query = {"paxity_transaction_id": paxity_tx_id}
-    elif order_id:
-        tx_query = {"order_id": order_id}
+        result = await db.paxity_transactions.update_one(
+            {"paxity_transaction_id": paxity_tx_id}, {"$set": update}
+        )
+    if (result is None or result.matched_count == 0) and order_id:
+        update_by_order = dict(update)
+        if paxity_tx_id:
+            update_by_order["paxity_transaction_id"] = paxity_tx_id
+        result = await db.paxity_transactions.update_one(
+            {"order_id": order_id}, {"$set": update_by_order}
+        )
 
-    if tx_query:
-        result = await db.paxity_transactions.update_one(tx_query, {"$set": update})
-        # L'IPN Paxity peut ne pas contenir idClient : retrouver l'order_id
-        # depuis la transaction pour toujours mettre à jour la commande.
-        if result.matched_count:
-            if not order_id:
-                tx_doc = await db.paxity_transactions.find_one(tx_query, {"_id": 0, "order_id": 1})
-                order_id = (tx_doc or {}).get("order_id")
-            if order_id:
-                await db.orders.update_one({"id": order_id}, {"$set": {"status": normalized}})
-                if normalized == "success":
-                    await maybe_send_order_confirmation(db, order_id)
-                    await maybe_send_customer_confirmation(db, order_id)
+    if result is not None and result.matched_count:
+        if not order_id:
+            tx_doc = await db.paxity_transactions.find_one(
+                {"paxity_transaction_id": paxity_tx_id}, {"_id": 0, "order_id": 1}
+            )
+            order_id = (tx_doc or {}).get("order_id")
+        if order_id:
+            await db.orders.update_one({"id": order_id}, {"$set": {"status": normalized}})
+            if normalized == "success":
+                await maybe_send_order_confirmation(db, order_id)
+                await maybe_send_customer_confirmation(db, order_id)
 
     return {"received": True}
+
+
+@router.post("/card/init")
+async def init_card_payment(payload: PaxityCardInitRequest, request: Request):
+    """Prépare un paiement carte via le widget Paxity.
+
+    Crée la commande + la transaction (pending), puis renvoie au frontend les
+    paramètres d'ouverture du widget. La confirmation arrive ensuite par IPN
+    (idClient = n° de commande) et le polling existant affiche la confirmation.
+    """
+    _require_paxity_configured()
+    if payload.amount <= 0:
+        raise HTTPException(status_code=400, detail="Montant invalide")
+    currency = (payload.currency or PAXITY_DEFAULT_CURRENCY).upper()
+
+    db = _db(request)
+    order_id = await next_order_number(db)
+    tx = PaxityTransaction(
+        order_id=order_id,
+        amount=payload.amount,
+        currency=currency,
+        payment_method="CARD",
+        phone_number="",
+        prefix_phone="",
+        customer_name=payload.customer.name,
+        customer_email=payload.customer.email,
+        description=payload.description,
+    )
+    await _persist_order(db, order_id, payload, tx, currency)
+    try:
+        await db.paxity_transactions.insert_one(tx.model_dump(mode="json"))
+    except Exception:
+        logger.exception("[Paxity] Mongo insert failed (card tx)")
+
+    ipn_url = PAXITY_IPN_URL or _public_ipn_url(request)
+    logger.info(f"[Paxity] Card widget init order={order_id} amount={payload.amount} {currency}")
+    return {
+        "order_id": order_id,
+        "transaction_id": tx.id,
+        "status": "pending",
+        "amount": int(payload.amount),
+        "currency": currency,
+        "country": "SN",
+        "ipn": ipn_url,
+        "credentials": {"apikey": PAXITY_API_KEY, "apiToken": PAXITY_API_TOKEN},
+    }
 
 
 @router.get("/orders/{order_id}")

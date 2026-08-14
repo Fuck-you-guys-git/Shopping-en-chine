@@ -4,9 +4,9 @@ import { Check, ArrowLeft, XCircle, AlertTriangle, ShieldCheck } from "lucide-re
 import { Button } from "@/components/ui/button";
 import { useCart } from "@/context/CartContext";
 import { toast } from "sonner";
-import { paxityAPI, stripeAPI } from "@/lib/api";
+import { paxityAPI } from "@/lib/api";
+import { loadPaxityCardWidget } from "@/lib/paxityWidget";
 import { paxityDirectPayin, paxityDirectAvailable } from "@/lib/paxityDirect";
-import { StripeEmbedded } from "@/components/StripeEmbedded";
 import { DeliveryOptions } from "@/components/DeliveryOptions";
 import { orderNo } from "@/lib/utils";
 import { t, getLocale } from "@/lib/locale";
@@ -16,7 +16,7 @@ import { CheckoutSuccess } from "@/components/checkout/CheckoutSuccess";
 import { CheckoutPending } from "@/components/checkout/CheckoutPending";
 import { AddressStep } from "@/components/checkout/AddressStep";
 import { PaymentMethodPicker } from "@/components/checkout/PaymentMethodPicker";
-import { StripeCardPanel } from "@/components/checkout/StripeCardPanel";
+import { PaxityCardPanel } from "@/components/checkout/PaxityCardPanel";
 import { PaxityPhoneForm } from "@/components/checkout/PaxityPhoneForm";
 import { CheckoutSummary } from "@/components/checkout/CheckoutSummary";
 
@@ -24,9 +24,8 @@ import { CheckoutSummary } from "@/components/checkout/CheckoutSummary";
 // l'app Wave/Orange Money et que le navigateur recharge la page au retour,
 // on restaure l'attente et on affiche la confirmation dès que c'est payé.
 const PENDING_TX_KEY = "sec_pending_paxity_tx_v1";
-// Paiement par carte (Stripe) désactivé à la demande du marchand.
-// Repasser à true pour réafficher le bouton « Carte bancaire » au checkout.
-const CARD_PAYMENT_ENABLED = false;
+// Paiement par carte : via le WIDGET PAXITY (Visa/Mastercard).
+const CARD_PAYMENT_ENABLED = true;
 // Confirmation persistée en session : survit au remontage du composant
 // (changement de langue/devise) et au rechargement de la page.
 const COMPLETE_TX_KEY = "sec_completed_paxity_tx_v1";
@@ -74,7 +73,6 @@ export default function Checkout() {
         window.scrollTo(0, 0); // forme universelle (compatible tous mobiles)
     }, [step, complete, transaction?.status]);
     const [checkingNow, setCheckingNow] = useState(false);
-    const [stripeClientSecret, setStripeClientSecret] = useState(null);
 
     // Restaurer une transaction en attente (retour depuis l'app de paiement)
     // ou une confirmation récente (remontage/rechargement juste après paiement)
@@ -262,39 +260,63 @@ export default function Checkout() {
     const selectedMethod = paxityConfig?.methods?.find((m) => m.code === paymentMethod);
     const operatorIconMeta = selectedMethod ? (OPERATOR_META[selectedMethod.icon] || OPERATOR_META.card) : OPERATOR_META.card;
 
-    const handleStripeCheckout = async () => {
+    // Paiement CARTE via le widget Paxity : le backend crée la commande,
+    // puis le widget s'ouvre par-dessus la page. La confirmation arrive par
+    // IPN → le polling existant (écran d'attente) affiche la confirmation.
+    const handleCardPayment = async () => {
         sessionStorage.removeItem(COMPLETE_TX_KEY); // nouvelle commande : oublier l'ancienne confirmation
         setProcessing(true);
+        setPaxityError(null);
         try {
-            const res = await stripeAPI.checkout({
-                origin_url: window.location.origin,
-                locale: getLocale().lang, // formulaire Stripe en fr ou en
-                currency: getLocale().currency, // le client paie dans SA devise (XOF / EUR / USD)
+            await loadPaxityCardWidget();
+            const res = await paxityAPI.cardInit({
+                amount: total,
                 delivery_mode: deliveryMode,
+                description: `Commande Shopping en Chine — ${items.length} article(s)`,
                 customer: {
-                    name: `${buyer.firstName} ${buyer.lastName}`,
+                    name: `${buyer.firstName} ${buyer.lastName}`.trim(),
                     email: buyer.email,
                     city: buyer.city,
                     phone: buyer.phone ? `+${prefix} ${buyer.phone}` : undefined,
                     address: [buyer.address, buyer.zip, buyer.state, selectedCountry ? countryName(selectedCountry) : null].filter(Boolean).join(", ") || undefined,
                 },
-                items: items.map((it) => ({ product_id: it.id, qty: it.qty, size: it.size || undefined })),
+                items: items.map((it) => ({
+                    product_id: it.id,
+                    name: it.size ? `${it.name} — Taille ${it.size}` : it.name,
+                    price: it.price,
+                    qty: it.qty,
+                })),
             });
-            if (res.client_secret) {
-                // Paiement intégré : le formulaire carte s'affiche dans la page
-                setStripeClientSecret(res.client_secret);
-                window.scrollTo({ top: 0, behavior: "smooth" });
-                setProcessing(false);
-                return;
-            }
-            if (res.checkout_url) {
-                window.location.href = res.checkout_url;
-                return;
-            }
-            throw new Error("no url");
+            // Écran d'attente + polling (mêmes mécanismes que le mobile money)
+            setTransaction({
+                transaction_id: res.transaction_id,
+                order_id: res.order_id,
+                status: "pending",
+                operator_label: t("Carte bancaire"),
+                amount: total,
+            });
+            window.PaxityWidget.open({
+                amount: res.amount,
+                currency: res.currency,
+                country: res.country,
+                ipn: res.ipn,
+                idClient: res.order_id,
+                // NB : le code du widget exige credentials.apiKey (K majuscule)
+                // et isOpen au niveau racine — la doc publique est inexacte.
+                isOpen: true,
+                setIsOpen: () => {},
+                credentials: {
+                    apiKey: res.credentials.apikey,
+                    apikey: res.credentials.apikey,
+                    apiToken: res.credentials.apiToken,
+                },
+            });
         } catch (err) {
-            console.error("[Stripe] checkout error", err);
-            toast.error(t("Paiement carte indisponible"), { description: t("Réessayez ou utilisez Mobile Money.") });
+            console.error("[PaxityCard] init error", err);
+            toast.error(t("Paiement carte indisponible"), {
+                description: err.response?.data?.detail || t("Réessayez ou utilisez Mobile Money."),
+            });
+        } finally {
             setProcessing(false);
         }
     };
@@ -456,15 +478,6 @@ export default function Checkout() {
         );
     }
 
-    // ---------- Paiement par carte intégré (le client reste sur le site) ----------
-    if (stripeClientSecret) {
-        return (
-            <div className="container mx-auto px-5 py-10 md:py-14">
-                <StripeEmbedded clientSecret={stripeClientSecret} onBack={() => setStripeClientSecret(null)} />
-            </div>
-        );
-    }
-
     // ---------- Empty cart guard ----------
     if (items.length === 0) {
         return (
@@ -575,11 +588,11 @@ export default function Checkout() {
                             />
 
                             {CARD_PAYMENT_ENABLED && paymentMethod === "CARD" && (
-                                <StripeCardPanel
-                                    items={items}
+                                <PaxityCardPanel
+                                    total={total}
                                     processing={processing}
                                     onBack={() => setStep(2)}
-                                    onPay={handleStripeCheckout}
+                                    onPay={handleCardPayment}
                                 />
                             )}
 

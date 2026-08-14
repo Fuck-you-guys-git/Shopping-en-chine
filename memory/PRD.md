@@ -673,3 +673,15 @@ Payments were failing with a **DNS error** because `backend/paxity_router.py` ha
 - Testé : bouton Carte absent, 5 méthodes mobile money intactes, checkout complet OK.
 - NOTE : les clients Europe/USA n'ont plus d'option carte — mobile money uniquement.
 - ⚠️ REDEPLOY requis.
+
+## Update — Feb 2026 (Paiement CARTE via widget Paxity — remplace Stripe)
+- Intégration du widget carte Paxity (https://saas.paxity.io/widget/card-widget.iife.js + style.css), doc https://paxity.io/documentation/widget.
+- PIÈGES DÉCOUVERTS (doc publique inexacte, vérifié dans le code minifié du widget) :
+  - window.PaxityWidget.open() attend `isOpen: true` AU NIVEAU RACINE (pas dans credentials)
+  - credentials exige `apiKey` (K MAJUSCULE) + `apiToken` — la doc dit "apikey" (on passe les deux)
+  - Props racine : {amount, currency, country, idClient, ipn, credentials, isOpen}
+- Backend : POST /api/paxity/card/init (PaxityCardInitRequest) → crée commande+transaction pending, renvoie {order_id, transaction_id, amount, currency, country=SN, ipn, credentials}. Webhook corrigé : si transactionId Paxity inconnu → fallback sur idClient (order_id) + enregistre le paxity_transaction_id (fix critique pour le widget).
+- Frontend : lib/paxityWidget.js (chargement paresseux ~4Mo), components/checkout/PaxityCardPanel.jsx, Checkout.handleCardPayment (init → setTransaction pending → PaxityWidget.open → IPN → polling → confirmation). CARD_PAYMENT_ENABLED=true. Code Stripe frontend retiré de Checkout (StripeEmbedded/stripeAPI/handleStripeCheckout supprimés) ; stripe_router backend + StripeCardPanel.jsx conservés.
+- TESTÉ : curl card/init OK ; webhook idClient inconnu-txid → tx+order success ✓ ; e2e Playwright : modale widget affichée avec formulaire carte « Montant à payer : 9000 XOF » ✓ ; pending screen derrière ✓ ; 7 tests régression verts.
+- NOTE : montant débité en XOF (les clients EU/US paient en XOF converti par leur banque).
+- ⚠️ REDEPLOY requis.
