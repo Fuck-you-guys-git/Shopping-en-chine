@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { useCart } from "@/context/CartContext";
 import { toast } from "sonner";
 import { paxityAPI } from "@/lib/api";
-import { loadPaxityCardWidget } from "@/lib/paxityWidget";
+import { loadPaxityCardWidget, setCardRedirectUrl } from "@/lib/paxityWidget";
 import { paxityDirectPayin, paxityDirectAvailable } from "@/lib/paxityDirect";
 import { DeliveryOptions } from "@/components/DeliveryOptions";
 import { orderNo } from "@/lib/utils";
@@ -277,6 +277,9 @@ export default function Checkout() {
         setPaxityError(null);
         try {
             await loadPaxityCardWidget();
+            // Retour après 3-D Secure : la banque/Paxity redirige vers notre
+            // page commande (la confirmation y est restaurée automatiquement).
+            setCardRedirectUrl(`${window.location.origin}/commande`);
             const res = await paxityAPI.cardInit({
                 amount: total,
                 delivery_mode: deliveryMode,

@@ -695,3 +695,9 @@ Payments were failing with a **DNS error** because `backend/paxity_router.py` ha
   - Cart.jsx + CheckoutSummary : pastille + nom de couleur affichés.
 - TESTÉ : card/init express → order.delivery_mode=express ✓ ; e2e produit coloré → panier « Size M · Bleu » + color en localStorage ✓. Produits/commandes QA nettoyés.
 - ⚠️ REDEPLOY requis.
+
+## Update — Feb 2026 (redirectUrl pour le paiement CARTE widget)
+- User : après paiement carte, le retour ne revenait pas sur le site. Paxity : « renseigner redirectUrl dans le payload de l'endpoint de paiement ». PROBLÈME : le widget carte de Paxity n'envoie JAMAIS redirectUrl (mot absent de son code minifié ; body = holderName, number, expMonth, expYear, cvv, currency, amount, idClient, ipn).
+- FIX : lib/paxityWidget.js — patchNetworkOnce() intercepte XMLHttpRequest + fetch et injecte redirectUrl dans toute requête vers */transaction/pay-in-car* (setCardRedirectUrl appelé par Checkout avec {origin}/commande).
+- PROUVÉ par interception Playwright : le payload sortant du widget contient bien redirectUrl (requête bloquée, aucun paiement réel). Filet de sécurité conservé : restauration PENDING_TX_KEY si le client revient manuellement.
+- ⚠️ REDEPLOY requis + test carte réel par le user en prod.
