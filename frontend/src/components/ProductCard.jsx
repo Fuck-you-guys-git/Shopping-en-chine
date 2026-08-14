@@ -10,10 +10,12 @@ export const formatPrice = (v) => formatMoney(v);
 
 export const ProductCard = ({ product, index = 0 }) => {
     const { addItem } = useCart();
+    const soldOut = product.outOfStock === true || product.stock === 0;
 
     const handleAdd = (e) => {
         e.preventDefault();
         e.stopPropagation();
+        if (soldOut) return;
         addItem(product);
         toast.success(t("Ajouté au panier"), { description: product.name });
     };
@@ -31,7 +33,11 @@ export const ProductCard = ({ product, index = 0 }) => {
                     loading="lazy"
                     className="h-full w-full object-cover transition-transform duration-700 ease-out group-hover:scale-105"
                 />
-                {product.badge && (
+                {soldOut ? (
+                    <span data-testid="sold-out-badge" className="absolute top-3 left-3 px-2.5 py-1 rounded-full bg-destructive text-destructive-foreground text-[10px] font-semibold uppercase tracking-widest shadow-soft">
+                        {t("Rupture de stock")}
+                    </span>
+                ) : product.badge && (
                     <span className="absolute top-3 left-3 px-2.5 py-1 rounded-full bg-background/90 backdrop-blur text-[10px] font-semibold uppercase tracking-widest text-foreground shadow-soft">
                         {product.badge}
                     </span>
@@ -61,10 +67,11 @@ export const ProductCard = ({ product, index = 0 }) => {
                 </div>
                 <Button
                     onClick={handleAdd}
+                    disabled={soldOut}
                     data-testid="product-card-add-btn"
-                    className="mt-3 w-full bg-ink text-ink-foreground hover:bg-ink/90 rounded-full h-10"
+                    className="mt-3 w-full bg-ink text-ink-foreground hover:bg-ink/90 rounded-full h-10 disabled:opacity-60"
                 >
-                    <ShoppingBag className="h-4 w-4" /> {t("Ajouter au panier")}
+                    <ShoppingBag className="h-4 w-4" /> {soldOut ? t("Rupture de stock") : t("Ajouter au panier")}
                 </Button>
             </div>
         </Link>

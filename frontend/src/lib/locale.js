@@ -208,6 +208,8 @@ const EN = {
     "Total TTC": "Total",
     "Vider le panier": "Empty cart",
     "En stock": "In stock",
+    "Rupture de stock": "Out of stock",
+    "Ce produit est actuellement épuisé.": "This product is currently sold out.",
     "Récapitulatif": "Summary",
     // Home
     "Tout, plus simple.": "Everything, made simple.",

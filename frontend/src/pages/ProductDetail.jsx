@@ -101,12 +101,16 @@ export default function ProductDetail() {
     }
 
     const handleAdd = () => {
+        if (soldOut) return;
         addItem(product, qty, size, color);
         const details = [size ? `${t("Taille")} ${size}` : null, color ? colorName(color) : null].filter(Boolean).join(" · ");
         toast.success(t("Ajouté au panier"), { description: `${product.name}${details ? ` · ${details}` : ""} × ${qty}` });
     };
 
+    const soldOut = product.outOfStock === true || product.stock === 0;
+
     const handleBuyNow = () => {
+        if (soldOut) return;
         addItem(product, qty, size, color);
         setDrawerOpen(false);
         navigate("/commande");
@@ -303,7 +307,12 @@ export default function ProductDetail() {
                         )}
 
                         {/* Qty + CTA */}
-                        <div className="mt-8 flex flex-col sm:flex-row gap-3">
+                        {soldOut && (
+                            <div data-testid="sold-out-notice" className="mt-8 rounded-2xl border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm font-medium text-destructive">
+                                {t("Rupture de stock")} · {t("Ce produit est actuellement épuisé.")}
+                            </div>
+                        )}
+                        <div className={`${soldOut ? "mt-4" : "mt-8"} flex flex-col sm:flex-row gap-3`}>
                             <div className="inline-flex items-center border rounded-full h-12 px-2">
                                 <button onClick={() => setQty(Math.max(1, qty - 1))} className="h-8 w-8 flex items-center justify-center rounded-full hover:bg-muted">
                                     <Minus className="h-4 w-4" />
@@ -313,16 +322,18 @@ export default function ProductDetail() {
                                     <Plus className="h-4 w-4" />
                                 </button>
                             </div>
-                            <Button onClick={handleAdd} size="lg" data-testid="add-to-cart-btn" className="sm:flex-1 h-14 bg-ink hover:bg-ink/90 text-ink-foreground rounded-full text-base font-semibold shadow-warm">
-                                <ShoppingBag className="!h-5 !w-5" /> {t("Ajouter au panier")}
+                            <Button onClick={handleAdd} disabled={soldOut} size="lg" data-testid="add-to-cart-btn" className="sm:flex-1 h-14 bg-ink hover:bg-ink/90 text-ink-foreground rounded-full text-base font-semibold shadow-warm disabled:opacity-60">
+                                <ShoppingBag className="!h-5 !w-5" /> {soldOut ? t("Rupture de stock") : t("Ajouter au panier")}
                             </Button>
-                            <Button onClick={handleBuyNow} size="lg" variant="outline" className="rounded-full h-12 border-primary text-primary hover:bg-primary hover:text-primary-foreground">
+                            <Button onClick={handleBuyNow} disabled={soldOut} size="lg" variant="outline" className="rounded-full h-12 border-primary text-primary hover:bg-primary hover:text-primary-foreground">
                                 <Heart className="h-4 w-4" />
                             </Button>
                         </div>
+                        {!soldOut && (
                         <Button onClick={handleBuyNow} variant="link" className="mt-3 text-primary self-start px-0">
                             {t("Acheter maintenant →")}
                         </Button>
+                        )}
 
                         <Separator className="my-8" />
 

@@ -86,6 +86,11 @@ export default function Products() {
                                     {p.oldPrice && (
                                         <p className="text-xs text-muted-foreground line-through">{formatPrice(p.oldPrice)}</p>
                                     )}
+                                    {(p.outOfStock === true || p.stock === 0) ? (
+                                        <p className="text-[11px] font-medium text-destructive" data-testid={`stock-status-${p.id}`}>Rupture de stock</p>
+                                    ) : p.stock != null && (
+                                        <p className="text-[11px] text-muted-foreground" data-testid={`stock-status-${p.id}`}>Stock : {p.stock}</p>
+                                    )}
                                 </div>
                                 <div className="col-span-1 hidden md:flex items-center gap-1 text-sm">
                                     {p.rating > 0 ? (

@@ -12,6 +12,7 @@ import { GeneralInfoSection } from "./addproduct/GeneralInfoSection";
 import { PricingSection } from "./addproduct/PricingSection";
 import { PhotosSection } from "./addproduct/PhotosSection";
 import { VariantsSection } from "./addproduct/VariantsSection";
+import { StockSection } from "./addproduct/StockSection";
 import { ProductPreview } from "./addproduct/ProductPreview";
 
 // Compression côté client (max 800px, JPEG 75%) avant envoi au backend
@@ -57,6 +58,8 @@ export default function AddProduct() {
         badge: "",
         colors: [],
         sizes: [],
+        stock: "",
+        outOfStock: false,
         active: true,
     });
     const [urlInput, setUrlInput] = useState("");
@@ -87,6 +90,8 @@ export default function AddProduct() {
                 badge: p.badge || "",
                 colors: p.colors || [],
                 sizes: p.sizes || [],
+                stock: p.stock == null ? "" : String(p.stock),
+                outOfStock: p.outOfStock === true,
                 active: p.active !== false,
             });
             setPhotos((p.images?.length ? p.images : [p.image]).filter(Boolean).slice(0, 5));
@@ -183,6 +188,8 @@ export default function AddProduct() {
             keywords: form.searchKeywords
                 ? form.searchKeywords.split(",").map((k) => k.trim()).filter(Boolean)
                 : undefined,
+            stock: form.stock !== "" ? Math.max(0, Math.floor(Number(form.stock))) : null,
+            outOfStock: form.outOfStock,
         };
         try {
             if (isEdit) {
@@ -253,6 +260,7 @@ export default function AddProduct() {
                     onToggleColor={toggleColor}
                     onToggleSize={toggleSize}
                 />
+                <StockSection form={form} set={set} />
                 <div className="bg-card rounded-2xl p-5 md:p-6 shadow-card border border-border/50 flex items-center justify-between">
                     <div>
                         <p className="font-medium text-sm">Publier immédiatement</p>

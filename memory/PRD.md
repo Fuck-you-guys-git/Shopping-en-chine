@@ -714,3 +714,13 @@ Payments were failing with a **DNS error** because `backend/paxity_router.py` ha
 ## Update — Feb 2026 (charset e-ticket + re-vérification redirection)
 - BUG e-ticket : accents cassés (aoÃ»t, SÃ©nÃ©gal) — le HTML du ticket Blob n'avait PAS de <meta charset="utf-8"> et le Blob était type text/html sans charset → interprété Latin-1. FIX : meta charset + Blob "text/html;charset=utf-8" (Orders.jsx).
 - Redirection → confirmation RE-VÉRIFIÉE e2e en preview : webhook success + arrivée sur /commande (avec query params) → « Your order is confirmed » + numéro final #1056, accents OK, stable 10s. LE CODE EST BON — le user observe l'ancien comportement en PRODUCTION car le redeploy n'a pas encore été fait avec ces correctifs.
+
+## Update — Feb 2026 (Gestion du stock produit)
+- User : « Sur le dashboard ajouter produit add number de stock et option en rupture de stock ».
+- Backend (products_router.py) : ProductPayload += stock (Optional[int] ≥ 0, None = illimité) et outOfStock (bool, défaut False). Persisté sur POST/PUT, renvoyé dans la liste publique et la fiche.
+- Formulaire vendeur : nouvelle section « Stock » (addproduct/StockSection.jsx) — input quantité (data-testid=stock-input) + switch « En rupture de stock » (data-testid=out-of-stock-switch), pré-remplissage en mode édition.
+- Boutique : soldOut = outOfStock === true || stock === 0. ProductCard → badge rouge « Rupture de stock » + bouton désactivé. ProductDetail → bandeau (data-testid=sold-out-notice), boutons Ajouter/Acheter désactivés, lien « Acheter maintenant » masqué. Traductions EN ajoutées (locale.js).
+- Dashboard liste produits (Products.jsx) : sous le prix → « Stock : N » ou « Rupture de stock » en rouge (data-testid=stock-status-{id}).
+- NOTE : pas de décrément automatique du stock à la commande (non demandé) — gestion manuelle par le vendeur.
+- TESTÉ : API create/get/list OK (stock persisté), screenshot fiche produit stock=0 → bandeau + bouton « Out of stock » désactivé ✓, formulaire vendeur affiche la section Stock ✓. Produit de test supprimé.
+- ⚠️ REDEPLOY requis pour la production.

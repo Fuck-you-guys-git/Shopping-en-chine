@@ -166,6 +166,9 @@ class ProductPayload(BaseModel):
     colors: list[str] = []
     sizes: Optional[list[str]] = None
     image_colors: Optional[list[Optional[str]]] = None
+    # Gestion du stock : quantité facultative (None = illimité) + rupture manuelle
+    stock: Optional[int] = Field(default=None, ge=0)
+    outOfStock: bool = False
 
 
 @router.get("")

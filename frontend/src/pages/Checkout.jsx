@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { useCart } from "@/context/CartContext";
 import { toast } from "sonner";
 import { paxityAPI } from "@/lib/api";
-import { loadPaxityCardWidget, setCardRedirectUrl } from "@/lib/paxityWidget";
+import { loadPaxityCardWidget, setCardRedirectUrl, closePaymentOverlays } from "@/lib/paxityWidget";
 import { paxityDirectPayin, paxityDirectAvailable } from "@/lib/paxityDirect";
 import { DeliveryOptions } from "@/components/DeliveryOptions";
 import { orderNo } from "@/lib/utils";
@@ -168,6 +168,9 @@ export default function Checkout() {
             console.debug("[Paxity] fermeture onglet paiement impossible", e?.message);
         }
         payWinRef.current = null;
+        // Carte : ferme aussi la vérification bancaire 3DS et la modale du
+        // widget pour révéler notre page de confirmation.
+        closePaymentOverlays();
     };
     const openPayWindow = (url) => {
         if (isMobileDevice) {
