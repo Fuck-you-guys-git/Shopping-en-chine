@@ -24,6 +24,9 @@ RESEND_API_KEY = os.environ.get("RESEND_API_KEY", "")
 # Destinataire des notifications de commande (boîte marchande officielle)
 MERCHANT_RECIPIENTS = ["commands@shoppingenchine.com"]
 MERCHANT_EMAIL = MERCHANT_RECIPIENTS[0]
+# Commandes de TEST (preview) : notification envoyée UNIQUEMENT au Gmail du
+# vendeur — la boîte commands@ ne reçoit que les VRAIES commandes.
+TEST_MERCHANT_RECIPIENTS = ["modou.ba.568@gmail.com"]
 
 if RESEND_API_KEY:
     resend.api_key = RESEND_API_KEY
@@ -119,14 +122,16 @@ async def maybe_send_order_confirmation(db: AsyncIOMotorDatabase, order_id: str)
     if not order:
         return False
 
+    # Commande de test → Gmail vendeur ; vraie commande → commands@
+    recipients = TEST_MERCHANT_RECIPIENTS if _test_tag(order) else MERCHANT_RECIPIENTS
     params = {
-        "to": MERCHANT_RECIPIENTS,
+        "to": recipients,
         "subject": f"{_test_tag(order)}Nouvelle commande payée — {_order_no(order.get('id'))} ({_fmt_price(order.get('amount', 0))})",
         "html": _order_html(order),
     }
     try:
         email = await _send_raw(params, "merchant")
-        logger.info(f"[Email] Order confirmation sent for {order_id} to={MERCHANT_RECIPIENTS} (id={email.get('id')})")
+        logger.info(f"[Email] Order confirmation sent for {order_id} to={recipients} (id={email.get('id')})")
         return True
     except Exception:
         logger.exception(f"[Email] Failed to send confirmation for {order_id}")

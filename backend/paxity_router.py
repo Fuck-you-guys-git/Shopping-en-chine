@@ -776,13 +776,21 @@ async def _refresh_pending_tx(db: AsyncIOMotorDatabase, tx: dict) -> str:
     """
     if tx.get("status") != "pending" or not tx.get("paxity_transaction_id") or not PAXITY_CONFIGURED:
         return tx.get("status", "pending")
+    # Chemin de statut selon le type de transaction (carte vs mobile money),
+    # avec repli automatique sur l'autre chemin si Paxity renvoie 404/405.
+    is_card = (tx.get("payment_method") or "").upper() == "CARD"
+    paths = ["/transaction/pay-in-card", PAXITY_PAYIN_PATH] if is_card else [PAXITY_PAYIN_PATH, "/transaction/pay-in-card"]
     try:
+        r = None
         async with httpx.AsyncClient(timeout=12.0) as client:
-            r = await client.get(
-                f"{PAXITY_BASE_URL}{PAXITY_PAYIN_PATH}/{tx['paxity_transaction_id']}",
-                headers=_headers(),
-            )
-        if r.status_code == 200:
+            for path in paths:
+                r = await client.get(
+                    f"{PAXITY_BASE_URL}{path}/{tx['paxity_transaction_id']}",
+                    headers=_headers(),
+                )
+                if r.status_code not in (404, 405):
+                    break
+        if r is not None and r.status_code == 200:
             root = _payload_root(r.json())
             fresh = _map_status(root.get("status"))
             if fresh != tx["status"]:
@@ -911,6 +919,36 @@ async def paxity_webhook(request: Request) -> dict:
             await _handle_status_change(db, order_id, normalized)
 
     return {"received": True}
+
+
+class PaxityCardAttach(BaseModel):
+    order_id: str
+    paxity_transaction_id: str
+
+
+@router.post("/card/attach")
+async def attach_card_transaction(payload: PaxityCardAttach, request: Request) -> dict:
+    """Le widget carte fait lui-même l'appel Paxity côté navigateur : le
+    frontend nous transmet l'id de transaction Paxity dès la réponse du widget.
+    Le polling /status peut alors interroger Paxity EN DIRECT (confirmation en
+    ~2 s après le 3DS) au lieu d'attendre l'IPN. Attache uniquement une
+    transaction CARTE pending sans id Paxity déjà connu."""
+    db = _db(request)
+    res = await db.paxity_transactions.update_one(
+        {
+            "order_id": payload.order_id,
+            "payment_method": "CARD",
+            "status": "pending",
+            "paxity_transaction_id": {"$in": [None, ""]},
+        },
+        {"$set": {
+            "paxity_transaction_id": payload.paxity_transaction_id,
+            "updated_at": datetime.now(timezone.utc).isoformat(),
+        }},
+    )
+    if res.modified_count:
+        logger.info(f"[Paxity] Card tx attached order={payload.order_id} paxity_id={payload.paxity_transaction_id}")
+    return {"attached": bool(res.modified_count)}
 
 
 @router.post("/card/init")

@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { useCart } from "@/context/CartContext";
 import { toast } from "sonner";
 import { paxityAPI } from "@/lib/api";
-import { loadPaxityCardWidget, setCardRedirectUrl, closePaymentOverlays } from "@/lib/paxityWidget";
+import { loadPaxityCardWidget, setCardRedirectUrl, closePaymentOverlays, onCardPayinResponse, onThreeDSReturn } from "@/lib/paxityWidget";
 import { paxityDirectPayin, paxityDirectAvailable } from "@/lib/paxityDirect";
 import { DeliveryOptions } from "@/components/DeliveryOptions";
 import { orderNo } from "@/lib/utils";
@@ -310,6 +310,22 @@ export default function Checkout() {
                 status: "pending",
                 operator_label: t("Carte bancaire"),
                 amount: total,
+            });
+            // Dès que le widget reçoit la réponse Paxity, on attache l'id de
+            // transaction au backend : le polling interroge alors Paxity EN
+            // DIRECT (confirmation ~2 s après le 3DS, sans attendre l'IPN).
+            onCardPayinResponse((data) => {
+                const root = data?.data && typeof data.data === "object" ? data.data : data;
+                const pid = root?.transactionId || root?.id || root?.txId;
+                if (pid) {
+                    paxityAPI.cardAttach({ order_id: res.order_id, paxity_transaction_id: String(pid) })
+                        .catch((e) => console.debug("[PaxityCard] attach impossible", e?.message));
+                }
+            });
+            // Retour 3DS vers notre domaine : l'overlay est déjà fermé par le
+            // widget-lib ; on force une vérification de statut immédiate.
+            onThreeDSReturn(() => {
+                window.dispatchEvent(new Event("focus"));
             });
             window.PaxityWidget.open({
                 amount: res.amount,

@@ -14,6 +14,29 @@ const PAYIN_CARD_MARK = "/transaction/pay-in-car";
 let cardRedirectUrl = null;
 let patched = false;
 
+// Callbacks enregistrés par Checkout : réponse du pay-in carte (pour attacher
+// l'id de transaction Paxity côté backend) et retour 3DS vers notre domaine.
+let cardPayinCallback = null;
+let threeDSReturnCallback = null;
+
+export const onCardPayinResponse = (cb) => {
+    cardPayinCallback = cb;
+};
+
+export const onThreeDSReturn = (cb) => {
+    threeDSReturnCallback = cb;
+};
+
+const reportPayinResponse = (raw) => {
+    if (!cardPayinCallback) return;
+    try {
+        const data = typeof raw === "string" ? JSON.parse(raw) : raw;
+        cardPayinCallback(data);
+    } catch (e) {
+        console.debug("[PaxityCard] réponse pay-in illisible", e?.message);
+    }
+};
+
 export const setCardRedirectUrl = (url) => {
     cardRedirectUrl = url;
 };
@@ -62,6 +85,21 @@ const mountThreeDSFrame = () => {
     frame.name = THREE_DS_FRAME;
     frame.style.cssText =
         "width:100%;height:min(80vh,640px);border:0;border-radius:12px;background:#fff;";
+    // Fin du 3DS : la banque redirige l'iframe vers NOTRE domaine (redirectUrl).
+    // Dès que l'iframe redevient same-origin, on ferme tout immédiatement —
+    // plus de page blanche pendant l'attente de l'IPN.
+    frame.addEventListener("load", () => {
+        try {
+            const href = frame.contentWindow.location.href; // cross-origin → throw
+            if (href && href !== "about:blank" && href.startsWith(window.location.origin)) {
+                closePaymentOverlays();
+                threeDSReturnCallback?.();
+            }
+        } catch (e) {
+            // Page bancaire (cross-origin) : vérification 3DS en cours, on garde l'iframe
+            console.debug("[Paxity3DS] iframe cross-origin", e?.message);
+        }
+    });
     box.appendChild(close);
     box.appendChild(frame);
     overlay.appendChild(box);
@@ -105,14 +143,28 @@ const patchNetworkOnce = () => {
         return origOpen.call(this, method, url, ...rest);
     };
     XMLHttpRequest.prototype.send = function (body) {
-        return origSend.call(this, this.__isPaxityCardPayin ? injectRedirect(body) : body);
+        if (this.__isPaxityCardPayin) {
+            // Capture la réponse du pay-in carte : elle contient l'id de
+            // transaction Paxity (transmis au backend pour le suivi en direct).
+            this.addEventListener("loadend", () => {
+                if (this.status >= 200 && this.status < 300) reportPayinResponse(this.responseText);
+            });
+            return origSend.call(this, injectRedirect(body));
+        }
+        return origSend.call(this, body);
     };
     // fetch (au cas où le widget l'utilise)
     const origFetch = window.fetch.bind(window);
     window.fetch = (input, init) => {
         const url = typeof input === "string" ? input : input?.url || "";
-        if (url.includes(PAYIN_CARD_MARK) && init?.body) {
-            init = { ...init, body: injectRedirect(init.body) };
+        if (url.includes(PAYIN_CARD_MARK)) {
+            if (init?.body) init = { ...init, body: injectRedirect(init.body) };
+            return origFetch(input, init).then((resp) => {
+                if (resp.ok) {
+                    resp.clone().text().then(reportPayinResponse).catch(() => {});
+                }
+                return resp;
+            });
         }
         return origFetch(input, init);
     };

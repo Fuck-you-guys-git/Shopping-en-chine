@@ -793,3 +793,15 @@ Payments were failing with a **DNS error** because `backend/paxity_router.py` ha
 - Type hints ajoutés aux 5 fichiers de test ciblés (params + retours) ; test_multicurrency_iter27.py dédupliqué (_checkout + _find_order_by_session).
 - TESTÉ : suite complète 98 verts / 0 échec / 8 skips ; pyflakes 0 ; API OK.
 - Pas d'impact production (tests uniquement + 1 ligne équivalente) — redeploy non urgent mais recommandé au prochain lot.
+
+## Update — Feb 2026 (Carte 3DS : confirmation rapide + emails de test vers Modou)
+- User (prod) : après le 3DS carte, longue page blanche avant la confirmation ; et les emails de test ne doivent plus aller à commands@ mais à Modou.ba.568@gmail.com.
+- CAUSE lenteur : la transaction CARTE n'a pas de paxity_transaction_id avant l'IPN (le widget appelle Paxity côté navigateur) → _refresh_pending_tx ne pouvait rien interroger → tout dépendait de la latence IPN.
+- FIX vitesse (3 mécanismes) :
+  1. paxityWidget.js intercepte la RÉPONSE du pay-in-card du widget (XHR loadend + fetch clone) → onCardPayinResponse(data) ;
+  2. Checkout.jsx envoie l'id Paxity au nouveau endpoint POST /api/paxity/card/attach (garde : CARD + pending + id absent, 2e attach refusé) → le polling /status interroge Paxity EN DIRECT (~2 s après 3DS). _refresh_pending_tx essaie /transaction/pay-in-card/{ref} pour les cartes avec repli pay-in-mobile (404/405) ;
+  3. L'iframe 3DS détecte le retour same-origin (load + contentWindow.location) → closePaymentOverlays() immédiat + onThreeDSReturn → event focus → checkNow instantané. Plus de page blanche.
+- FIX emails : email_service TEST_MERCHANT_RECIPIENTS=["modou.ba.568@gmail.com"] — toute commande de test (is_test/TEST-/tmp_) notifie UNIQUEMENT Modou ; commands@ ne reçoit que les VRAIES commandes. Sujet [TEST] conservé.
+- NOTE : les paiements que le marchand fait lui-même EN PRODUCTION restent de vraies commandes (impossible à distinguer automatiquement) → iront à commands@ mais avec numéro séquentiel réel.
+- TESTÉ : card/init→attach OK (2e attach false), status live pending gracieux avec id inconnu, webhook succès → TEST-103 + email marchand to=modou.ba.568@gmail.com sujet [TEST] ✓, suite pytest 98 verts. Données nettoyées.
+- ⚠️ REDEPLOY OBLIGATOIRE (le correctif vitesse 3DS ne s'applique qu'après).
