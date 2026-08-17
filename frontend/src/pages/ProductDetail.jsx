@@ -276,7 +276,7 @@ export default function ProductDetail() {
                         )}
 
                         {/* Colors — cliquer une couleur affiche la photo associée */}
-                        {product.colors && (
+                        {needsColor && (
                             <div className="mt-8" ref={colorRef}>
                                 <p className="text-sm font-medium mb-3">
                                     {t("Couleur :")}{" "}

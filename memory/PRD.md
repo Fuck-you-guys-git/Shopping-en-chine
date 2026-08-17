@@ -833,3 +833,11 @@ Payments were failing with a **DNS error** because `backend/paxity_router.py` ha
 - FIX fiabilité : l'impression est déclenchée PAR LA PAGE blob elle-même (script : fit + window.print après 350ms, flag window.__innerPrint) ; le parent garde un déclencheur de secours (load+600ms / 1500ms) qui se désactive si la page a déjà imprimé (pas de double dialogue).
 - TESTÉ (Playwright) : commande extrême 14 articles longs avec variantes → zoom 0.69, overflow 0, pied de page visible, rendu 142×94mm exact, print appelé par la page ✓. Commande de test supprimée.
 - ⚠️ REDEPLOY requis.
+
+## Update — Feb 2026 (Retour arrière depuis le checkout → panier, pas l'accueil)
+- User (vidéo prod iPhone) : depuis la page Commande, le retour arrière ramenait à l'ACCUEIL.
+- CAUSE : le bouton « Passer commande » du TIROIR panier (overlay CartDrawer, sans changement d'URL) menait directement à /commande → historique [accueil, commande] → retour = accueil (logique navigateur mais UX inattendue).
+- FIX CartDrawer.jsx : goCheckout() ferme le tiroir puis navigate("/panier") + navigate("/commande") — le panier est inséré dans l'historique : retour = /panier, 2e retour = page d'origine. data-testid=drawer-checkout-btn. Le lien « Retour au panier » existait déjà en haut du checkout.
+- BONUS bug corrigé : ProductDetail affichait le sélecteur/hint « choisissez une couleur * » même avec colors=[] (tableau vide truthy) → condition passée à needsColor (length>0).
+- TESTÉ (Playwright) : produit sans couleurs → pas de hint ✓ ; ajout panier → accueil → tiroir → Passer commande → /commande → back → /panier ✓ → back → accueil ✓.
+- ⚠️ REDEPLOY requis (la vidéo est en production : elle n'a ni ce fix ni la restauration de scroll précédente).

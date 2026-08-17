@@ -1,4 +1,4 @@
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
@@ -9,7 +9,17 @@ import { useLocale } from "@/context/LocaleContext";
 
 export const CartDrawer = () => {
     const { items, drawerOpen, setDrawerOpen, updateQty, removeItem, count } = useCart();
+    const navigate = useNavigate();
     useLocale(); // re-render au changement de langue/devise
+
+    // Depuis le tiroir, on insère la page /panier dans l'historique AVANT
+    // /commande : le retour arrière depuis le checkout ramène au panier
+    // (et non à la page où le tiroir avait été ouvert, ex : l'accueil).
+    const goCheckout = () => {
+        setDrawerOpen(false);
+        navigate("/panier");
+        navigate("/commande");
+    };
 
     return (
         <Sheet open={drawerOpen} onOpenChange={setDrawerOpen}>
@@ -80,8 +90,8 @@ export const CartDrawer = () => {
                                 <span className="font-medium">{t("Total")}</span>
                                 <span className="font-display text-2xl font-semibold">{fmtAmount(cartDisplayTotal(items))}</span>
                             </div>
-                            <Button asChild size="lg" className="w-full bg-ink text-ink-foreground hover:bg-ink/90 rounded-full h-12">
-                                <Link to="/commande" onClick={() => setDrawerOpen(false)}>{t("Passer commande")}</Link>
+                            <Button onClick={goCheckout} data-testid="drawer-checkout-btn" size="lg" className="w-full bg-ink text-ink-foreground hover:bg-ink/90 rounded-full h-12">
+                                {t("Passer commande")}
                             </Button>
                             <p className="text-[11px] text-center text-muted-foreground">
                                 <i className="fa-solid fa-lock mr-1" /> {t("Paiement 100% sécurisé")}
