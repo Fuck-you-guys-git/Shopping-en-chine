@@ -312,6 +312,7 @@ const EN = {
     "Expédié de Chine": "Shipped from China",
     "En douane": "In customs",
     "En livraison à Dakar": "Out for delivery",
+    "En livraison": "Out for delivery",
     "Livré": "Delivered",
     // Checkout
     "Retour au panier": "Back to cart",

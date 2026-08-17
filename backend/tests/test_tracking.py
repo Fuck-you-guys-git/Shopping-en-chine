@@ -51,7 +51,8 @@ class TestTrackingSteps:
         steps = r.json()["steps"]
         assert [s["code"] for s in steps] == ["ordered", "shipped", "customs", "delivery", "delivered"]
         assert steps[1]["label"] == "Expédié de Chine"
-        assert steps[3]["label"] == "En livraison à Dakar"
+        # Libellé générique : la ville du client est ajoutée par commande
+        assert steps[3]["label"] == "En livraison"
 
 
 class TestTrackOrder:

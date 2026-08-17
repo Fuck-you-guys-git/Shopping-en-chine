@@ -46,6 +46,7 @@ from pydantic import BaseModel, Field
 
 from email_service import maybe_send_order_confirmation, maybe_send_customer_confirmation
 from orders_router import next_order_number, next_test_order_number
+from products_router import decrement_stock_for_order
 
 logger = logging.getLogger(__name__)
 
@@ -633,6 +634,7 @@ async def _finalize_payin(db: AsyncIOMotorDatabase, tx: "PaxityTransaction", ord
         await db.paxity_transactions.insert_one(tx.model_dump(mode="json"))
         await db.orders.update_one({"id": order_id}, {"$set": {"status": tx.status}})
         if tx.status == "success":
+            await decrement_stock_for_order(db, order_id)
             await maybe_send_order_confirmation(db, order_id)
             await maybe_send_customer_confirmation(db, order_id)
         elif tx.status == "pending":
@@ -809,6 +811,7 @@ async def _refresh_pending_tx(db: AsyncIOMotorDatabase, tx: dict) -> str:
                 tx["updated_at"] = now
                 logger.info(f"[Paxity] Status refreshed tx={tx['id']} -> {fresh}")
                 if fresh == "success":
+                    await decrement_stock_for_order(db, tx["order_id"])
                     await maybe_send_order_confirmation(db, tx["order_id"])
                     await maybe_send_customer_confirmation(db, tx["order_id"])
     except Exception:
@@ -871,9 +874,10 @@ async def _match_webhook_tx(db: AsyncIOMotorDatabase, paxity_tx_id: Optional[str
 
 
 async def _handle_payment_success(db: AsyncIOMotorDatabase, order_id: str) -> None:
-    """Paiement confirmé : numéro définitif, statut commande, emails (une fois)."""
+    """Paiement confirmé : numéro définitif, statut commande, stock, emails (une fois)."""
     order_id = await _finalize_order_number(db, order_id)
     await db.orders.update_one({"id": order_id}, {"$set": {"status": "success"}})
+    await decrement_stock_for_order(db, order_id)
     await maybe_send_order_confirmation(db, order_id)
     await maybe_send_customer_confirmation(db, order_id)
 

@@ -103,6 +103,35 @@ async def _prune_orphan_images(db, product_id: str, stored: list) -> None:
     await db.product_images.delete_many({"product_id": product_id, "image_id": {"$nin": keep_ids}})
 
 
+async def decrement_stock_for_order(db, order_id: str) -> None:
+    """Décrémente le stock des produits d'une commande PAYÉE — une seule fois
+    par commande (drapeau atomique stock_decremented, comme les emails).
+    stock=None = illimité (non touché) ; à 0 le produit passe automatiquement
+    en rupture côté boutique (badge + boutons désactivés)."""
+    order = await db.orders.find_one_and_update(
+        {"id": order_id, "stock_decremented": {"$ne": True}},
+        {"$set": {"stock_decremented": True}},
+        projection={"_id": 0, "items": 1},
+    )
+    if not order:
+        return
+    for it in order.get("items") or []:
+        pid = it.get("product_id")
+        qty = int(it.get("qty") or 1)
+        if not pid or qty <= 0:
+            continue
+        # Ne touche que les produits dont le stock est suivi (nombre)
+        await db.products.update_one(
+            {"id": pid, "stock": {"$type": "number"}},
+            {"$inc": {"stock": -qty}},
+        )
+        # Jamais de stock négatif
+        await db.products.update_one(
+            {"id": pid, "stock": {"$lt": 0}},
+            {"$set": {"stock": 0}},
+        )
+
+
 async def _process_images(db, product_id: str, doc: dict) -> None:
     """Convertit les images du payload en URLs stockées + nettoie les orphelines.
     Maintient l'alignement du tableau image_colors (couleur associée à chaque photo)."""

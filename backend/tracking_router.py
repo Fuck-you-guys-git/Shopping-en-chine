@@ -25,9 +25,17 @@ STEP_LABELS = {
     "ordered": "Commandé",
     "shipped": "Expédié de Chine",
     "customs": "En douane",
-    "delivery": "En livraison à Dakar",
+    # Libellé générique : la ville du client (Dakar, Paris, New York…) est
+    # ajoutée côté page de suivi et dans l'email (voir _delivery_label).
+    "delivery": "En livraison",
     "delivered": "Livré",
 }
+
+
+def _delivery_label(order: dict) -> str:
+    """« En livraison à {ville du client} » — international-friendly."""
+    city = ((order or {}).get("customer") or {}).get("city") or ""
+    return f"En livraison à {city}" if city else STEP_LABELS["delivery"]
 
 # Delivery window in days (China -> Dakar)
 ETA_MIN_DAYS = 10
@@ -45,6 +53,9 @@ def _normalize_order_id(raw: str) -> str:
     # Nouveaux numéros de commande : purement numériques (1000, 1001…)
     if oid.isdigit():
         return oid
+    # Commandes de TEST (preview) : TEST-101, TEST-102…
+    if oid.upper().startswith("TEST-"):
+        return oid.upper()
     # Anciens ids : tolère la saisie sans le préfixe "ord_"
     if oid and not oid.startswith("ord_"):
         oid = f"ord_{oid}"
@@ -136,7 +147,10 @@ async def update_tracking(order_id: str, payload: TrackingUpdate, request: Reque
     # Notify the customer (fire and forget)
     import asyncio
     from email_service import send_tracking_update
-    asyncio.create_task(send_tracking_update(order, STEP_LABELS[payload.step]))
+    asyncio.create_task(send_tracking_update(
+        order,
+        _delivery_label(order) if payload.step == "delivery" else STEP_LABELS[payload.step],
+    ))
     return {
         "order_id": oid,
         "tracking_step": payload.step,

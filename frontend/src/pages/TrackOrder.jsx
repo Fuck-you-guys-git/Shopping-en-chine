@@ -190,6 +190,7 @@ export default function TrackOrder() {
                                             <div className={`pb-7 ${isLast ? "pb-0" : ""}`}>
                                                 <p className={`text-sm font-medium leading-10 ${done ? "text-foreground" : "text-muted-foreground"}`}>
                                                     {t(s.label)}
+                                                    {s.code === "delivery" && data.city ? ` · ${data.city}` : ""}
                                                     {current && !data.delivered && (
                                                         <span className="ml-2 text-[10px] uppercase tracking-widest bg-primary/10 text-primary px-2 py-0.5 rounded-full align-middle">
                                                             {t("En cours")}

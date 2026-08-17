@@ -57,6 +57,14 @@ export default function Dashboard() {
                 <StatCard label="Actives" value={metrics.active} trend={`${metrics.delivered} livrées`} icon={Users} positive />
             </div>
 
+            {/* Commandes par période : aujourd'hui / mois / année / total */}
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4" data-testid="orders-period-stats">
+                <StatCard label="Commandes aujourd'hui" value={metrics.ordersDay} trend={formatPrice(metrics.revenueDay)} icon={ShoppingBag} positive />
+                <StatCard label="Commandes ce mois-ci" value={metrics.ordersMonth} trend={formatPrice(metrics.revenueMonth)} icon={ShoppingBag} positive />
+                <StatCard label="Commandes cette année" value={metrics.ordersYear} trend={formatPrice(metrics.revenueYear)} icon={ShoppingBag} positive />
+                <StatCard label="Total commandes" value={metrics.ordersTotal} trend={formatPrice(metrics.revenueTotal)} icon={DollarSign} positive />
+            </div>
+
             {/* Chart + Pie */}
             <div className="grid lg:grid-cols-3 gap-4">
                 <div className="lg:col-span-2 bg-card rounded-2xl p-5 md:p-6 shadow-card border border-border/50">

@@ -138,6 +138,17 @@ export const SellerProvider = ({ children }) => {
         const last7 = paid.filter((o) => now - o.createdAt <= 7 * 86400000);
         const today = paid.filter((o) => now - o.createdAt <= 86400000);
 
+        // Périodes calendaires (jour / mois / année en cours) + total
+        const d = new Date();
+        const startOfDay = new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+        const startOfMonth = new Date(d.getFullYear(), d.getMonth(), 1).getTime();
+        const startOfYear = new Date(d.getFullYear(), 0, 1).getTime();
+        const inRange = (from) => paid.filter((o) => o.createdAt >= from);
+        const dayOrders = inRange(startOfDay);
+        const monthOrders = inRange(startOfMonth);
+        const yearOrders = inRange(startOfYear);
+        const sum = (arr) => arr.reduce((s, o) => s + o.total, 0);
+
         const revenue30 = last30.reduce((s, o) => s + o.total, 0);
         const revenue7 = last7.reduce((s, o) => s + o.total, 0);
         const revenueToday = today.reduce((s, o) => s + o.total, 0);
@@ -199,6 +210,11 @@ export const SellerProvider = ({ children }) => {
         return {
             revenueToday, revenue7, revenue30,
             ordersToday: today.length, orders7: last7.length, orders30: last30.length,
+            // Compteurs calendaires : aujourd'hui / mois en cours / année / total
+            ordersDay: dayOrders.length, revenueDay: sum(dayOrders),
+            ordersMonth: monthOrders.length, revenueMonth: sum(monthOrders),
+            ordersYear: yearOrders.length, revenueYear: sum(yearOrders),
+            ordersTotal: paid.length, revenueTotal: sum(paid),
             active, delivered,
             avgBasket: last30.length ? revenue30 / last30.length : 0,
             trendRevenue, trendOrders, trendBasket,

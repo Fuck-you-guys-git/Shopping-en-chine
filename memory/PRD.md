@@ -805,3 +805,10 @@ Payments were failing with a **DNS error** because `backend/paxity_router.py` ha
 - NOTE : les paiements que le marchand fait lui-même EN PRODUCTION restent de vraies commandes (impossible à distinguer automatiquement) → iront à commands@ mais avec numéro séquentiel réel.
 - TESTÉ : card/init→attach OK (2e attach false), status live pending gracieux avec id inconnu, webhook succès → TEST-103 + email marchand to=modou.ba.568@gmail.com sujet [TEST] ✓, suite pytest 98 verts. Données nettoyées.
 - ⚠️ REDEPLOY OBLIGATOIRE (le correctif vitesse 3DS ne s'applique qu'après).
+
+## Update — Feb 2026 (Stock auto + stats commandes jour/mois/année + tracking international)
+- STOCK AUTOMATIQUE : products_router.decrement_stock_for_order(db, order_id) — décrément UNE fois par commande payée (drapeau atomique stock_decremented), stock jamais négatif ($lt 0 → 0), stock=None illimité. Appelé à TOUS les points de succès : _handle_payment_success (webhook), _refresh_pending_tx (polling live), _finalize_payin (succès immédiat), stripe _mark_paid. À stock=0, la boutique affiche déjà la rupture automatiquement (badge + boutons désactivés). TESTÉ : produit stock 5, commande 2+3 → 0 ; 2e webhook → toujours 0 (pas de double décrément).
+- STATS DASHBOARD : user voyait seulement « Commandes (30j) ». SellerContext.metrics += ordersDay/Month/Year/Total + revenus calendaires (startOfDay/Month/Year). Dashboard.jsx : nouvelle rangée data-testid=orders-period-stats (Aujourd'hui / Ce mois-ci / Cette année / Total, avec CA en trend). Vérifié par screenshot (0 / 5 / 6 / 6).
+- TRACKING INTERNATIONAL : « En livraison à Dakar » remplacé par libellé générique « En livraison » (STEP_LABELS) + ville du client : TrackOrder.jsx affiche « En livraison · {city} » (traduisible EN « Out for delivery »), email de suivi personnalisé via _delivery_label(order) (« En livraison à Paris »). _normalize_order_id accepte aussi TEST-xxx. TESTÉ : commande ville Paris → label « En livraison » + city Paris.
+- test_tracking.py mis à jour (nouveau libellé). Suite : 97+7 verts, 0 échec.
+- ⚠️ REDEPLOY requis pour la production.

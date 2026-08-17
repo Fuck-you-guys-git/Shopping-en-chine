@@ -22,6 +22,7 @@ from pydantic import BaseModel, Field
 
 from email_service import maybe_send_order_confirmation, maybe_send_customer_confirmation
 from orders_router import next_order_number
+from products_router import decrement_stock_for_order
 
 logger = logging.getLogger(__name__)
 
@@ -217,6 +218,7 @@ async def _mark_paid(db, session_id: str, order_id: str | None = None) -> None:
     oid = order_id or res.get("order_id")
     if oid:
         await db.orders.update_one({"id": oid}, {"$set": {"status": "success"}})
+        await decrement_stock_for_order(db, oid)
         await maybe_send_order_confirmation(db, oid)
         await maybe_send_customer_confirmation(db, oid)
 
