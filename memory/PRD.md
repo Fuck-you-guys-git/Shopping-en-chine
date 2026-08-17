@@ -826,3 +826,10 @@ Payments were failing with a **DNS error** because `backend/paxity_router.py` ha
 - FIX : PAID_STATUSES tolérant (success/successful/paid/completed/confirmed/ok/done + shipped/customs/delivery/delivered, insensible à la casse) appliqué au filtre de liste ET au mapping payment ; l'étape de suivi est aussi récupérée depuis status pour les anciens formats. Limite backend list_orders 500 → 5000.
 - TESTÉ : 2 commandes seedées à l'ancien format (status paid + shipped, datées 2025) → Total passe de 6 à 8, « cette année » reste 6 (dates 2025 exclues, correct). Nettoyées.
 - ⚠️ REDEPLOY requis — le vrai total historique s'affichera alors en production.
+
+## Update — Feb 2026 (E-ticket : anti-coupe automatique + impression plus fiable)
+- User : parfois les écritures sont coupées sur le ticket imprimé, et parfois le ticket « ne sort pas ».
+- FIX anti-coupe (Orders.jsx, script embarqué dans le blob d'impression) : fonction fit() — si le contenu d'un .ticket déborde (scrollHeight > clientHeight), zoom réduit AVEC compensation height/width internes (BASE 94×142mm / scale, ≤4 passes, plancher 0.4) → rendu physique reste exactement 94×142mm, contenu complet, overflow 0. Les tickets qui tiennent ne sont pas modifiés. NOTE technique : zoom seul ne suffit PAS (il réduit l'élément ET son contenu → coupe interne identique) — la compensation de hauteur est indispensable.
+- FIX fiabilité : l'impression est déclenchée PAR LA PAGE blob elle-même (script : fit + window.print après 350ms, flag window.__innerPrint) ; le parent garde un déclencheur de secours (load+600ms / 1500ms) qui se désactive si la page a déjà imprimé (pas de double dialogue).
+- TESTÉ (Playwright) : commande extrême 14 articles longs avec variantes → zoom 0.69, overflow 0, pied de page visible, rendu 142×94mm exact, print appelé par la page ✓. Commande de test supprimée.
+- ⚠️ REDEPLOY requis.

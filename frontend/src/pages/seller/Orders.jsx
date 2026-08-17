@@ -168,7 +168,35 @@ const printTickets = (ordersToPrint) => {
         @media print{.ticket{border:none}.print-hint{display:none}}
     </style></head><body>
     <div class="print-hint"><b>R&#233;glages d'impression :</b> Papier/&#233;tiquette <b>100 &#215; 150 mm (4&#215;6")</b> &#183; &#201;chelle <b>100%</b> (pas &#171; Ajuster &#224; la page &#187;) &#183; Marges <b>Aucune</b>.</div>
-    ${ordersToPrint.map(ticketHtml).join("")}</body></html>`;
+    ${ordersToPrint.map(ticketHtml).join("")}
+    <script>
+    (function () {
+        // ANTI-COUPE : si le contenu d'un ticket depasse la hauteur de
+        // l'etiquette, on retrecit le ticket (zoom) EN compensant sa hauteur
+        // et sa largeur internes : le rendu reste exactement 94x142mm mais
+        // tout le contenu tient - plus aucune ecriture coupee a l'impression.
+        var BASE_H = 142, BASE_W = 94; // mm (taille du .ticket)
+        var fit = function () {
+            var tickets = document.querySelectorAll(".ticket");
+            for (var i = 0; i < tickets.length; i++) {
+                var t = tickets[i];
+                var scale = 1;
+                for (var pass = 0; pass < 4; pass++) {
+                    if (t.scrollHeight <= t.clientHeight + 1) break;
+                    scale = Math.max(0.4, scale * (t.clientHeight / t.scrollHeight) - 0.005);
+                    t.style.zoom = scale;
+                    t.style.height = (BASE_H / scale) + "mm";
+                    t.style.width = (BASE_W / scale) + "mm";
+                }
+            }
+        };
+        fit();
+        // Impression declenchee depuis la page elle-meme (plus fiable que le
+        // parent, surtout sur mobile). Le parent garde un declencheur de secours.
+        window.__innerPrint = true;
+        setTimeout(function () { fit(); window.focus(); window.print(); }, 350);
+    })();
+    </script></body></html>`;
     // Pas de document.write (risque XSS / API dépréciée) : le HTML est servi
     // via une URL Blob same-origin, ce qui permet d'appeler print() sur l'onglet.
     const blobUrl = URL.createObjectURL(new Blob([html], { type: "text/html;charset=utf-8" }));
@@ -182,14 +210,17 @@ const printTickets = (ordersToPrint) => {
         if (printed) return;
         printed = true;
         try {
+            // La page blob imprime déjà elle-même (script embarqué) : on ne
+            // double pas le dialogue d'impression.
+            if (w.__innerPrint) return;
             w.focus();
             w.print();
         } catch (err) {
             console.warn("[printTickets] impression impossible (fenêtre fermée ?)", err);
         }
     };
-    w.addEventListener("load", () => setTimeout(doPrint, 150));
-    setTimeout(doPrint, 900); // repli si l'événement load ne se déclenche pas
+    w.addEventListener("load", () => setTimeout(doPrint, 600));
+    setTimeout(doPrint, 1500); // repli si l'événement load ne se déclenche pas
     setTimeout(() => URL.revokeObjectURL(blobUrl), 60000);
     return true;
 };
