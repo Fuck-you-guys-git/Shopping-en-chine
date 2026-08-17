@@ -104,25 +104,6 @@ export default function Home() {
                 </div>
             </section>
 
-            {/* PROMO STRIP */}
-            <section className="container mx-auto px-5 my-10">
-                <div className="relative overflow-hidden rounded-2xl bg-ink text-ink-foreground p-6 md:p-10 flex flex-col md:flex-row items-center gap-6">
-                    <div className="absolute -top-16 -right-10 h-48 w-48 rounded-full bg-primary/30 blur-3xl" />
-                    <Badge className="bg-primary text-primary-foreground border-0 rounded-full px-3 py-1 hover:bg-primary shrink-0">
-                        {t("⭐ Offre limitée")}
-                    </Badge>
-                    <div className="flex-1 text-center md:text-left">
-                        <h3 className="font-display text-2xl md:text-3xl leading-tight">
-                            {t("−30% sur l'Électronique")} <span className="italic text-primary-glow">{t("jusqu'à dimanche")}</span>
-                        </h3>
-                        <p className="text-sm text-ink-foreground/70 mt-1">{t("Casques, gadgets, accessoires connectés.")}</p>
-                    </div>
-                    <Button asChild size="lg" className="bg-primary hover:bg-primary/90 text-primary-foreground rounded-full shrink-0">
-                        <Link to="/boutique/tech">{t("Profiter")} <ArrowRight className="ml-1 h-4 w-4" /></Link>
-                    </Button>
-                </div>
-            </section>
-
             {/* CATEGORIES */}
             <section className="container mx-auto px-5 py-10">
                 <div className="flex items-baseline justify-between gap-4 mb-6">

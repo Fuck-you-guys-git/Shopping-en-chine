@@ -15,13 +15,84 @@ import os
 from datetime import datetime, timezone
 
 import resend
-from fastapi import APIRouter, Request
+from fastapi import APIRouter, Depends, HTTPException, Request
+from html import escape as html_escape
 from motor.motor_asyncio import AsyncIOMotorDatabase
+from pydantic import BaseModel
 
 from auth_router import get_current_seller
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/emails", tags=["emails"])
+
+# Statuts « payé » tolérants (anciennes commandes incluses)
+_PAID_STATUSES = ["success", "successful", "paid", "completed", "confirmed",
+                  "ok", "done", "shipped", "customs", "delivery", "delivered"]
+
+
+async def _customer_directory(db) -> list:
+    """Carnet d'adresses : un client par email, depuis les commandes PAYÉES
+    (les commandes de test sont exclues)."""
+    pipeline = [
+        {"$match": {"status": {"$in": _PAID_STATUSES},
+                    "is_test": {"$ne": True},
+                    "customer.email": {"$nin": [None, ""]}}},
+        {"$group": {
+            "_id": {"$toLower": "$customer.email"},
+            "name": {"$last": "$customer.name"},
+            "orders": {"$sum": 1},
+            "last_order_at": {"$max": "$created_at"},
+        }},
+        # La boîte des vraies commandes n'est JAMAIS un client
+        {"$match": {"_id": {"$ne": "commands@shoppingenchine.com"}}},
+        {"$sort": {"last_order_at": -1}},
+    ]
+    rows = await db.orders.aggregate(pipeline).to_list(5000)
+    return [{"email": r["_id"], "name": r.get("name") or "", "orders": r["orders"],
+             "last_order_at": r.get("last_order_at")} for r in rows]
+
+
+@router.get("/customers")
+async def list_customer_emails(request: Request,
+                               seller: dict = Depends(get_current_seller)) -> dict:
+    """Tous les emails des clients ayant commandé (dédupliqués)."""
+    customers = await _customer_directory(_db(request))
+    return {"customers": customers, "count": len(customers)}
+
+
+class BroadcastPayload(BaseModel):
+    subject: str
+    message: str
+
+
+@router.post("/broadcast")
+async def broadcast_email(payload: BroadcastPayload, request: Request,
+                          seller: dict = Depends(get_current_seller)) -> dict:
+    """Email de masse en un clic à TOUS les clients ayant commandé."""
+    from email_service import _send, _wrap
+    subject = payload.subject.strip()
+    message = payload.message.strip()
+    if not subject or not message:
+        raise HTTPException(status_code=400, detail="Sujet et message requis")
+    customers = await _customer_directory(_db(request))
+    if not customers:
+        raise HTTPException(status_code=404, detail="Aucun client avec email")
+    paragraphs = "".join(
+        f'<p style="margin:0 0 12px;font-size:15px;color:#333;line-height:1.6;">{html_escape(line)}</p>'
+        for line in message.splitlines() if line.strip()
+    )
+    inner = f"""
+        <h1 style="margin:0 0 14px;font-size:20px;color:#1d1d1d;">{html_escape(subject)}</h1>
+        {paragraphs}
+    """
+    sent, failed = 0, 0
+    for c in customers:
+        ok = await _send(c["email"], subject, _wrap(inner), "broadcast")
+        sent += 1 if ok else 0
+        failed += 0 if ok else 1
+        await asyncio.sleep(0.6)  # respecte la limite de débit Resend (2 req/s)
+    logger.info(f"[Email] Broadcast '{subject}' → sent={sent} failed={failed}")
+    return {"sent": sent, "failed": failed, "total": len(customers)}
 
 # Événements Resend → statut lisible
 _EVENT_STATUS = {

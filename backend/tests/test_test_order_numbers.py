@@ -37,3 +37,12 @@ def test_email_test_tag():
     assert _test_tag({"id": "tmp_abc", "is_test": True}) == "[TEST] "
     assert _test_tag({"id": "1254"}) == ""
     assert _test_tag({"id": "1254", "is_test": False}) == ""
+
+
+def test_safe_recipient_never_sends_test_to_commands():
+    """RÈGLE : aucun email de TEST vers commands@shoppingenchine.com."""
+    from email_service import _safe_recipient
+    assert _safe_recipient({"id": "TEST-1"}, "commands@shoppingenchine.com") == "modou.ba.568@gmail.com"
+    assert _safe_recipient({"id": "tmp_x", "is_test": True}, "Commands@ShoppingEnchine.com") == "modou.ba.568@gmail.com"
+    assert _safe_recipient({"id": "1258"}, "commands@shoppingenchine.com") == "commands@shoppingenchine.com"
+    assert _safe_recipient({"id": "TEST-1"}, "client@gmail.com") == "client@gmail.com"

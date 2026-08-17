@@ -3,6 +3,7 @@ import { Mail, RefreshCw, AlertTriangle } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { emailsAPI } from "@/lib/api";
+import { BroadcastCard } from "./emails/BroadcastCard";
 
 // Statut de livraison → apparence du badge
 const STATUS_META = {
@@ -21,6 +22,7 @@ const TAG_LABELS = {
     "customer-confirm": "Confirmation client",
     tracking: "Suivi de colis",
     recovery: "Relance panier",
+    broadcast: "Email de masse",
     unknown: "—",
 };
 
@@ -47,6 +49,7 @@ export default function Emails() {
 
     return (
         <div className="space-y-4" data-testid="seller-emails-page">
+            <BroadcastCard />
             <div className="flex items-center justify-between gap-3">
                 <p className="text-sm text-muted-foreground">
                     Chaque email envoyé par la boutique (confirmations, suivi) apparaît ici avec son statut de livraison réel.

@@ -28,6 +28,14 @@ MERCHANT_EMAIL = MERCHANT_RECIPIENTS[0]
 # vendeur — la boîte commands@ ne reçoit que les VRAIES commandes.
 TEST_MERCHANT_RECIPIENTS = ["modou.ba.568@gmail.com"]
 
+
+def _safe_recipient(order, to: str) -> str:
+    """RÈGLE ABSOLUE : aucun email lié à une commande de TEST ne part vers la
+    boîte des vraies commandes (commands@) — redirigé vers le Gmail vendeur."""
+    if _test_tag(order) and (to or "").strip().lower() == MERCHANT_EMAIL:
+        return TEST_MERCHANT_RECIPIENTS[0]
+    return to
+
 if RESEND_API_KEY:
     resend.api_key = RESEND_API_KEY
 
@@ -320,7 +328,7 @@ async def maybe_send_customer_confirmation(db: AsyncIOMotorDatabase, order_id: s
     order = await _claim_customer_email(db, order_id)
     if not order:
         return False
-    to = (order.get("customer") or {}).get("email")
+    to = _safe_recipient(order, (order.get("customer") or {}).get("email"))
     inner = _customer_confirmation_html(order)
     ok = await _send(to, f"{_test_tag(order)}Commande confirmée — {_order_no(order.get('id'))}", _wrap(inner), "customer-confirm")
     if not ok:
@@ -332,7 +340,7 @@ async def send_recovery_email(db: AsyncIOMotorDatabase, order: dict) -> bool:
     """Cart-abandonment recovery: one-click retry link. Caller claims the flag."""
     if not RESEND_API_KEY:
         return False
-    to = (order.get("customer") or {}).get("email")
+    to = _safe_recipient(order, (order.get("customer") or {}).get("email"))
     if not to:
         return False
     retry_link = f"{FRONTEND_URL}/reprise/{order.get('id')}" if FRONTEND_URL else ""
@@ -355,7 +363,7 @@ async def send_tracking_update(order: dict, step_label: str) -> bool:
     """Notify the customer when the merchant advances the tracking step."""
     if not RESEND_API_KEY:
         return False
-    to = (order.get("customer") or {}).get("email")
+    to = _safe_recipient(order, (order.get("customer") or {}).get("email"))
     if not to:
         return False
     track_link = f"{FRONTEND_URL}/suivi/{order.get('id')}" if FRONTEND_URL else ""

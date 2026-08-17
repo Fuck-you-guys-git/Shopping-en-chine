@@ -86,4 +86,6 @@ export const ordersAPI = {
 // --------- Journal des emails (vendeur) ---------
 export const emailsAPI = {
     log: (limit = 100) => api.get(`/emails/log?limit=${limit}`).then((r) => r.data),
+    customers: () => api.get("/emails/customers").then((r) => r.data),
+    broadcast: (payload) => api.post("/emails/broadcast", payload, { timeout: 300000 }).then((r) => r.data),
 };

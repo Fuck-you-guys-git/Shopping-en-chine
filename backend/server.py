@@ -144,27 +144,50 @@ async def startup_seed():
 
 
 async def _recovery_loop():
-    """Email customers whose payment stayed pending/failed (1h–7d old), once."""
+    """Relance panier : 2 fois par semaine maximum (tous les ~3,5 jours),
+    pendant 3 mois maximum. Abandon automatique si le client a finalement
+    passé une commande payée, ou après ~26 relances (2/semaine × 13 semaines)."""
     import asyncio
     from datetime import timedelta
     from email_service import send_recovery_email
     while True:
         try:
             now = datetime.now(timezone.utc)
-            low = (now - timedelta(days=7)).isoformat()
-            high = (now - timedelta(hours=1)).isoformat()
+            oldest = (now - timedelta(days=90)).isoformat()   # abandon après 3 mois
+            newest = (now - timedelta(hours=1)).isoformat()   # laisse 1 h pour payer
+            resend_cutoff = (now - timedelta(days=3, hours=12)).isoformat()  # 2×/semaine
             candidates = await db.orders.find({
                 "status": {"$in": ["pending", "failed"]},
-                "recovery_email_sent": {"$ne": True},
                 "customer.email": {"$nin": [None, ""]},
-                "created_at": {"$gte": low, "$lte": high},
+                "is_test": {"$ne": True},
+                "created_at": {"$gte": oldest, "$lte": newest},
+                "recovery_count": {"$not": {"$gte": 26}},
+                "$or": [
+                    {"recovery_email_at": {"$exists": False}},
+                    {"recovery_email_at": {"$lte": resend_cutoff}},
+                ],
             }, {"_id": 0}).to_list(20)
             for order in candidates:
-                # Atomic claim so restarts/replicas never double-send
+                email = (order.get("customer") or {}).get("email")
+                # Le client a fini par commander (payé) après ce panier → on abandonne
+                converted = await db.orders.find_one({
+                    "customer.email": email,
+                    "status": "success",
+                    "created_at": {"$gte": order.get("created_at", "")},
+                }, {"_id": 1})
+                if converted:
+                    await db.orders.update_one(
+                        {"id": order["id"]}, {"$set": {"recovery_count": 26}})
+                    continue
+                # Claim atomique : jamais de double envoi (redémarrages/répliques)
                 claimed = await db.orders.find_one_and_update(
-                    {"id": order["id"], "recovery_email_sent": {"$ne": True}},
+                    {"id": order["id"], "$or": [
+                        {"recovery_email_at": {"$exists": False}},
+                        {"recovery_email_at": {"$lte": resend_cutoff}},
+                    ]},
                     {"$set": {"recovery_email_sent": True,
-                              "recovery_email_at": now.isoformat()}},
+                              "recovery_email_at": now.isoformat()},
+                     "$inc": {"recovery_count": 1}},
                 )
                 if claimed:
                     await send_recovery_email(db, order)

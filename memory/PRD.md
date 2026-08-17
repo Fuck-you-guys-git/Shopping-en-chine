@@ -841,3 +841,20 @@ Payments were failing with a **DNS error** because `backend/paxity_router.py` ha
 - BONUS bug corrigé : ProductDetail affichait le sélecteur/hint « choisissez une couleur * » même avec colors=[] (tableau vide truthy) → condition passée à needsColor (length>0).
 - TESTÉ (Playwright) : produit sans couleurs → pas de hint ✓ ; ajout panier → accueil → tiroir → Passer commande → /commande → back → /panier ✓ → back → accueil ✓.
 - ⚠️ REDEPLOY requis (la vidéo est en production : elle n'a ni ce fix ni la restauration de scroll précédente).
+
+## Update — Feb 2026 (Email de masse + carnet clients + relances 2×/sem 3 mois + promo retirée)
+- BANDEAU PROMO retiré de Home.jsx (section « −30% sur l'Électronique / Offre limitée »).
+- RELANCES PANIER (server.py _recovery_loop) : nouvelles règles — 2×/semaine max (intervalle 3,5 j), abandon après 3 MOIS (created_at ≥ now-90j) ou 26 relances, arrêt immédiat si le client a une commande payée postérieure (recovery_count forcé à 26), commandes is_test exclues, claim atomique conservé. Champ recovery_count ($inc).
+- EMAIL DE MASSE (emails_router.py) : GET /api/emails/customers (JWT) — carnet dédupliqué par email (agrégation Mongo, statuts payés tolérants, is_test exclus, nom + nb commandes + dernière commande) ; POST /api/emails/broadcast {subject, message} (JWT) — envoi à tous via Resend (0,6 s d'intervalle pour la limite 2 req/s), tag "broadcast" au journal, chaque ligne du message = paragraphe HTML échappé.
+- UI (seller/emails/BroadcastCard.jsx intégrée en haut de Emails.jsx) : liste clients dépliable (broadcast-customers-toggle/list), sujet + message + bouton « Envoyer à tous les clients (N) » (broadcast-send-btn) avec confirm + toasts. Tag « Email de masse » dans le journal. api.js : emailsAPI.customers/broadcast (timeout 5 min).
+- Données preview : 37 commandes QA (@example/@test) marquées is_test=True (évite bounces Resend + exclues du carnet).
+- TESTÉ : GET customers dédupliqué ✓, broadcast sans auth 401 ✓, broadcast réel sent=2 failed=0, journal « Délivré ✓ » ✓, screenshot UI ✓. La boucle de relance a tourné sans erreur.
+- ⚠️ REDEPLOY requis.
+
+## Update — Feb 2026 (RÈGLE ABSOLUE : plus aucun email de test vers commands@)
+- INCIDENT : le broadcast de test est parti à commands@ car une commande QA de la preview avait commands@ comme email CLIENT (le carnet de clients l'a inclus). User légitimement fâché.
+- FIX 1 (emails_router._customer_directory) : commands@shoppingenchine.com est exclu du carnet clients pour toujours (la boîte marchande n'est jamais un client) → broadcast ne peut plus l'atteindre.
+- FIX 2 (email_service._safe_recipient) : tout email lié à une commande de TEST (is_test/TEST-/tmp_) dont le destinataire serait commands@ est redirigé vers modou.ba.568@gmail.com — appliqué aux 3 envois côté client : confirmation client, relance panier, suivi. (La notification marchande était déjà routée TEST→Modou.)
+- Donnée preview corrigée : la commande QA avec commands@ en client marquée is_test.
+- TESTÉ : carnet = [modou...] uniquement, commands@ exclu ✓ ; _safe_recipient 4 assertions ✓ ; test de régression permanent ajouté (test_safe_recipient_never_sends_test_to_commands) — suite verte.
+- ⚠️ REDEPLOY requis.
