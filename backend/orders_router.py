@@ -54,7 +54,7 @@ async def list_orders(request: Request) -> dict:
     db = request.app.state.db
     orders = await db.orders.find(
         {}, {"_id": 0, "raw_response": 0}
-    ).sort("created_at", -1).to_list(500)
+    ).sort("created_at", -1).to_list(5000)
     return {"orders": orders}
 
 

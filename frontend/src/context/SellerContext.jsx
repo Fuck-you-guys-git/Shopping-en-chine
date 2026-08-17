@@ -21,6 +21,15 @@ const PAYMENT_LABELS = {
     failed: { label: "Paiement échoué", color: "bg-destructive/10 text-destructive" },
 };
 
+// Statuts considérés comme PAYÉS — tolérant envers les anciennes commandes
+// (période Stripe / anciennes versions) : variantes de « success » + étapes
+// de livraison stockées dans status (une commande expédiée/livrée est payée).
+const PAID_STATUSES = new Set([
+    "success", "successful", "paid", "completed", "confirmed", "ok", "done",
+    "shipped", "customs", "delivery", "delivered",
+]);
+const isPaidOrder = (o) => PAID_STATUSES.has(String(o.status || "").toLowerCase());
+
 const mapOrder = (o, productsById) => ({
     id: o.id,
     customer: o.customer?.name || "Client",
@@ -40,8 +49,12 @@ const mapOrder = (o, productsById) => ({
     })),
     total: o.amount || 0,
     deliveryMode: o.delivery_mode === "express" ? "express" : "standard",
-    payment: PAYMENT_LABELS[o.status] ? o.status : "pending",
-    status: STATUSES.includes(o.tracking_step) ? o.tracking_step : "ordered",
+    payment: isPaidOrder(o) ? "success" : (PAYMENT_LABELS[o.status] ? o.status : "pending"),
+    // Étape de suivi : tracking_step prioritaire ; anciennes commandes où
+    // l'étape était stockée dans status : on la récupère aussi.
+    status: STATUSES.includes(o.tracking_step)
+        ? o.tracking_step
+        : (STATUSES.includes(o.status) ? o.status : "ordered"),
     createdAt: Date.parse(o.created_at) || Date.now(),
 });
 
@@ -72,7 +85,7 @@ export const SellerProvider = ({ children }) => {
                 // Le Dashboard n'affiche que les commandes PAYÉES
                 // (les paiements échoués ou en attente sont masqués)
                 setOrders(
-                    list.filter((o) => o.status === "success")
+                    list.filter(isPaidOrder)
                         .map((o) => mapOrder(o, productsById)),
                 );
             }

@@ -819,3 +819,10 @@ Payments were failing with a **DNS error** because `backend/paxity_router.py` ha
 - FIX : ScrollToTop réécrit — useNavigationType() : navigation PUSH → haut de page (comportement conservé) ; POP (retour/avance) → restauration de la position sauvegardée (Map par location.key, listener scroll passif, retry rAF ≤30 frames le temps que le contenu s'affiche). history.scrollRestoration="manual".
 - TESTÉ (Playwright preview) : boutique scroll 250 → fiche produit (scroll 0) → retour → 250 restauré ✓ ; nouvelle navigation → 0 ✓.
 - ⚠️ REDEPLOY requis.
+
+## Update — Feb 2026 (Total commandes : anciennes commandes comptées)
+- User : « ce n'est pas 11 commandes depuis le début du site » — des commandes payées manquaient au compte.
+- CAUSE : SellerContext ne gardait que status === "success" strict. Les anciennes commandes de production (période Stripe / anciennes versions) peuvent avoir "paid", "completed", "confirmed", ou l'étape de livraison stockée dans status ("shipped"/"delivered"…).
+- FIX : PAID_STATUSES tolérant (success/successful/paid/completed/confirmed/ok/done + shipped/customs/delivery/delivered, insensible à la casse) appliqué au filtre de liste ET au mapping payment ; l'étape de suivi est aussi récupérée depuis status pour les anciens formats. Limite backend list_orders 500 → 5000.
+- TESTÉ : 2 commandes seedées à l'ancien format (status paid + shipped, datées 2025) → Total passe de 6 à 8, « cette année » reste 6 (dates 2025 exclues, correct). Nettoyées.
+- ⚠️ REDEPLOY requis — le vrai total historique s'affichera alors en production.
