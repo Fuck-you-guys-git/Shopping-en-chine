@@ -812,3 +812,10 @@ Payments were failing with a **DNS error** because `backend/paxity_router.py` ha
 - TRACKING INTERNATIONAL : « En livraison à Dakar » remplacé par libellé générique « En livraison » (STEP_LABELS) + ville du client : TrackOrder.jsx affiche « En livraison · {city} » (traduisible EN « Out for delivery »), email de suivi personnalisé via _delivery_label(order) (« En livraison à Paris »). _normalize_order_id accepte aussi TEST-xxx. TESTÉ : commande ville Paris → label « En livraison » + city Paris.
 - test_tracking.py mis à jour (nouveau libellé). Suite : 97+7 verts, 0 échec.
 - ⚠️ REDEPLOY requis pour la production.
+
+## Update — Feb 2026 (Retour arrière : position de la liste restaurée)
+- User : depuis une fiche article, le retour à la page précédente « recommence depuis le début » (scroll remis en haut).
+- CAUSE : ScrollToTop.jsx remontait en haut à CHAQUE changement de pathname, y compris les retours navigateur (POP).
+- FIX : ScrollToTop réécrit — useNavigationType() : navigation PUSH → haut de page (comportement conservé) ; POP (retour/avance) → restauration de la position sauvegardée (Map par location.key, listener scroll passif, retry rAF ≤30 frames le temps que le contenu s'affiche). history.scrollRestoration="manual".
+- TESTÉ (Playwright preview) : boutique scroll 250 → fiche produit (scroll 0) → retour → 250 restauré ✓ ; nouvelle navigation → 0 ✓.
+- ⚠️ REDEPLOY requis.
