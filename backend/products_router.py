@@ -175,6 +175,48 @@ def _db(request: Request):
     return request.app.state.db
 
 
+# Anciens taux d'AFFICHAGE (9 000 F = 17 € = 19 $) — conservés UNIQUEMENT pour
+# figer une fois pour toutes les prix EUR/USD tels que le site les affichait
+# avant la suppression de la conversion automatique (Fév 2026).
+_LEGACY_EUR_RATE = 9000 / 17
+_LEGACY_USD_RATE = 9000 / 19
+
+
+def _fill_missing_localized_prices(doc: dict) -> None:
+    """Complète priceEur/priceUsd manquants avec les prix affichés historiques
+    (figés, plus jamais recalculés). Le vendeur peut ensuite les modifier."""
+    price = float(doc.get("price") or 0)
+    if price <= 0:
+        return
+    if not doc.get("priceEur"):
+        doc["priceEur"] = round(price / _LEGACY_EUR_RATE, 2)
+    if not doc.get("priceUsd"):
+        doc["priceUsd"] = round(price / _LEGACY_USD_RATE, 2)
+
+
+async def freeze_localized_prices(db) -> None:
+    """Migration au démarrage (production incluse au redéploiement) : tout
+    produit sans prix EUR/USD saisi reçoit DÉFINITIVEMENT les prix que le site
+    affichait jusqu'ici. Après ce passage, chaque produit porte ses trois prix
+    (F CFA / € / $) et plus aucune conversion n'existe dans le code."""
+    query = {"$or": [
+        {"priceEur": {"$in": [None, 0]}},
+        {"priceEur": {"$exists": False}},
+        {"priceUsd": {"$in": [None, 0]}},
+        {"priceUsd": {"$exists": False}},
+    ]}
+    count = 0
+    async for p in db.products.find(query, {"_id": 0, "id": 1, "price": 1, "priceEur": 1, "priceUsd": 1}):
+        updates = dict(p)
+        _fill_missing_localized_prices(updates)
+        changes = {k: updates[k] for k in ("priceEur", "priceUsd") if updates.get(k) and not p.get(k)}
+        if changes:
+            await db.products.update_one({"id": p["id"]}, {"$set": changes})
+            count += 1
+    if count:
+        logger.info(f"[Products] Prix EUR/USD figés (valeurs affichées conservées) sur {count} produit(s)")
+
+
 async def seed_products(db) -> None:
     """Migration : les produits de démonstration sont retirés définitivement.
     Au démarrage, supprime tout produit de démo restant (ids du fichier seed,
@@ -196,8 +238,9 @@ class ProductPayload(BaseModel):
     keywords: Optional[list[str]] = None
     price: float = Field(gt=0)
     oldPrice: Optional[float] = None
-    # Prix affichés/débités pour l'Europe et les USA/Canada.
-    # Facultatifs : à défaut, conversion automatique (9000 F = 17 EUR = 19 USD).
+    # Prix affichés/débités pour l'Europe et les USA/Canada — AUCUNE conversion
+    # automatique : s'ils manquent, ils sont figés une fois à la création
+    # (valeurs d'affichage historiques) puis modifiables par le vendeur.
     priceEur: Optional[float] = Field(default=None, gt=0)
     priceUsd: Optional[float] = Field(default=None, gt=0)
     badge: Optional[str] = None
@@ -252,6 +295,7 @@ async def get_product_thumb(product_id: str, image_id: str, request: Request):
 async def create_product(payload: ProductPayload, request: Request, seller: dict = Depends(get_current_seller)):
     db = _db(request)
     doc = payload.model_dump()
+    _fill_missing_localized_prices(doc)
     product_id = f"p_{uuid.uuid4().hex[:10]}"
     await _process_images(db, product_id, doc)
     doc.update({
@@ -274,6 +318,7 @@ async def update_product(product_id: str, payload: ProductPayload, request: Requ
     if not existing:
         raise HTTPException(status_code=404, detail="Produit introuvable")
     doc = payload.model_dump()
+    _fill_missing_localized_prices(doc)
     await _process_images(db, product_id, doc)
     await db.products.update_one({"id": product_id}, {"$set": doc})
     doc = await db.products.find_one({"id": product_id}, {"_id": 0})

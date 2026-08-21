@@ -836,3 +836,9 @@
 - AddProduct : validation bloque si priceEur ou priceUsd manquant ; PricingSection relabellisée (3 prix obligatoires, note de conversion supprimée).
 - FALLBACK produits existants sans priceEur/priceUsd : les clients EUR/USD voient le prix F CFA TEL QUEL (« 1 500 F ») et la carte débite le montant F CFA — jamais de calcul.
 - VÉRIFIÉ : lint global OK (seuls warnings pré-existants shadcn) ; screenshot visiteur USD → produit sans priceUsd affiche « 1 500 F » ✓ ; grep RATES/formatXof/formatEquivalents = 0 occurrence. Testing agent NON exécuté (choix user). ⚠️ REDEPLOY requis.
+
+## Update — Fév 2026 (Prix EUR/USD FIGÉS en base : les clients étrangers ne voient JAMAIS le F CFA)
+- PRÉCISION USER : les clients Europe/USA doivent continuer à voir les prix €/$ TELS QU'AFFICHÉS actuellement sur le site — jamais le F CFA. Pas de fallback F CFA pour eux.
+- FIX (products_router.py) : migration au démarrage `freeze_localized_prices` — tout produit sans priceEur/priceUsd saisi reçoit DÉFINITIVEMENT en base les valeurs que le site affichait (anciens taux 9000/17 et 9000/19, utilisés UNE SEULE FOIS pour figer, jamais à l'affichage). S'exécute aussi en production au redéploiement. Filet de sécurité `_fill_missing_localized_prices` à la création de produit.
+- Résultat : chaque produit porte ses 3 prix définitifs (F CFA/€/$), modifiables au dashboard ; le code d'affichage n'a plus AUCUNE conversion ; le fallback F CFA frontend ne peut plus se déclencher.
+- TESTÉ : redémarrage → log « Prix figés sur 1 produit(s) » ; produit 1500 F → priceEur 2.83 / priceUsd 3.17 en base ; screenshot visiteur USA → « $3.17 » ✓ ; pytest produits 18 passed. ⚠️ REDEPLOY requis (la migration production se fera automatiquement au démarrage).

@@ -101,7 +101,7 @@ api_router.include_router(orders_router)
 
 # ---- Seller auth + product catalog ---------------------------------------
 from auth_router import router as auth_router, seed_seller
-from products_router import router as products_router, seed_products, migrate_base64_images
+from products_router import router as products_router, seed_products, migrate_base64_images, freeze_localized_prices
 api_router.include_router(auth_router)
 api_router.include_router(products_router)
 
@@ -135,6 +135,8 @@ async def startup_seed():
     await db.products.create_index("id", unique=True)
     await seed_seller(db)
     await seed_products(db)
+    # Fige les prix EUR/USD affichés (fin de la conversion automatique)
+    await freeze_localized_prices(db)
     await db.product_images.create_index([("product_id", 1), ("image_id", 1)])
     # Cart-abandonment recovery loop (checks every 30 min)
     import asyncio
