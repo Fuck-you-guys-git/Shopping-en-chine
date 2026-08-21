@@ -1,15 +1,10 @@
 /*
- * Langue + devise du site.
- * - Les prix du catalogue sont TOUJOURS en F CFA (XOF) côté serveur.
- * - L'affichage convertit au barème : 9000 F CFA = 17 EUR = 19 USD.
- * - Le PAIEMENT reste débité en F CFA (Paxity + Stripe) — l'affichage
- *   en €/$ est indicatif pour les clients d'Europe / des USA.
+ * Langue + devise du site — AUCUNE CONVERSION AUTOMATIQUE (demande du marchand).
+ * Chaque produit porte ses prix saisis manuellement par le vendeur :
+ *   price (F CFA · Afrique), priceEur (€ · Europe), priceUsd ($ · USA/Canada).
+ * Le site affiche et débite EXACTEMENT ces montants — jamais de calcul au taux fixe.
  * - t(fr) : renvoie la traduction anglaise si la langue est "en".
  */
-
-// Barème fixé par le marchand : un produit à 9 000 F CFA vaut 28 € et 32 $.
-// => prix EUR = prix CFA ÷ 529,41 (9000/17) · prix USD = prix CFA ÷ 473,68 (9000/19)
-export const RATES = { XOF: 1, EUR: 9000 / 17, USD: 9000 / 19 };
 
 export const LOCALE_PRESETS = [
     { id: "sn", flag: "🇸🇳", lang: "fr", currency: "XOF", label: "Afrique · FCFA", short: "FR · F CFA" },
@@ -24,7 +19,7 @@ export const setLocaleValues = (lang, currency, country = null) => {
     current = { lang, currency, country };
 };
 
-/** Formate un montant F CFA dans la devise d'affichage courante. */
+/** Formate un montant dans une devise donnée (aucune conversion). */
 const fmtCurrency = (value, locale, currency) => {
     // Montant entier -> "20 €" ; sinon toujours 2 décimales -> "12,50 €"
     const isWhole = Math.abs(value - Math.round(value)) < 0.005;
@@ -36,22 +31,11 @@ const fmtCurrency = (value, locale, currency) => {
     }).format(value);
 };
 
-export const formatMoney = (xof) => {
-    const v = Number(xof) || 0;
-    if (current.currency === "EUR") {
-        return fmtCurrency(v / RATES.EUR, "fr-FR", "EUR");
-    }
-    if (current.currency === "USD") {
-        return fmtCurrency(v / RATES.USD, "en-US", "USD");
-    }
-    return `${new Intl.NumberFormat("fr-FR", { maximumFractionDigits: 0 }).format(Math.round(v))} F`;
-};
+/** Montant F CFA formaté « X F » — toujours tel quel, sans conversion. */
+export const formatMoney = (xof) =>
+    `${new Intl.NumberFormat("fr-FR", { maximumFractionDigits: 0 }).format(Math.round(Number(xof) || 0))} F`;
 
-/** Montant F CFA formaté brut (pour la note « débité en F CFA »). */
-export const formatXof = (xof) =>
-    `${new Intl.NumberFormat("fr-FR", { maximumFractionDigits: 0 }).format(Math.round(Number(xof) || 0))} F CFA`;
-
-/** Montant payé dans SA devise d'origine (EUR/USD tels quels, XOF localisé). */
+/** Montant payé dans SA devise d'origine (EUR/USD tels quels, XOF en « X F »). */
 export const formatPaid = (v, currency) => {
     const n = Number(v) || 0;
     if (currency === "EUR") return fmtCurrency(n, "fr-FR", "EUR");
@@ -65,17 +49,17 @@ export const formatCfa = (xof) =>
 
 /**
  * Prix unitaire d'un produit/article dans la devise d'affichage courante.
- * Priorité au prix EUR/USD saisi par le vendeur (priceEur / priceUsd),
- * sinon conversion automatique au barème fixe.
+ * UNIQUEMENT le prix EUR/USD saisi par le vendeur — AUCUNE conversion.
+ * Retourne null si le vendeur n'a pas saisi de prix dans cette devise.
  */
 export const unitAmount = (p) => {
     if (current.currency === "EUR") {
         const e = Number(p?.priceEur);
-        return e > 0 ? e : (Number(p?.price) || 0) / RATES.EUR;
+        return e > 0 ? e : null;
     }
     if (current.currency === "USD") {
         const u = Number(p?.priceUsd);
-        return u > 0 ? u : (Number(p?.price) || 0) / RATES.USD;
+        return u > 0 ? u : null;
     }
     return Number(p?.price) || 0;
 };
@@ -87,19 +71,43 @@ export const fmtAmount = (v) => {
     return `${new Intl.NumberFormat("fr-FR", { maximumFractionDigits: 0 }).format(Math.round(v))} F`;
 };
 
-/** Prix d'un produit formaté (tient compte des prix EUR/USD du vendeur). */
-export const formatProductMoney = (p) => fmtAmount(unitAmount(p));
-
-/** Total du panier dans la devise d'affichage (prix vendeur prioritaires). */
-export const cartDisplayTotal = (items) =>
-    (items || []).reduce((s, i) => s + unitAmount(i) * (i.qty || 1), 0);
+/** Prix d'un produit formaté : prix vendeur EUR/USD, sinon F CFA tel quel. */
+export const formatProductMoney = (p) => {
+    const v = unitAmount(p);
+    return v != null ? fmtAmount(v) : formatMoney(p?.price);
+};
 
 /**
- * Équivalents devises : DÉSACTIVÉ à la demande du marchand.
- * - Mode FCFA -> "" : les clients africains ne voient QUE le prix en F CFA.
- * - Mode EUR/USD -> "" : les clients Europe/USA ne voient JAMAIS de prix en F CFA.
+ * Total du panier dans la devise d'affichage (prix vendeur uniquement).
+ * Retourne null si un article n'a pas de prix saisi dans cette devise
+ * (le paiement bascule alors sur le montant F CFA tel quel).
  */
-export const formatEquivalents = () => "";
+export const cartDisplayTotal = (items) => {
+    let sum = 0;
+    for (const i of items || []) {
+        const u = unitAmount(i);
+        if (u == null) return null;
+        sum += u * (i.qty || 1);
+    }
+    return sum;
+};
+
+/** Total F CFA brut d'un panier (fallback sans conversion). */
+export const cartXofTotal = (items) =>
+    (items || []).reduce((s, i) => s + (Number(i.price) || 0) * (i.qty || 1), 0);
+
+/** Ligne d'article formatée : prix vendeur localisé, sinon F CFA tel quel. */
+export const itemTotalLabel = (it) => {
+    const u = unitAmount(it);
+    const qty = it?.qty || 1;
+    return u != null ? fmtAmount(u * qty) : formatMoney((Number(it?.price) || 0) * qty);
+};
+
+/** Total panier formaté : devise d'affichage si possible, sinon F CFA. */
+export const cartTotalLabel = (items) => {
+    const sum = cartDisplayTotal(items);
+    return sum != null ? fmtAmount(sum) : formatMoney(cartXofTotal(items));
+};
 
 // ---------------------------------------------------------------------------
 // Dictionnaire FR -> EN (la clé est le texte français affiché)

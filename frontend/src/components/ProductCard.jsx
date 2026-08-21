@@ -3,7 +3,7 @@ import { Heart, ShoppingBag } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useCart } from "@/context/CartContext";
 import { toast } from "sonner";
-import { formatMoney, formatProductMoney, t } from "@/lib/locale";
+import { formatMoney, formatProductMoney, getLocale, t } from "@/lib/locale";
 
 // Formatage des prix : convertit F CFA -> devise d'affichage (FCFA / € / $)
 export const formatPrice = (v) => formatMoney(v);
@@ -66,7 +66,7 @@ export const ProductCard = ({ product, index = 0 }) => {
                     <span className="font-display text-lg font-semibold text-foreground">
                         {formatProductMoney(product)}
                     </span>
-                    {product.oldPrice && (
+                    {product.oldPrice && getLocale().currency === "XOF" && (
                         <span className="text-xs text-muted-foreground line-through">
                             {formatPrice(product.oldPrice)}
                         </span>

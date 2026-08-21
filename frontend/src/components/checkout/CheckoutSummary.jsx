@@ -1,5 +1,5 @@
 import { Separator } from "@/components/ui/separator";
-import { t, unitAmount, fmtAmount, cartDisplayTotal } from "@/lib/locale";
+import { t, itemTotalLabel, cartTotalLabel } from "@/lib/locale";
 import { colorName } from "@/lib/colors";
 
 // Récapitulatif du panier (colonne latérale du checkout)
@@ -29,19 +29,19 @@ export const CheckoutSummary = ({ items }) => (
                                 </p>
                             )}
                         </div>
-                        <span className="text-sm font-medium">{fmtAmount(unitAmount(it) * it.qty)}</span>
+                        <span className="text-sm font-medium">{itemTotalLabel(it)}</span>
                     </div>
                 ))}
             </div>
             <Separator />
             <div className="space-y-2 text-sm">
-                <div className="flex justify-between"><span className="text-muted-foreground">{t("Sous-total")}</span><span>{fmtAmount(cartDisplayTotal(items))}</span></div>
+                <div className="flex justify-between"><span className="text-muted-foreground">{t("Sous-total")}</span><span>{cartTotalLabel(items)}</span></div>
                 <div className="flex justify-between"><span className="text-muted-foreground">{t("Livraison Chine → Monde entier")}</span><span className="text-muted-foreground">{t("10–20 jours")}</span></div>
             </div>
             <Separator />
             <div className="flex justify-between items-baseline">
                 <span className="font-medium">{t("Total")}</span>
-                <span className="font-display text-2xl font-semibold">{fmtAmount(cartDisplayTotal(items))}</span>
+                <span className="font-display text-2xl font-semibold">{cartTotalLabel(items)}</span>
             </div>
         </div>
     </aside>

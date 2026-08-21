@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { Input } from "@/components/ui/input";
 import { useState } from "react";
-import { t, unitAmount, fmtAmount, cartDisplayTotal } from "@/lib/locale";
+import { t, itemTotalLabel, cartTotalLabel } from "@/lib/locale";
 import { colorName } from "@/lib/colors";
 import { toast } from "sonner";
 import { useCart } from "@/context/CartContext";
@@ -75,7 +75,7 @@ export default function Cart() {
                                             <Plus className="h-3.5 w-3.5" />
                                         </button>
                                     </div>
-                                    <span className="font-display text-xl font-semibold">{fmtAmount(unitAmount(item) * item.qty)}</span>
+                                    <span className="font-display text-xl font-semibold">{itemTotalLabel(item)}</span>
                                 </div>
                             </div>
                         </div>
@@ -92,7 +92,7 @@ export default function Cart() {
                         <div className="space-y-2 text-sm">
                             <div className="flex justify-between">
                                 <span className="text-muted-foreground">{t("Sous-total")}</span>
-                                <span>{fmtAmount(cartDisplayTotal(items))}</span>
+                                <span>{cartTotalLabel(items)}</span>
                             </div>
                             <div className="flex justify-between">
                                 <span className="text-muted-foreground">{t("Livraison Chine → Monde entier")}</span>
@@ -102,7 +102,7 @@ export default function Cart() {
                         <Separator />
                         <div className="flex justify-between items-baseline">
                             <span className="font-medium">{t("Total TTC")}</span>
-                            <span className="font-display text-3xl font-semibold">{fmtAmount(cartDisplayTotal(items))}</span>
+                            <span className="font-display text-3xl font-semibold">{cartTotalLabel(items)}</span>
                         </div>
                         <Button asChild size="lg" className="w-full bg-ink text-ink-foreground hover:bg-ink/90 rounded-full h-12">
                             <Link data-testid="cart-checkout-btn" to="/commande">{t("Passer commande")}</Link>

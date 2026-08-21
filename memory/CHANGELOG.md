@@ -826,3 +826,13 @@
 - FIX : Checkout.jsx calcule `cardChargeAmount` UNE fois (prix affichés EUR/USD via cartDisplayTotal pour Europe/USA, XOF sinon) — utilisé PARTAGÉ par le bouton (PaxityCardPanel, fmtAmount) ET l'init Paxity (handleCardPayment) ET l'écran d'attente (setTransaction amount+currency). Incohérence structurellement impossible.
 - PaxityCardPanel.jsx : formatPrice(total XOF) → fmtAmount(total en devise d'affichage). Comportement XOF inchangé.
 - VÉRIFIÉ : lint OK, catalogue USD affiche le prix vendeur ($99 sur produit test), logique partagée par construction. ⚠️ REDEPLOY requis.
+
+## Update — Fév 2026 (SUPPRESSION TOTALE de la conversion automatique de devise)
+- DEMANDE USER : plus aucune conversion — chaque client voit et paie EXACTEMENT les prix saisis par le vendeur. Afrique = price (F CFA), Europe = priceEur, USA/Canada = priceUsd. Prix EUR et USD désormais OBLIGATOIRES à l'ajout/édition de produit.
+- locale.js : RATES (9000/17, 9000/19) SUPPRIMÉ ; formatMoney = toujours « X F » (plus de branches EUR/USD) ; unitAmount = prix vendeur uniquement, retourne null si absent ; cartDisplayTotal retourne null si un article n'a pas de prix localisé ; nouveaux helpers itemTotalLabel / cartTotalLabel / cartXofTotal (fallback F CFA tel quel) ; formatXof et formatEquivalents (code mort) supprimés.
+- Checkout.jsx : cardChargeCurrency/cardChargeAmount — débit dans la devise d'affichage UNIQUEMENT si tous les articles ont un prix vendeur localisé, sinon débit F CFA tel quel (Paxity/banque fait le change) ; price_paid seulement si prix vendeur saisi.
+- PaxityCardPanel : formatPaid(total, currency) — le bouton affiche le montant exact débité. StripeCardPanel/Cart/CartDrawer/CheckoutSummary : cartTotalLabel/itemTotalLabel.
+- ProductCard + ProductDetail : oldPrice (barré, XOF) masqué pour les visiteurs EUR/USD (pas de conversion possible).
+- AddProduct : validation bloque si priceEur ou priceUsd manquant ; PricingSection relabellisée (3 prix obligatoires, note de conversion supprimée).
+- FALLBACK produits existants sans priceEur/priceUsd : les clients EUR/USD voient le prix F CFA TEL QUEL (« 1 500 F ») et la carte débite le montant F CFA — jamais de calcul.
+- VÉRIFIÉ : lint global OK (seuls warnings pré-existants shadcn) ; screenshot visiteur USD → produit sans priceUsd affiche « 1 500 F » ✓ ; grep RATES/formatXof/formatEquivalents = 0 occurrence. Testing agent NON exécuté (choix user). ⚠️ REDEPLOY requis.

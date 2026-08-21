@@ -9,7 +9,7 @@ import { loadPaxityCardWidget, setCardRedirectUrl, closePaymentOverlays, onCardP
 import { paxityDirectPayin, paxityDirectAvailable } from "@/lib/paxityDirect";
 import { DeliveryOptions } from "@/components/DeliveryOptions";
 import { orderNo } from "@/lib/utils";
-import { t, getLocale, cartDisplayTotal, unitAmount, RATES } from "@/lib/locale";
+import { t, getLocale, cartDisplayTotal, unitAmount } from "@/lib/locale";
 import { findCountry, countryName, STATES } from "@/lib/countries";
 import { colorName } from "@/lib/colors";
 import { OPERATOR_META } from "@/components/checkout/operatorMeta";
@@ -65,12 +65,14 @@ export default function Checkout() {
     const [deliveryMode, setDeliveryMode] = useState("standard");
     const shipping = 0;
     const total = subtotal + shipping;
-    // Montant réellement débité par CARTE : les prix affichés (EUR/USD vendeur)
-    // pour les clients Europe/USA — Paxity encaisse dans leur devise ; XOF sinon.
-    const cardCurrency = getLocale().currency;
-    const cardChargeAmount = cardCurrency === "XOF"
-        ? total
-        : Math.round((cartDisplayTotal(items) + shipping / RATES[cardCurrency]) * 100) / 100;
+    // Paiement CARTE : débit dans la devise d'affichage UNIQUEMENT si tous les
+    // articles ont un prix vendeur saisi dans cette devise (AUCUNE conversion).
+    // Sinon : montant F CFA tel quel — Paxity/la banque du client fait le change.
+    const localizedCartTotal = getLocale().currency === "XOF" ? null : cartDisplayTotal(items);
+    const cardChargeCurrency = localizedCartTotal != null ? getLocale().currency : "XOF";
+    const cardChargeAmount = localizedCartTotal != null
+        ? Math.round(localizedCartTotal * 100) / 100
+        : total;
 
     const [buyer, setBuyer] = useState(() => {
         // Pays pré-sélectionné depuis la géolocalisation IP (si connu)
@@ -310,9 +312,9 @@ export default function Checkout() {
             // page commande (la confirmation y est restaurée automatiquement).
             setCardRedirectUrl(`${window.location.origin}/commande`);
             // Clients Europe / USA-Canada : paiement carte DIRECTEMENT dans
-            // leur devise (€/$) — Paxity se charge du change. XOF sinon.
+            // leur devise (€/$) si les prix vendeur existent — AUCUNE conversion.
             // (cardChargeAmount = même montant que celui affiché sur le bouton)
-            const payCurrency = cardCurrency;
+            const payCurrency = cardChargeCurrency;
             const chargedAmount = cardChargeAmount;
             const res = await paxityAPI.cardInit({
                 amount: chargedAmount,
@@ -327,16 +329,19 @@ export default function Checkout() {
                     phone: buyer.phone ? `+${prefix} ${buyer.phone}` : undefined,
                     address: [buyer.address, buyer.zip, buyer.state, selectedCountry ? countryName(selectedCountry) : null].filter(Boolean).join(", ") || undefined,
                 },
-                items: items.map((it) => ({
-                    product_id: it.id,
-                    name: itemLabel(it),
-                    price: it.price,
-                    qty: it.qty,
-                    color: it.color || undefined,
-                    size: it.size || undefined,
-                    // Prix unitaire dans la devise payée (EUR/USD) pour les emails client
-                    price_paid: payCurrency === "XOF" ? undefined : Math.round(unitAmount(it) * 100) / 100,
-                })),
+                items: items.map((it) => {
+                    const localUnit = payCurrency === "XOF" ? null : unitAmount(it);
+                    return {
+                        product_id: it.id,
+                        name: itemLabel(it),
+                        price: it.price,
+                        qty: it.qty,
+                        color: it.color || undefined,
+                        size: it.size || undefined,
+                        // Prix unitaire saisi par le vendeur dans la devise payée (EUR/USD)
+                        price_paid: localUnit != null ? Math.round(localUnit * 100) / 100 : undefined,
+                    };
+                }),
             });
             // Écran d'attente + polling (mêmes mécanismes que le mobile money)
             setTransaction({
@@ -660,6 +665,7 @@ export default function Checkout() {
                             {CARD_PAYMENT_ENABLED && paymentMethod === "CARD" && (
                                 <PaxityCardPanel
                                     total={cardChargeAmount}
+                                    currency={cardChargeCurrency}
                                     processing={processing}
                                     onBack={goBackStep}
                                     onPay={handleCardPayment}

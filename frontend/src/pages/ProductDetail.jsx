@@ -14,7 +14,7 @@ import { productsAPI } from "@/lib/api";
 import { toast } from "sonner";
 import { usePageTitle } from "@/hooks/usePageTitle";
 import { colorName } from "@/lib/colors";
-import { t, formatProductMoney } from "@/lib/locale";
+import { t, formatProductMoney, getLocale } from "@/lib/locale";
 
 // Tailles S–XL : uniquement vêtements & chaussures (pas lunettes, sacs, bijoux, montres, jouets…)
 const NON_APPAREL_SUBS = new Set([
@@ -261,7 +261,7 @@ export default function ProductDetail() {
 
                         <div className="mt-4 flex items-baseline gap-3 flex-wrap">
                             <span className="font-display text-xl sm:text-2xl font-semibold">{formatProductMoney(product)}</span>
-                            {product.oldPrice && (
+                            {product.oldPrice && getLocale().currency === "XOF" && (
                                 <>
                                     <span className="text-base text-muted-foreground line-through">{formatPrice(product.oldPrice)}</span>
                                     <Badge className="bg-primary/10 text-primary hover:bg-primary/10 rounded-full">

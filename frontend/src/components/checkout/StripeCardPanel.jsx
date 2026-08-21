@@ -1,6 +1,6 @@
 import { Loader2, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { t, getLocale, fmtAmount, cartDisplayTotal } from "@/lib/locale";
+import { t, getLocale, cartTotalLabel } from "@/lib/locale";
 
 // Panneau paiement carte (Stripe embarqué) — le client paie dans SA devise
 export const StripeCardPanel = ({ items, processing, onBack, onPay }) => (
@@ -11,7 +11,7 @@ export const StripeCardPanel = ({ items, processing, onBack, onPay }) => (
         </div>
         {getLocale().currency !== "XOF" && (
             <p className="text-[11px] text-muted-foreground" data-testid="stripe-currency-note">
-                {t("Vous payez par carte dans votre devise :")} <span className="font-medium text-foreground">{fmtAmount(cartDisplayTotal(items))}</span>
+                {t("Vous payez par carte dans votre devise :")} <span className="font-medium text-foreground">{cartTotalLabel(items)}</span>
             </p>
         )}
         <div className="flex gap-2 pt-2">
@@ -26,7 +26,7 @@ export const StripeCardPanel = ({ items, processing, onBack, onPay }) => (
                 {processing ? (
                     <><Loader2 className="h-4 w-4 animate-spin" /> {t("Chargement…")}</>
                 ) : (
-                    <>{t("Payer par carte")} {fmtAmount(cartDisplayTotal(items))}</>
+                    <>{t("Payer par carte")} {cartTotalLabel(items)}</>
                 )}
             </Button>
         </div>
