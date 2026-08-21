@@ -11,18 +11,6 @@ import { useCart } from "@/context/CartContext";
 
 export default function Cart() {
     const { items, updateQty, removeItem, subtotal, clear } = useCart();
-    const [promo, setPromo] = useState("");
-    const [discount, setDiscount] = useState(0);
-
-    const applyPromo = (e) => {
-        e.preventDefault();
-        if (promo.trim().toUpperCase() === "BIENVENUE10") {
-            setDiscount(subtotal * 0.1);
-            toast.success(t("Code appliqué · −10%"));
-        } else if (promo.trim()) {
-            toast.error(t("Code invalide"), { description: `${t("Essayez")} BIENVENUE10` });
-        }
-    };
 
     if (items.length === 0) {
         return (
@@ -99,12 +87,6 @@ export default function Cart() {
                     <div className="sticky top-24 bg-secondary/40 rounded-2xl p-6 md:p-7 space-y-5">
                         <h2 className="font-display text-2xl">{t("Récapitulatif")}</h2>
 
-                        <form onSubmit={applyPromo} className="flex gap-2">
-                            <Input value={promo} onChange={(e) => setPromo(e.target.value)} placeholder={t("Code promo")} className="bg-background" />
-                            <Button type="submit" variant="outline" className="rounded-md">{t("Appliquer")}</Button>
-                        </form>
-                        <p className="text-[11px] text-muted-foreground -mt-2">💡 {t("Essayez")} <span className="font-mono text-foreground">BIENVENUE10</span></p>
-
                         <Separator />
 
                         <div className="space-y-2 text-sm">
@@ -112,12 +94,6 @@ export default function Cart() {
                                 <span className="text-muted-foreground">{t("Sous-total")}</span>
                                 <span>{fmtAmount(cartDisplayTotal(items))}</span>
                             </div>
-                            {discount > 0 && (
-                                <div className="flex justify-between text-success">
-                                    <span>{t("Réduction (−10%)")}</span>
-                                    <span>−{fmtAmount(cartDisplayTotal(items) * 0.1)}</span>
-                                </div>
-                            )}
                             <div className="flex justify-between">
                                 <span className="text-muted-foreground">{t("Livraison Chine → Monde entier")}</span>
                                 <span className="text-muted-foreground">{t("10–20 jours")}</span>
@@ -126,7 +102,7 @@ export default function Cart() {
                         <Separator />
                         <div className="flex justify-between items-baseline">
                             <span className="font-medium">{t("Total TTC")}</span>
-                            <span className="font-display text-3xl font-semibold">{fmtAmount(cartDisplayTotal(items) * (discount > 0 ? 0.9 : 1))}</span>
+                            <span className="font-display text-3xl font-semibold">{fmtAmount(cartDisplayTotal(items))}</span>
                         </div>
                         <Button asChild size="lg" className="w-full bg-ink text-ink-foreground hover:bg-ink/90 rounded-full h-12">
                             <Link data-testid="cart-checkout-btn" to="/commande">{t("Passer commande")}</Link>

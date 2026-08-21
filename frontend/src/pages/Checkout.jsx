@@ -42,6 +42,26 @@ export default function Checkout() {
     const { items, subtotal, clear } = useCart();
     const navigate = useNavigate();
     const [step, setStep] = useState(1);
+
+    // Synchronisation étapes ↔ historique navigateur : chaque « Continuer »
+    // pousse une entrée d'historique ; le bouton RETOUR du navigateur revient
+    // donc à l'étape précédente, exactement comme les boutons Retour du site.
+    const goToStep = (n) => {
+        window.history.pushState(
+            { ...(window.history.state || {}), idx: (window.history.state?.idx ?? 0) + 1, checkoutStep: n },
+            "",
+        );
+        setStep(n);
+    };
+    const goBackStep = () => window.history.back();
+    useEffect(() => {
+        const onPop = (e) => {
+            const s = e.state?.checkoutStep;
+            setStep(typeof s === "number" ? s : 1);
+        };
+        window.addEventListener("popstate", onPop);
+        return () => window.removeEventListener("popstate", onPop);
+    }, []);
     const [deliveryMode, setDeliveryMode] = useState("standard");
     const shipping = 0;
     const total = subtotal + shipping;
@@ -560,7 +580,7 @@ export default function Checkout() {
                             onCountryChange={changeCountry}
                             onContinue={() => {
                                 if (!buyerValid()) { toast.error(t("Veuillez remplir tous les champs requis")); return; }
-                                setStep(2);
+                                goToStep(2);
                             }}
                         />
                     )}
@@ -570,8 +590,8 @@ export default function Checkout() {
                             <h2 className="font-display text-2xl">{t("Mode de livraison")}</h2>
                             <DeliveryOptions value={deliveryMode} onChange={setDeliveryMode} />
                             <div className="flex gap-2 pt-2">
-                                <Button type="button" variant="outline" onClick={() => setStep(1)} className="rounded-full h-11 px-6">{t("Retour")}</Button>
-                                <Button type="button" onClick={() => setStep(3)} className="bg-ink text-ink-foreground hover:bg-ink/90 rounded-full h-11 px-8">{t("Continuer")}</Button>
+                                <Button type="button" variant="outline" onClick={goBackStep} className="rounded-full h-11 px-6">{t("Retour")}</Button>
+                                <Button type="button" onClick={() => goToStep(3)} className="bg-ink text-ink-foreground hover:bg-ink/90 rounded-full h-11 px-8">{t("Continuer")}</Button>
                             </div>
                         </div>
                     )}
@@ -625,7 +645,7 @@ export default function Checkout() {
                                 <PaxityCardPanel
                                     total={total}
                                     processing={processing}
-                                    onBack={() => setStep(2)}
+                                    onBack={goBackStep}
                                     onPay={handleCardPayment}
                                 />
                             )}
@@ -642,7 +662,7 @@ export default function Checkout() {
                                     disabled={!paxityConfig?.configured}
                                     total={total}
                                     onSubmit={handlePayment}
-                                    onBack={() => setStep(2)}
+                                    onBack={goBackStep}
                                 />
                             )}
                         </div>
