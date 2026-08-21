@@ -9,7 +9,7 @@ import { loadPaxityCardWidget, setCardRedirectUrl, closePaymentOverlays, onCardP
 import { paxityDirectPayin, paxityDirectAvailable } from "@/lib/paxityDirect";
 import { DeliveryOptions } from "@/components/DeliveryOptions";
 import { orderNo } from "@/lib/utils";
-import { t, getLocale } from "@/lib/locale";
+import { t, getLocale, cartDisplayTotal, unitAmount, RATES } from "@/lib/locale";
 import { findCountry, countryName, STATES } from "@/lib/countries";
 import { colorName } from "@/lib/colors";
 import { OPERATOR_META } from "@/components/checkout/operatorMeta";
@@ -303,8 +303,16 @@ export default function Checkout() {
             // Retour après 3-D Secure : la banque/Paxity redirige vers notre
             // page commande (la confirmation y est restaurée automatiquement).
             setCardRedirectUrl(`${window.location.origin}/commande`);
+            // Clients Europe / USA-Canada : paiement carte DIRECTEMENT dans
+            // leur devise (€/$) — Paxity se charge du change. XOF sinon.
+            const payCurrency = getLocale().currency;
+            const chargedAmount = payCurrency === "XOF"
+                ? total
+                : Math.round((cartDisplayTotal(items) + shipping / RATES[payCurrency]) * 100) / 100;
             const res = await paxityAPI.cardInit({
-                amount: total,
+                amount: chargedAmount,
+                currency: payCurrency,
+                base_amount_xof: total,
                 delivery_mode: deliveryMode,
                 description: `Commande Shopping en Chine — ${items.length} article(s)`,
                 customer: {
@@ -321,6 +329,8 @@ export default function Checkout() {
                     qty: it.qty,
                     color: it.color || undefined,
                     size: it.size || undefined,
+                    // Prix unitaire dans la devise payée (EUR/USD) pour les emails client
+                    price_paid: payCurrency === "XOF" ? undefined : Math.round(unitAmount(it) * 100) / 100,
                 })),
             });
             // Écran d'attente + polling (mêmes mécanismes que le mobile money)

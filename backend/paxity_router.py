@@ -258,6 +258,8 @@ class PaxityOrderItem(BaseModel):
     # Variantes choisies par le client (affichées dans le dashboard, tickets, emails)
     color: Optional[str] = None  # hex, ex : #C64C3A
     size: Optional[str] = None
+    # Prix unitaire dans la devise réellement payée (EUR/USD) — pour les emails client
+    price_paid: Optional[float] = None
 
 
 class PaxityPayinRequest(BaseModel):
@@ -284,6 +286,8 @@ class PaxityCardInitRequest(BaseModel):
     """
     amount: float
     currency: Optional[str] = None
+    # Équivalent F CFA du montant (stats vendeur cohérentes quand on encaisse en EUR/USD)
+    base_amount_xof: Optional[float] = None
     description: str = "Commande Shopping en Chine"
     delivery_mode: Optional[str] = "standard"
     payment_method: str = "CARD"
@@ -507,6 +511,11 @@ def _validate_payin(payload: PaxityPayinRequest) -> dict:
 async def _persist_order(db: AsyncIOMotorDatabase, order_id: str, payload: PaxityPayinRequest,
                          tx: "PaxityTransaction", currency: str, is_test: bool = False) -> None:
     """Persist the order first (source of truth even if Paxity is down)."""
+    # Équivalent F CFA : sert aux stats vendeur (toujours en XOF) quand le
+    # client paie en EUR/USD via Paxity (qui gère le change).
+    amount_xof = payload.amount if currency == "XOF" else (
+        getattr(payload, "base_amount_xof", None) or payload.amount
+    )
     try:
         await db.orders.insert_one({
             "id": order_id,
@@ -514,6 +523,7 @@ async def _persist_order(db: AsyncIOMotorDatabase, order_id: str, payload: Paxit
             "customer": payload.customer.model_dump(),
             "items": [it.model_dump() for it in payload.items],
             "amount": payload.amount,
+            "amount_xof": amount_xof,
             "currency": currency,
             "status": "pending",
             "payment_method": payload.payment_method,
@@ -994,7 +1004,8 @@ async def init_card_payment(payload: PaxityCardInitRequest, request: Request) ->
         "order_id": order_id,
         "transaction_id": tx.id,
         "status": "pending",
-        "amount": int(payload.amount),
+        # XOF : entier (pas de centimes) ; EUR/USD : garder les décimales
+        "amount": int(payload.amount) if currency == "XOF" else round(payload.amount, 2),
         "currency": currency,
         "country": "SN",
         "ipn": ipn_url,

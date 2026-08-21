@@ -56,8 +56,8 @@ def _normalize_order_id(raw: str) -> str:
     # Commandes de TEST (preview) : TEST-101, TEST-102…
     if oid.upper().startswith("TEST-"):
         return oid.upper()
-    # Anciens ids : tolère la saisie sans le préfixe "ord_"
-    if oid and not oid.startswith("ord_"):
+    # Ids internes : ord_ (anciens) et tmp_ (commandes en attente de paiement)
+    if oid and not oid.startswith(("ord_", "tmp_")):
         oid = f"ord_{oid}"
     return oid
 
@@ -109,7 +109,8 @@ async def track_order(order_id: str, request: Request):
         "customer_name": (order.get("customer") or {}).get("name"),
         "city": (order.get("customer") or {}).get("city"),
         "items": [
-            {"name": it.get("name"), "qty": it.get("qty", 1), "price": it.get("price")}
+            {"name": it.get("name"), "qty": it.get("qty", 1), "price": it.get("price"),
+             "price_paid": it.get("price_paid")}
             for it in (order.get("items") or [])
         ],
         "tracking_step": step,

@@ -42,11 +42,17 @@ if RESEND_API_KEY:
 EMAIL_ENABLED = bool(RESEND_API_KEY and MERCHANT_EMAIL)
 
 
-def _fmt_price(amount) -> str:
+def _fmt_price(amount, currency: str = "XOF") -> str:
+    """Formate un montant dans sa devise de paiement (XOF par défaut)."""
     try:
-        return f"{int(round(float(amount))):,}".replace(",", " ") + " F CFA"
+        v = float(amount)
     except Exception:
         return f"{amount} F CFA"
+    if currency == "EUR":
+        return f"{v:,.2f}".replace(",", " ").replace(".", ",") + " €"
+    if currency == "USD":
+        return f"${v:,.2f}"
+    return f"{int(round(v)):,}".replace(",", " ") + " F CFA"
 
 
 def _order_no(order_id) -> str:
@@ -63,14 +69,22 @@ def _test_tag(order) -> str:
     return "[TEST] " if is_test else ""
 
 
-def _items_rows_html(items: list, *, padding: str = "8px 12px", border: bool = True) -> str:
+def _items_rows_html(items: list, *, padding: str = "8px 12px", border: bool = True,
+                     currency: str = "XOF") -> str:
     """Lignes <tr> article/qté/prix, réutilisées par les emails marchand et client."""
     border_css = "border-bottom:1px solid #eee;" if border else ""
     cell = f"padding:{padding};{border_css}font-size:14px;color:#333;"
+
+    def _price(it: dict) -> str:
+        # Commande EUR/USD : afficher le prix payé dans la devise du client
+        if currency != "XOF" and it.get("price_paid") is not None:
+            return _fmt_price(it["price_paid"], currency)
+        return _fmt_price(it.get("price", 0))
+
     return "".join(
         f"<tr><td style='{cell}'>{it.get('name', 'Article')}</td>"
         f"<td style='{cell}text-align:center;'>× {it.get('qty', 1)}</td>"
-        f"<td style='{cell}text-align:right;'>{_fmt_price(it.get('price', 0))}</td></tr>"
+        f"<td style='{cell}text-align:right;'>{_price(it)}</td></tr>"
         for it in items
     )
 
@@ -90,7 +104,12 @@ def _customer_block_html(customer: dict) -> str:
 def _order_html(order: dict) -> str:
     """Email marchand « Nouvelle commande payée » (en-tête + articles + client)."""
     customer = order.get("customer") or {}
-    rows = _items_rows_html(order.get("items") or [])
+    cur = order.get("currency", "XOF")
+    rows = _items_rows_html(order.get("items") or [], currency=cur)
+    # Équivalent F CFA pour le marchand quand le client a payé en EUR/USD
+    xof_note = ""
+    if cur != "XOF" and order.get("amount_xof"):
+        xof_note = f"<br/><span style='font-size:12px;font-weight:normal;color:#999;'>≈ {_fmt_price(order['amount_xof'])}</span>"
     return f"""
     <table width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;margin:0 auto;font-family:Arial,Helvetica,sans-serif;background:#faf7f2;border-radius:12px;overflow:hidden;">
         <tr><td style="background:#1d1d1d;padding:20px 24px;">
@@ -105,7 +124,7 @@ def _order_html(order: dict) -> str:
                 {rows if rows else '<tr><td style="padding:12px;font-size:14px;color:#777;">Détail des articles indisponible</td></tr>'}
                 <tr>
                     <td style="padding:12px;font-size:15px;font-weight:bold;color:#1d1d1d;" colspan="2">Total payé</td>
-                    <td style="padding:12px;font-size:15px;font-weight:bold;color:#c64c3a;text-align:right;">{_fmt_price(order.get('amount', 0))}</td>
+                    <td style="padding:12px;font-size:15px;font-weight:bold;color:#c64c3a;text-align:right;">{_fmt_price(order.get('amount', 0), cur)}{xof_note}</td>
                 </tr>
             </table>
             {_customer_block_html(customer)}
@@ -134,7 +153,7 @@ async def maybe_send_order_confirmation(db: AsyncIOMotorDatabase, order_id: str)
     recipients = TEST_MERCHANT_RECIPIENTS if _test_tag(order) else MERCHANT_RECIPIENTS
     params = {
         "to": recipients,
-        "subject": f"{_test_tag(order)}Nouvelle commande payée — {_order_no(order.get('id'))} ({_fmt_price(order.get('amount', 0))})",
+        "subject": f"{_test_tag(order)}Nouvelle commande payée — {_order_no(order.get('id'))} ({_fmt_price(order.get('amount', 0), order.get('currency', 'XOF'))})",
         "html": _order_html(order),
     }
     try:
@@ -279,7 +298,8 @@ async def _claim_customer_email(db: AsyncIOMotorDatabase, order_id: str) -> dict
 
 def _customer_confirmation_html(order: dict) -> str:
     """Template HTML de l'email de confirmation client."""
-    rows = _items_rows_html(order.get("items") or [], padding="6px 10px", border=False)
+    cur = order.get("currency", "XOF")
+    rows = _items_rows_html(order.get("items") or [], padding="6px 10px", border=False, currency=cur)
     track_link = f"{FRONTEND_URL}/suivi/{order.get('id')}" if FRONTEND_URL else ""
     c = order.get("customer") or {}
     delivery_lines = "<br/>".join(filter(None, [
@@ -303,7 +323,7 @@ def _customer_confirmation_html(order: dict) -> str:
             {rows}
             <tr>
                 <td colspan="2" style="padding:14px 16px;font-size:16px;font-weight:bold;color:#1d1d1d;border-top:2px solid #1d1d1d;">Total payé</td>
-                <td style="padding:14px 16px;font-size:18px;font-weight:bold;color:#c64c3a;text-align:right;border-top:2px solid #1d1d1d;">{_fmt_price(order.get('amount', 0))}</td>
+                <td style="padding:14px 16px;font-size:18px;font-weight:bold;color:#c64c3a;text-align:right;border-top:2px solid #1d1d1d;">{_fmt_price(order.get('amount', 0), cur)}</td>
             </tr>
         </table>
         <table width="100%" cellpadding="0" cellspacing="0" style="margin-top:20px;">
@@ -350,7 +370,7 @@ async def send_recovery_email(db: AsyncIOMotorDatabase, order: dict) -> bool:
         <h1 style="margin:0 0 6px;font-size:20px;color:#1d1d1d;">Votre commande vous attend 🛒</h1>
         <p style="margin:0 0 16px;font-size:14px;color:#555;">
             Bonjour {(order.get('customer') or {}).get('name', '')},<br/>
-            votre paiement pour <strong>{names}</strong> ({_fmt_price(order.get('amount', 0))}) n'a pas abouti.
+            votre paiement pour <strong>{names}</strong> ({_fmt_price(order.get('amount', 0), order.get('currency', 'XOF'))}) n'a pas abouti.
             Vos articles sont toujours réservés !
         </p>
         {f'<p style="margin:0;"><a href="{retry_link}" style="display:inline-block;background:#c64c3a;color:#fff;padding:12px 24px;border-radius:99px;text-decoration:none;font-size:15px;font-weight:bold;">Reprendre ma commande en 1 clic</a></p>' if retry_link else ''}

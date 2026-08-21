@@ -51,6 +51,14 @@ export const formatMoney = (xof) => {
 export const formatXof = (xof) =>
     `${new Intl.NumberFormat("fr-FR", { maximumFractionDigits: 0 }).format(Math.round(Number(xof) || 0))} F CFA`;
 
+/** Montant payé dans SA devise d'origine (EUR/USD tels quels, XOF localisé). */
+export const formatPaid = (v, currency) => {
+    const n = Number(v) || 0;
+    if (currency === "EUR") return fmtCurrency(n, "fr-FR", "EUR");
+    if (currency === "USD") return fmtCurrency(n, "en-US", "USD");
+    return formatMoney(n);
+};
+
 /** Toujours en F CFA, quel que soit le choix du visiteur (dashboard vendeur). */
 export const formatCfa = (xof) =>
     `${new Intl.NumberFormat("fr-FR", { maximumFractionDigits: 0 }).format(Math.round(Number(xof) || 0))} F`;

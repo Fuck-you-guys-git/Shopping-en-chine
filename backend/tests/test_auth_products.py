@@ -6,7 +6,10 @@ from typing import Generator
 import pytest
 import requests
 
-BASE_URL = os.environ["REACT_APP_BACKEND_URL"].rstrip("/")
+BASE_URL = (os.environ.get("REACT_APP_BACKEND_URL") or "").rstrip("/")
+if not BASE_URL:
+    from dotenv import dotenv_values
+    BASE_URL = dotenv_values("/app/frontend/.env").get("REACT_APP_BACKEND_URL", "").rstrip("/")
 
 # Identifiants vendeur chargés depuis l'environnement (voir tests/creds.py)
 from creds import SELLER_EMAIL, SELLER_PASSWORD  # noqa: E402

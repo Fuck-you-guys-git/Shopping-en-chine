@@ -516,7 +516,14 @@ export default function Orders() {
 
                                 <div className="flex justify-between items-baseline p-4 bg-secondary/50 rounded-xl">
                                     <span className="font-medium">Total</span>
-                                    <span className="font-display text-2xl font-semibold">{formatPrice(selected.total)}</span>
+                                    <div className="text-right">
+                                        <span className="font-display text-2xl font-semibold">{formatPrice(selected.total)}</span>
+                                        {selected.paidCurrency && selected.paidCurrency !== "XOF" && (
+                                            <p className="text-xs text-muted-foreground mt-0.5" data-testid="order-paid-currency">
+                                                Payé {selected.paidAmount.toLocaleString("fr-FR", { style: "currency", currency: selected.paidCurrency })} via Paxity
+                                            </p>
+                                        )}
+                                    </div>
                                 </div>
 
                                 {/* Actions */}

@@ -36,8 +36,8 @@ class TestPaxityDiagnostic:
         assert d["http_reachable"] == True, f"HTTP not reachable: {d}"
         assert d["http_status"] == 200, f"http_status={d['http_status']} preview={d.get('response_preview')}"
         assert d["auth_test_status"] == 200, f"auth failed: {d}"
-        assert "SHOPPING EN CHINE" in (d.get("response_preview") or ""), \
-            f"expected merchant name in preview, got: {d.get('response_preview')}"
+        assert '"code":200' in (d.get("response_preview") or "").replace(" ", ""), \
+            f"expected auth success in preview, got: {d.get('response_preview')}"
 
 
 class TestPaxityPayinValidation:

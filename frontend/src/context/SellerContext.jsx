@@ -47,7 +47,11 @@ const mapOrder = (o, productsById) => ({
         size: it.size || null,
         image: productsById[it.product_id]?.image || null,
     })),
-    total: o.amount || 0,
+    // Stats vendeur toujours en F CFA : amount_xof (équivalent) prioritaire,
+    // sinon amount (commandes XOF historiques).
+    total: o.amount_xof ?? o.amount ?? 0,
+    paidAmount: o.amount ?? 0,
+    paidCurrency: o.currency || "XOF",
     deliveryMode: o.delivery_mode === "express" ? "express" : "standard",
     payment: isPaidOrder(o) ? "success" : (PAYMENT_LABELS[o.status] ? o.status : "pending"),
     // Étape de suivi : tracking_step prioritaire ; anciennes commandes où

@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { MapPin, Phone, Mail } from "lucide-react";
 import { paxityAPI } from "@/lib/api";
 import { formatPrice } from "@/components/ProductCard";
-import { t } from "@/lib/locale";
+import { t, formatPaid } from "@/lib/locale";
 
 /**
  * Récapitulatif complet d'une commande (articles + coordonnées de livraison).
@@ -28,13 +28,17 @@ export const OrderSummary = ({ orderId }) => {
                         <span className="min-w-0">
                             {it.name} <span className="text-muted-foreground whitespace-nowrap">× {it.qty || 1}</span>
                         </span>
-                        <span className="font-medium whitespace-nowrap">{formatPrice((it.price || 0) * (it.qty || 1))}</span>
+                        <span className="font-medium whitespace-nowrap">
+                            {order.currency && order.currency !== "XOF" && it.price_paid != null
+                                ? formatPaid(it.price_paid * (it.qty || 1), order.currency)
+                                : formatPrice((it.price || 0) * (it.qty || 1))}
+                        </span>
                     </div>
                 ))}
             </div>
             <div className="flex justify-between items-baseline border-t border-border pt-3 mb-5">
                 <span className="text-sm font-medium">{t("Total")}</span>
-                <span className="font-display text-lg font-semibold">{formatPrice(order.amount || 0)}</span>
+                <span className="font-display text-lg font-semibold">{order.currency && order.currency !== "XOF" ? formatPaid(order.amount || 0, order.currency) : formatPrice(order.amount || 0)}</span>
             </div>
             <p className="text-xs uppercase tracking-widest text-muted-foreground mb-2">{t("Livraison")}</p>
             <div className="text-sm space-y-1.5" data-testid="order-summary-customer">

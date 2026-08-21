@@ -10,7 +10,7 @@ import { Separator } from "@/components/ui/separator";
 import { formatPrice } from "@/components/ProductCard";
 import { trackingAPI } from "@/lib/api";
 import { orderNo } from "@/lib/utils";
-import { t, getLocale } from "@/lib/locale";
+import { t, getLocale, formatPaid } from "@/lib/locale";
 
 const STEP_ICONS = {
     ordered: Package,
@@ -219,7 +219,11 @@ export default function TrackOrder() {
                                             <span className="text-muted-foreground">
                                                 {it.name} <span className="text-xs">× {it.qty}</span>
                                             </span>
-                                            <span className="font-medium">{formatPrice(it.price * it.qty)}</span>
+                                            <span className="font-medium">
+                                                {data.currency && data.currency !== "XOF" && it.price_paid != null
+                                                    ? formatPaid(it.price_paid * it.qty, data.currency)
+                                                    : formatPrice(it.price * it.qty)}
+                                            </span>
                                         </div>
                                     ))}
                                 </div>
@@ -227,7 +231,7 @@ export default function TrackOrder() {
                                 <div className="flex justify-between items-baseline">
                                     <span className="font-medium">{t("Total")}</span>
                                     <span className="font-display text-xl font-semibold">
-                                        {formatPrice(data.amount)}
+                                        {formatPaid(data.amount, data.currency)}
                                     </span>
                                 </div>
                             </div>

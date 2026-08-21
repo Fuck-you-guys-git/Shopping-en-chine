@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { OrderSummary } from "@/components/OrderSummary";
 import { formatPrice } from "@/components/ProductCard";
 import { orderNo } from "@/lib/utils";
-import { t } from "@/lib/locale";
+import { t, formatPaid } from "@/lib/locale";
 
 // Écran de confirmation après paiement réussi
 export const CheckoutSuccess = ({ transaction, total }) => (
@@ -15,7 +15,7 @@ export const CheckoutSuccess = ({ transaction, total }) => (
             </div>
             <h1 className="font-display text-4xl sm:text-5xl mb-3" data-testid="order-confirmed-title">{t("Votre commande est confirmée 🎉")}</h1>
             <p className="text-muted-foreground mb-2">
-                {t("Merci ! Votre paiement de")} <span className="font-semibold text-foreground">{formatPrice(transaction?.amount ?? total)}</span> {t("a bien été reçu. Nous préparons votre commande pour l'expédition depuis la Chine.")}
+                {t("Merci ! Votre paiement de")} <span className="font-semibold text-foreground">{transaction?.currency && transaction.currency !== "XOF" ? formatPaid(transaction.amount, transaction.currency) : formatPrice(transaction?.amount ?? total)}</span> {t("a bien été reçu. Nous préparons votre commande pour l'expédition depuis la Chine.")}
             </p>
             {transaction?.order_id && (
                 <p className="text-xs font-mono text-muted-foreground mb-8">{t("Commande")} {orderNo(transaction.order_id)}</p>
