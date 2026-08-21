@@ -820,3 +820,9 @@
 - FIX BONUS (tracking_router.py) : les commandes `tmp_` n'étaient plus trouvables au suivi public (préfixées à tort en `ord_tmp_`) → corrigé ; tracking renvoie aussi price_paid.
 - TESTS : card/init EUR 45.99 → réponse {amount: 45.99, currency: EUR} ✓, ordre en DB {amount: 45.99, amount_xof: 24350, items.price_paid} ✓, rendu emails EUR sans F CFA côté client ✓, suivi tmp_ 200 ✓, suite pytest 106 passed (2 tests obsolètes corrigés : nom marchand Paxity "MIRACLE ORGANICS" au lieu de "SHOPPING EN CHINE", env fallback test_auth_products). Testing agent frontend NON exécuté (choix user).
 - ⚠️ REDEPLOY requis pour la production.
+
+## Update — Fév 2026 (Bouton carte : prix affiché = prix débité, plus de conversion)
+- BUG PROD (screenshot user, mobile USA) : total affiché $280 (prix vendeur priceUsd) mais bouton « Pay by card $316.67 » (conversion du prix XOF 150 000 F ÷ taux fixe). Paxity débitait bien $280 — seule l'ÉTIQUETTE du bouton convertissait.
+- FIX : Checkout.jsx calcule `cardChargeAmount` UNE fois (prix affichés EUR/USD via cartDisplayTotal pour Europe/USA, XOF sinon) — utilisé PARTAGÉ par le bouton (PaxityCardPanel, fmtAmount) ET l'init Paxity (handleCardPayment) ET l'écran d'attente (setTransaction amount+currency). Incohérence structurellement impossible.
+- PaxityCardPanel.jsx : formatPrice(total XOF) → fmtAmount(total en devise d'affichage). Comportement XOF inchangé.
+- VÉRIFIÉ : lint OK, catalogue USD affiche le prix vendeur ($99 sur produit test), logique partagée par construction. ⚠️ REDEPLOY requis.

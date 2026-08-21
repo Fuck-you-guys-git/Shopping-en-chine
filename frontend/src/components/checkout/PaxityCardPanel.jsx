@@ -1,9 +1,10 @@
 import { CreditCard, Loader2, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { formatPrice } from "@/components/ProductCard";
-import { t } from "@/lib/locale";
+import { t, fmtAmount } from "@/lib/locale";
 
 // Panneau paiement CARTE via le widget Paxity (Visa / Mastercard)
+// `total` est le montant DÉJÀ exprimé dans la devise d'affichage du client
+// (EUR/USD pour Europe/USA, XOF sinon) — exactement ce que Paxity débitera.
 export const PaxityCardPanel = ({ total, processing, onBack, onPay }) => (
     <div className="space-y-4" data-testid="paxity-card-panel">
         <p className="text-sm text-muted-foreground flex items-center gap-2">
@@ -26,7 +27,7 @@ export const PaxityCardPanel = ({ total, processing, onBack, onPay }) => (
                 {processing ? (
                     <><Loader2 className="h-4 w-4 animate-spin" /> {t("Chargement…")}</>
                 ) : (
-                    <>{t("Payer par carte")} {formatPrice(total)}</>
+                    <>{t("Payer par carte")} {fmtAmount(total)}</>
                 )}
             </Button>
         </div>

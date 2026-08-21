@@ -65,6 +65,12 @@ export default function Checkout() {
     const [deliveryMode, setDeliveryMode] = useState("standard");
     const shipping = 0;
     const total = subtotal + shipping;
+    // Montant réellement débité par CARTE : les prix affichés (EUR/USD vendeur)
+    // pour les clients Europe/USA — Paxity encaisse dans leur devise ; XOF sinon.
+    const cardCurrency = getLocale().currency;
+    const cardChargeAmount = cardCurrency === "XOF"
+        ? total
+        : Math.round((cartDisplayTotal(items) + shipping / RATES[cardCurrency]) * 100) / 100;
 
     const [buyer, setBuyer] = useState(() => {
         // Pays pré-sélectionné depuis la géolocalisation IP (si connu)
@@ -305,10 +311,9 @@ export default function Checkout() {
             setCardRedirectUrl(`${window.location.origin}/commande`);
             // Clients Europe / USA-Canada : paiement carte DIRECTEMENT dans
             // leur devise (€/$) — Paxity se charge du change. XOF sinon.
-            const payCurrency = getLocale().currency;
-            const chargedAmount = payCurrency === "XOF"
-                ? total
-                : Math.round((cartDisplayTotal(items) + shipping / RATES[payCurrency]) * 100) / 100;
+            // (cardChargeAmount = même montant que celui affiché sur le bouton)
+            const payCurrency = cardCurrency;
+            const chargedAmount = cardChargeAmount;
             const res = await paxityAPI.cardInit({
                 amount: chargedAmount,
                 currency: payCurrency,
@@ -339,7 +344,8 @@ export default function Checkout() {
                 order_id: res.order_id,
                 status: "pending",
                 operator_label: t("Carte bancaire"),
-                amount: total,
+                amount: chargedAmount,
+                currency: payCurrency,
             });
             // Dès que le widget reçoit la réponse Paxity, on attache l'id de
             // transaction au backend : le polling interroge alors Paxity EN
@@ -653,7 +659,7 @@ export default function Checkout() {
 
                             {CARD_PAYMENT_ENABLED && paymentMethod === "CARD" && (
                                 <PaxityCardPanel
-                                    total={total}
+                                    total={cardChargeAmount}
                                     processing={processing}
                                     onBack={goBackStep}
                                     onPay={handleCardPayment}
