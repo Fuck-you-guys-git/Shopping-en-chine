@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Link, NavLink } from "react-router-dom";
+import { Link, NavLink, useLocation } from "react-router-dom";
 import { ShoppingBag, Menu } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger, SheetTitle } from "@/components/ui/sheet";
@@ -21,6 +21,9 @@ const mobileNav = [
 export const Navbar = () => {
     const { count, setDrawerOpen } = useCart();
     const { preset } = useLocale(); // langue/devise auto (géo IP), re-render au changement
+    const { pathname } = useLocation();
+    // Pas de recherche dans le tunnel de paiement : on ne détourne pas le client.
+    const hideSearch = pathname === "/commande";
     const [scrolled, setScrolled] = useState(false);
     const [menuOpen, setMenuOpen] = useState(false);
 
@@ -150,18 +153,24 @@ export const Navbar = () => {
                         </div>
 
                         {/* Recherche desktop — élément central du header */}
-                        <div className="hidden min-w-0 flex-1 md:block">
-                            <SearchBar testId="navbar-search-input" className="max-w-2xl" />
-                        </div>
+                        {hideSearch ? (
+                            <div className="hidden flex-1 md:block" />
+                        ) : (
+                            <div className="hidden min-w-0 flex-1 md:block">
+                                <SearchBar testId="navbar-search-input" className="max-w-2xl" />
+                            </div>
+                        )}
 
                         {cartButton}
                     </div>
                 </div>
 
                 {/* Recherche mobile — toujours accessible, sous le logo */}
-                <div className="border-t border-border px-5 py-2.5 md:hidden">
-                    <SearchBar size="md" testId="navbar-mobile-search-input" />
-                </div>
+                {!hideSearch && (
+                    <div className="border-t border-border px-5 py-2.5 md:hidden">
+                        <SearchBar size="md" testId="navbar-mobile-search-input" />
+                    </div>
+                )}
             </header>
         </>
     );
