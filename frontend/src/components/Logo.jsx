@@ -12,7 +12,7 @@ export const Logo = ({ className = "", inverted = false }) => (
         className={`group inline-flex flex-col leading-none ${className}`}
     >
         <span className="flex items-baseline whitespace-nowrap">
-            <span className="text-[30px] font-extrabold tracking-[-0.04em] text-primary transition-transform duration-200 group-hover:-translate-y-[1px] sm:text-[34px]">
+            <span className="text-[23px] font-extrabold tracking-[-0.04em] text-primary transition-transform duration-200 group-hover:-translate-y-[1px] sm:text-[26px]">
                 S
             </span>
             <span
