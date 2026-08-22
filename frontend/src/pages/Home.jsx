@@ -2,8 +2,6 @@ import { useMemo } from "react";
 import { Link } from "react-router-dom";
 import { ArrowRight } from "lucide-react";
 import { ProductCard } from "@/components/ProductCard";
-import { SearchBar } from "@/components/SearchBar";
-import { TrustBar } from "@/components/TrustBar";
 import { CategoryCard } from "@/components/CategoryCard";
 import { SectionHeader } from "@/components/SectionHeader";
 import { SkeletonGrid } from "@/components/SkeletonCard";
@@ -63,10 +61,6 @@ export default function Home() {
                                 {t("Mode, électronique, maison, beauté et bien plus encore — livrés directement chez vous.")}
                             </p>
 
-                            <div className="mt-7 max-w-xl lg:hidden">
-                                <SearchBar size="md" testId="home-search-input" />
-                            </div>
-
                             <div className="mt-7 flex flex-wrap items-center gap-3">
                                 <Link
                                     to="/boutique"
@@ -121,9 +115,6 @@ export default function Home() {
                     </div>
                 </div>
             </section>
-
-            {/* ---------------------------------------------- CONFIANCE */}
-            <TrustBar />
 
             {/* ---------------------------------------------- CATÉGORIES */}
             <section className="container mx-auto px-5 py-12 md:py-14">

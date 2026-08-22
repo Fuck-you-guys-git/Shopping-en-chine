@@ -10,13 +10,6 @@ import { categories } from "@/data/products";
 import { t } from "@/lib/locale";
 import { useLocale } from "@/context/LocaleContext";
 
-const primaryNav = [
-    { to: "/", label: "Accueil", end: true },
-    { to: "/boutique", label: "Tous les produits", end: true },
-    ...categories.map((c) => ({ to: `/boutique/${c.id}`, label: c.name })),
-    { to: "/achat-en-gros", label: "Achat en gros" },
-];
-
 const mobileNav = [
     { to: "/", label: "Accueil", icon: "fa-house", end: true },
     { to: "/boutique", label: "Tous les produits", icon: "fa-store", end: true },
@@ -106,7 +99,7 @@ export const Navbar = () => {
                                     <Button
                                         variant="ghost"
                                         size="icon"
-                                        className="-ml-2 lg:hidden"
+                                        className="-ml-2"
                                         data-testid="mobile-menu-trigger"
                                         aria-label={t("Ouvrir le menu")}
                                     >
@@ -164,40 +157,6 @@ export const Navbar = () => {
                         {cartButton}
                     </div>
                 </div>
-
-                {/* Navigation catégories — desktop */}
-                <nav
-                    aria-label={t("Catégories")}
-                    className="hidden border-t border-border lg:block"
-                    data-testid="category-nav"
-                >
-                    <div className="container mx-auto px-5">
-                        <ul className="flex items-center gap-1 overflow-x-auto no-scrollbar">
-                            {primaryNav.map((l) => (
-                                <li key={l.to}>
-                                    <NavLink
-                                        to={l.to}
-                                        end={l.end}
-                                        className={({ isActive }) =>
-                                            `relative inline-block whitespace-nowrap px-3 py-3 text-sm font-medium transition-colors duration-200 ${
-                                                isActive ? "text-primary" : "text-foreground/70 hover:text-foreground"
-                                            }`
-                                        }
-                                    >
-                                        {({ isActive }) => (
-                                            <>
-                                                {t(l.label)}
-                                                {isActive && (
-                                                    <span className="absolute inset-x-3 bottom-0 h-[2px] rounded-full bg-primary" />
-                                                )}
-                                            </>
-                                        )}
-                                    </NavLink>
-                                </li>
-                            ))}
-                        </ul>
-                    </div>
-                </nav>
 
                 {/* Recherche mobile — toujours accessible, sous le logo */}
                 <div className="border-t border-border px-5 py-2.5 md:hidden">
