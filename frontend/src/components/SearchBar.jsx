@@ -35,7 +35,7 @@ export const SearchBar = ({
             <label htmlFor={testId} className="sr-only">
                 {t("Rechercher un produit")}
             </label>
-            <Search className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Search className="pointer-events-none absolute left-4 top-1/2 hidden h-4 w-4 -translate-y-1/2 text-muted-foreground sm:block" />
             <input
                 id={testId}
                 type="search"
@@ -47,14 +47,16 @@ export const SearchBar = ({
                 onKeyDown={(e) => e.key === "Escape" && setOpen(false)}
                 placeholder={t("Rechercher parmi des milliers de produits…")}
                 data-testid={testId}
-                className={`w-full ${h} rounded-full border border-border bg-muted/60 pl-11 pr-[104px] text-sm text-foreground placeholder:text-muted-foreground transition-colors duration-200 focus:bg-background focus:border-foreground/20 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/30`}
+                className={`w-full ${h} rounded-full border border-border bg-muted/60 pl-4 pr-12 text-sm text-foreground placeholder:text-muted-foreground transition-colors duration-200 focus:border-foreground/20 focus:bg-background focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 sm:pl-11 sm:pr-[124px]`}
             />
             <button
                 type="submit"
                 data-testid={`${testId}-submit`}
-                className={`absolute right-1.5 top-1/2 -translate-y-1/2 rounded-full bg-primary px-5 text-sm font-semibold text-primary-foreground transition-colors duration-200 hover:bg-primary/90 ${size === "lg" ? "h-9" : "h-8 px-4"}`}
+                aria-label={t("Chercher")}
+                className={`absolute right-1.5 top-1/2 inline-flex -translate-y-1/2 items-center justify-center rounded-full bg-primary text-sm font-semibold text-primary-foreground transition-colors duration-200 hover:bg-primary/90 ${size === "lg" ? "h-9" : "h-8"} w-9 sm:w-auto sm:px-5`}
             >
-                {t("Chercher")}
+                <Search className="h-4 w-4 sm:hidden" aria-hidden="true" />
+                <span className="hidden sm:inline">{t("Chercher")}</span>
             </button>
             <SearchSuggestions
                 query={query}
