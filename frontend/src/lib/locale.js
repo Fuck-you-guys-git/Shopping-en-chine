@@ -559,6 +559,7 @@ const EN = {
     "Notés par nos clients vérifiés": "Rated by our verified customers",
     "Vous pourriez aussi aimer": "You might also like",
     "Voir tous les produits": "View all products",
+    "Tous nos produits": "All our products",
     // Footer
     "Mode, électronique, maison, beauté et bien plus encore — commandés en Chine et livrés directement chez vous en 10 à 20 jours.":
         "Fashion, electronics, home, beauty and much more — ordered in China and delivered to your door in 10 to 20 days.",
