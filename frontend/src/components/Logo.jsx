@@ -1,8 +1,8 @@
 import { Link } from "react-router-dom";
 
 /**
- * Logotype Shopping en Chine — typographie seule (pas de badge).
- * `compact` masque la baseline sur mobile, `inverted` pour fond sombre.
+ * Logotype Shopping en Chine — grand « S » vermillon + devise en baseline.
+ * `compact` masque la devise sur mobile, `inverted` pour fond sombre.
  */
 export const Logo = ({ className = "", compact = false, inverted = false }) => (
     <Link
@@ -11,16 +11,21 @@ export const Logo = ({ className = "", compact = false, inverted = false }) => (
         aria-label="Shopping en Chine — retour à l'accueil"
         className={`group inline-flex flex-col leading-none ${className}`}
     >
-        <span
-            className={`whitespace-nowrap text-[17px] font-extrabold tracking-[-0.03em] sm:text-[19px] ${
-                inverted ? "text-ink-foreground" : "text-foreground"
-            }`}
-        >
-            Shopping
-            <span className="text-primary"> en Chine</span>
+        <span className="flex items-baseline whitespace-nowrap">
+            <span className="text-[30px] font-extrabold tracking-[-0.04em] text-primary transition-transform duration-200 group-hover:-translate-y-[1px] sm:text-[34px]">
+                S
+            </span>
+            <span
+                className={`text-[17px] font-extrabold tracking-[-0.03em] sm:text-[19px] ${
+                    inverted ? "text-ink-foreground" : "text-foreground"
+                }`}
+            >
+                hopping
+                <span className="text-primary"> en Chine</span>
+            </span>
         </span>
         <span
-            className={`mt-[5px] text-[9px] font-medium uppercase tracking-[0.26em] ${compact ? "hidden sm:block" : "block"} ${
+            className={`mt-[3px] text-[9px] font-medium uppercase tracking-[0.26em] ${compact ? "hidden sm:block" : "block"} ${
                 inverted ? "text-ink-foreground/50" : "text-muted-foreground"
             }`}
         >
