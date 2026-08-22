@@ -24,10 +24,6 @@ const columns = [
             { label: "serviceclients@shoppingenchine.com", href: "mailto:serviceclients@shoppingenchine.com", small: true },
         ],
     },
-    {
-        title: "Espace vendeur",
-        links: [{ label: "Se connecter", to: "/admin/login" }],
-    },
 ];
 
 export const Footer = () => {
@@ -38,8 +34,8 @@ export const Footer = () => {
             <div className="container mx-auto px-5 py-14">
                 <div className="grid grid-cols-1 gap-12 lg:grid-cols-12 lg:gap-8">
                     <div className="lg:col-span-5">
-                        <div className="[&_span]:!text-ink-foreground">
-                            <Logo />
+                        <div>
+                            <Logo inverted />
                         </div>
                         <p className="mt-5 max-w-md text-sm leading-relaxed text-ink-foreground/70">
                             {t("Mode, électronique, maison, beauté et bien plus encore — commandés en Chine et livrés directement chez vous en 10 à 20 jours.")}
@@ -60,7 +56,7 @@ export const Footer = () => {
                         </ul>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-8 sm:grid-cols-3 lg:col-span-7">
+                    <div className="grid grid-cols-2 gap-8 lg:col-span-7">
                         {columns.map((col) => (
                             <div key={col.title}>
                                 <h4 className="mb-4 text-xs font-semibold uppercase tracking-widest text-ink-foreground/50">

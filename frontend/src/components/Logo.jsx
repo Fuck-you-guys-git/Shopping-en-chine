@@ -1,22 +1,30 @@
 import { Link } from "react-router-dom";
 
-export const Logo = ({ className = "", compact = false }) => (
+/**
+ * Logotype Shopping en Chine — typographie seule (pas de badge).
+ * `compact` masque la baseline sur mobile, `inverted` pour fond sombre.
+ */
+export const Logo = ({ className = "", compact = false, inverted = false }) => (
     <Link
         to="/"
         data-testid="site-logo"
         aria-label="Shopping en Chine — retour à l'accueil"
-        className={`inline-flex items-center gap-2.5 group ${className}`}
+        className={`group inline-flex flex-col leading-none ${className}`}
     >
-        <span className="relative inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary transition-transform duration-200 group-hover:scale-105">
-            <span className="text-lg font-extrabold text-primary-foreground leading-none">S</span>
+        <span
+            className={`whitespace-nowrap text-[17px] font-extrabold tracking-[-0.03em] sm:text-[19px] ${
+                inverted ? "text-ink-foreground" : "text-foreground"
+            }`}
+        >
+            Shopping
+            <span className="text-primary"> en Chine</span>
         </span>
-        <span className={`flex-col leading-none ${compact ? "hidden sm:flex" : "flex"}`}>
-            <span className="text-[15px] font-bold tracking-tight text-foreground whitespace-nowrap">
-                Shopping <span className="text-primary">en Chine</span>
-            </span>
-            <span className="text-[9px] uppercase tracking-[0.18em] text-muted-foreground mt-1">
-                Tout, plus simple
-            </span>
+        <span
+            className={`mt-[5px] text-[9px] font-medium uppercase tracking-[0.26em] ${compact ? "hidden sm:block" : "block"} ${
+                inverted ? "text-ink-foreground/50" : "text-muted-foreground"
+            }`}
+        >
+            Tout, plus simple
         </span>
     </Link>
 );
