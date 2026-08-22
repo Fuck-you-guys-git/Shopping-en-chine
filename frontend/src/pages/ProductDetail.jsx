@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useParams, Link, useNavigate } from "react-router-dom";
-import { ArrowLeft, Heart, ShoppingBag, Truck, ShieldCheck, Minus, Plus, Check, X, ChevronLeft, ChevronRight } from "lucide-react";
+import { ArrowLeft, ShoppingBag, Truck, ShieldCheck, Minus, Plus, Check, X, ChevronLeft, ChevronRight, Star as StarIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
@@ -14,6 +14,7 @@ import { productsAPI } from "@/lib/api";
 import { toast } from "sonner";
 import { usePageTitle } from "@/hooks/usePageTitle";
 import { colorName } from "@/lib/colors";
+import { ProductReviews } from "@/components/ProductReviews";
 import { t, formatProductMoney, getLocale } from "@/lib/locale";
 
 // Tailles S–XL : uniquement vêtements & chaussures (pas lunettes, sacs, bijoux, montres, jouets…)
@@ -133,7 +134,7 @@ export default function ProductDetail() {
         <div>
             <div className="container mx-auto px-5 py-8">
                 <button onClick={() => navigate(-1)} className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground mb-6">
-                    <ArrowLeft className="h-4 w-4" /> Retour
+                    <ArrowLeft className="h-4 w-4" /> {t("Retour")}
                 </button>
 
                 <div className="grid lg:grid-cols-2 gap-10 lg:gap-16">
@@ -259,6 +260,18 @@ export default function ProductDetail() {
                             {product.name}
                         </h1>
 
+                        {product.reviews > 0 && (
+                            <a href="#avis" className="mt-2 inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors" data-testid="product-rating-link">
+                                <span className="inline-flex items-center gap-0.5">
+                                    {[1, 2, 3, 4, 5].map((n) => (
+                                        <StarIcon key={n} className={`h-4 w-4 ${n <= Math.round(product.rating) ? "fill-amber-400 text-amber-400" : "text-border"}`} />
+                                    ))}
+                                </span>
+                                <span className="font-medium text-foreground">{product.rating}</span>
+                                ({product.reviews} {t("avis vérifiés")})
+                            </a>
+                        )}
+
                         <div className="mt-4 flex items-baseline gap-3 flex-wrap">
                             <span className="font-display text-xl sm:text-2xl font-semibold">{formatProductMoney(product)}</span>
                             {product.oldPrice && getLocale().currency === "XOF" && (
@@ -345,12 +358,19 @@ export default function ProductDetail() {
                             <Button onClick={handleAdd} disabled={soldOut} size="lg" data-testid="add-to-cart-btn" className="sm:flex-1 h-14 bg-ink hover:bg-ink/90 text-ink-foreground rounded-full text-base font-semibold shadow-warm disabled:opacity-60">
                                 <ShoppingBag className="!h-5 !w-5" /> {soldOut ? t("Rupture de stock") : t("Ajouter au panier")}
                             </Button>
-                            <Button onClick={handleBuyNow} disabled={soldOut} size="lg" variant="outline" className="rounded-full h-12 border-primary text-primary hover:bg-primary hover:text-primary-foreground">
-                                <Heart className="h-4 w-4" />
+                            <Button
+                                onClick={handleBuyNow}
+                                disabled={soldOut}
+                                size="lg"
+                                variant="outline"
+                                data-testid="buy-now-btn"
+                                className="h-12 rounded-full border-primary px-6 text-primary hover:bg-primary hover:text-primary-foreground"
+                            >
+                                {t("Acheter maintenant")}
                             </Button>
                         </div>
                         {!soldOut && (
-                        <Button onClick={handleBuyNow} variant="link" className="mt-3 text-primary self-start px-0">
+                        <Button onClick={handleBuyNow} variant="link" className="mt-3 hidden text-primary self-start px-0">
                             {t("Acheter maintenant →")}
                         </Button>
                         )}
@@ -364,7 +384,7 @@ export default function ProductDetail() {
                             ].map((f) => (
                                 <div key={f.label} className="flex flex-col items-center gap-2">
                                     <f.icon className="h-5 w-5 text-primary" />
-                                    <span className="text-xs text-muted-foreground leading-tight">{f.label}</span>
+                                    <span className="text-xs text-muted-foreground leading-tight">{t(f.label)}</span>
                                 </div>
                             ))}
                         </div>
@@ -376,11 +396,15 @@ export default function ProductDetail() {
                     <Tabs defaultValue="desc">
                         <TabsList className="bg-transparent p-0 border-b rounded-none w-full justify-start gap-8">
                             <TabsTrigger value="desc" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none px-0 pb-3">{t("Description")}</TabsTrigger>
-                            <TabsTrigger value="specs" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none px-0 pb-3">Caractéristiques</TabsTrigger>
+                            <TabsTrigger value="specs" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none px-0 pb-3">{t("Caractéristiques")}</TabsTrigger>
                             <TabsTrigger value="ship" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none px-0 pb-3">{t("Livraison")}</TabsTrigger>
                         </TabsList>
                         <TabsContent value="desc" className="pt-6 text-muted-foreground leading-relaxed">
-                            <p>{product.description && product.description !== "Description à compléter." ? `${product.description} ` : ""}{t("Conçu pour durer et vivre avec vous, ce produit combine matériaux nobles et savoir-faire moderne. Chaque détail a été pensé pour une expérience quotidienne agréable et sans friction.")}</p>
+                            {product.description && product.description !== "Description à compléter." ? (
+                                <p className="whitespace-pre-line">{product.description}</p>
+                            ) : (
+                                <p className="text-sm">{t("Aucune description détaillée n'est disponible pour ce produit.")}</p>
+                            )}
                         </TabsContent>
                         <TabsContent value="specs" className="pt-6">
                             <dl className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -402,6 +426,9 @@ export default function ProductDetail() {
                         </TabsContent>
                     </Tabs>
                 </div>
+
+                {/* Avis clients vérifiés */}
+                <ProductReviews productId={product.id} />
 
                 {/* Related */}
                 <div className="mt-20 md:mt-28">

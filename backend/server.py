@@ -109,6 +109,10 @@ api_router.include_router(products_router)
 from emails_router import router as emails_router
 api_router.include_router(emails_router)
 
+# ---- Avis clients vérifiés -------------------------------------------------
+from reviews_router import router as reviews_router
+api_router.include_router(reviews_router)
+
 # Include the api router in the main app
 app.include_router(api_router)
 

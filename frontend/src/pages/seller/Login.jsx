@@ -77,6 +77,7 @@ export default function SellerLogin() {
                                 <Input
                                     id="email"
                                     type="email"
+                                    data-testid="seller-login-email"
                                     autoComplete="email"
                                     required
                                     value={email}
@@ -95,6 +96,7 @@ export default function SellerLogin() {
                                 <Input
                                     id="password"
                                     type={showPassword ? "text" : "password"}
+                                    data-testid="seller-login-password"
                                     autoComplete="current-password"
                                     required
                                     value={password}
@@ -128,6 +130,7 @@ export default function SellerLogin() {
                             type="submit"
                             size="lg"
                             disabled={loading}
+                            data-testid="seller-login-submit"
                             className="w-full bg-ink text-ink-foreground hover:bg-ink/90 rounded-full h-12 shadow-lift"
                         >
                             {loading ? (

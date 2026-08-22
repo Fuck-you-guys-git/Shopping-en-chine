@@ -55,17 +55,17 @@ export const CartDrawer = () => {
                                                 <h4 className="text-sm font-medium leading-snug line-clamp-2">{item.name}</h4>
                                                 {item.size && <p className="text-xs text-muted-foreground mt-0.5">{t("Taille")} {item.size}</p>}
                                             </div>
-                                            <button onClick={() => removeItem(item.line)} className="text-muted-foreground hover:text-destructive">
+                                            <button onClick={() => removeItem(item.line)} data-testid="cart-remove-btn" aria-label={t("Retirer du panier")} className="text-muted-foreground hover:text-destructive">
                                                 <Trash2 className="h-4 w-4" />
                                             </button>
                                         </div>
                                         <div className="mt-auto flex items-center justify-between">
                                             <div className="inline-flex items-center border rounded-full">
-                                                <button onClick={() => updateQty(item.line, item.qty - 1)} className="h-7 w-7 flex items-center justify-center text-muted-foreground hover:text-foreground">
+                                                <button onClick={() => updateQty(item.line, item.qty - 1)} data-testid="cart-qty-decrease" aria-label={t("Diminuer la quantité")} className="h-7 w-7 flex items-center justify-center text-muted-foreground hover:text-foreground">
                                                     <Minus className="h-3 w-3" />
                                                 </button>
-                                                <span className="w-7 text-center text-xs font-medium">{item.qty}</span>
-                                                <button onClick={() => updateQty(item.line, item.qty + 1)} className="h-7 w-7 flex items-center justify-center text-muted-foreground hover:text-foreground">
+                                                <span className="w-7 text-center text-xs font-medium" data-testid="cart-qty-value">{item.qty}</span>
+                                                <button onClick={() => updateQty(item.line, item.qty + 1)} data-testid="cart-qty-increase" aria-label={t("Augmenter la quantité")} className="h-7 w-7 flex items-center justify-center text-muted-foreground hover:text-foreground">
                                                     <Plus className="h-3 w-3" />
                                                 </button>
                                             </div>

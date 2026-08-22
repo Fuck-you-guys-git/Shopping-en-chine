@@ -1,75 +1,86 @@
 import { useState, useEffect } from "react";
-import { Link, NavLink, useNavigate } from "react-router-dom";
-import { Search, ShoppingBag, User, Menu, Heart, X } from "lucide-react";
+import { Link, NavLink } from "react-router-dom";
+import { ShoppingBag, Menu } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Sheet, SheetContent, SheetTrigger, SheetTitle } from "@/components/ui/sheet";
 import { Logo } from "@/components/Logo";
-import { SearchSuggestions } from "@/components/SearchSuggestions";
+import { SearchBar } from "@/components/SearchBar";
 import { useCart } from "@/context/CartContext";
 import { categories } from "@/data/products";
 import { t } from "@/lib/locale";
 import { useLocale } from "@/context/LocaleContext";
 
-const navLinks = [
-    { to: "/", label: "Accueil" },
-    { to: "/boutique", label: "Boutique" },
-    { to: "/boutique/mode", label: "Mode" },
-    { to: "/boutique/tech", label: "Électronique" },
-    { to: "/boutique/maison", label: "Maison" },
-    { to: "/boutique/beaute", label: "Beauté" },
-    { to: "/boutique/enfants", label: "Enfants" },
+const primaryNav = [
+    { to: "/", label: "Accueil", end: true },
+    { to: "/boutique", label: "Tous les produits", end: true },
+    ...categories.map((c) => ({ to: `/boutique/${c.id}`, label: c.name })),
     { to: "/achat-en-gros", label: "Achat en gros" },
-    { to: "/suivi", label: "Suivi de colis" },
+];
+
+const mobileNav = [
+    { to: "/", label: "Accueil", icon: "fa-house", end: true },
+    { to: "/boutique", label: "Tous les produits", icon: "fa-store", end: true },
+    ...categories.map((c) => ({ to: `/boutique/${c.id}`, label: c.name, icon: c.icon })),
+    { to: "/achat-en-gros", label: "Achat en gros", icon: "fa-boxes-stacked" },
+    { to: "/a-propos", label: "À propos", icon: "fa-circle-info" },
 ];
 
 export const Navbar = () => {
     const { count, setDrawerOpen } = useCart();
     const { preset } = useLocale(); // langue/devise auto (géo IP), re-render au changement
     const [scrolled, setScrolled] = useState(false);
-    const [query, setQuery] = useState("");
-    const [searchOpen, setSearchOpen] = useState(false);
-    const [sugOpen, setSugOpen] = useState(false);
     const [menuOpen, setMenuOpen] = useState(false);
-    const navigate = useNavigate();
 
     useEffect(() => {
-        const onScroll = () => setScrolled(window.scrollY > 12);
-        window.addEventListener("scroll", onScroll);
+        const onScroll = () => setScrolled(window.scrollY > 8);
+        onScroll();
+        window.addEventListener("scroll", onScroll, { passive: true });
         return () => window.removeEventListener("scroll", onScroll);
     }, []);
 
-    const submitSearch = (e) => {
-        e.preventDefault();
-        if (!query.trim()) return;
-        navigate(`/boutique?q=${encodeURIComponent(query)}`);
-        setSearchOpen(false);
-        setSugOpen(false);
-    };
-
-    const pickSuggestion = () => {
-        setSugOpen(false);
-        setSearchOpen(false);
-        setQuery("");
-    };
+    const cartButton = (
+        <button
+            type="button"
+            onClick={() => setDrawerOpen(true)}
+            data-testid="navbar-cart-btn"
+            aria-label={`${t("Panier")}${count > 0 ? ` (${count})` : ""}`}
+            className="relative inline-flex h-10 items-center gap-2 rounded-full border border-border bg-background px-3.5 text-sm font-semibold text-foreground transition-colors duration-200 hover:border-foreground/25 hover:bg-muted sm:px-4"
+        >
+            <ShoppingBag className="h-[18px] w-[18px]" aria-hidden="true" />
+            <span className="hidden lg:inline">{t("Panier")}</span>
+            {count > 0 && (
+                <span
+                    data-testid="navbar-cart-count"
+                    className="absolute -right-1 -top-1 flex h-[19px] min-w-[19px] items-center justify-center rounded-full bg-primary px-1 text-[10px] font-bold text-primary-foreground"
+                >
+                    {count}
+                </span>
+            )}
+        </button>
+    );
 
     return (
         <>
-            {/* announcement bar */}
+            {/* Bandeau d'annonce */}
             <div className="bg-ink text-ink-foreground text-xs">
-                <div className="container mx-auto flex items-center justify-between py-2 px-5">
+                <div className="container mx-auto flex items-center justify-between gap-4 px-5 py-2">
                     <p className="hidden sm:block opacity-80">
-                        <i className="fa-solid fa-truck-fast mr-2" />
+                        <i className="fa-solid fa-truck-fast mr-2" aria-hidden="true" />
                         {t("Livraison de la Chine vers le monde entier · 10–20 jours")}
                     </p>
-                    <div className="flex items-center gap-4 opacity-90 mx-auto sm:mx-0">
+                    <div className="mx-auto flex items-center gap-4 opacity-90 sm:mx-0">
                         <span className="inline-flex items-center gap-1.5 font-medium" data-testid="locale-indicator">
                             <span className="text-sm leading-none">{preset.flag}</span>
                             <span>{preset.short}</span>
                         </span>
-                        <span className="hidden sm:inline opacity-80">{t("Service client 7j/7")}</span>
-                        <Link to="/admin" className="hidden sm:inline-flex items-center gap-1.5 text-ink-foreground hover:text-primary transition-colors font-medium opacity-80">
-                            <i className="fa-solid fa-store text-[10px]" />
+                        <Link to="/suivi" className="font-medium opacity-80 transition-colors hover:text-primary">
+                            {t("Suivi de commande")}
+                        </Link>
+                        <Link
+                            to="/admin"
+                            className="hidden items-center gap-1.5 font-medium opacity-80 transition-colors hover:text-primary sm:inline-flex"
+                        >
+                            <i className="fa-solid fa-store text-[10px]" aria-hidden="true" />
                             {t("Espace vendeur")}
                         </Link>
                     </div>
@@ -77,163 +88,120 @@ export const Navbar = () => {
             </div>
 
             <header
-                className={`sticky top-0 z-40 w-full transition-all duration-300 ${
-                    scrolled
-                        ? "bg-background/85 backdrop-blur-xl border-b border-border shadow-soft"
-                        : "bg-background border-b border-transparent"
+                data-testid="site-header"
+                className={`sticky top-0 z-40 w-full bg-background transition-shadow duration-300 ${
+                    scrolled ? "border-b border-border shadow-soft" : "border-b border-border"
                 }`}
             >
+                {/* Ligne principale */}
                 <div className="container mx-auto px-5">
-                    <div className="flex h-16 items-center justify-between gap-4">
-                        <div className="flex items-center gap-8">
-                            {/* mobile menu */}
+                    <div
+                        className={`flex items-center justify-between gap-3 transition-all duration-300 md:gap-8 ${
+                            scrolled ? "h-14" : "h-16"
+                        }`}
+                    >
+                        <div className="flex items-center gap-2">
                             <Sheet open={menuOpen} onOpenChange={setMenuOpen}>
                                 <SheetTrigger asChild>
-                                    <Button variant="ghost" size="icon" className="lg:hidden -ml-2" data-testid="mobile-menu-trigger">
+                                    <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        className="-ml-2 lg:hidden"
+                                        data-testid="mobile-menu-trigger"
+                                        aria-label={t("Ouvrir le menu")}
+                                    >
                                         <Menu className="h-5 w-5" />
                                     </Button>
                                 </SheetTrigger>
-                                <SheetContent side="left" className="w-[300px] p-0 flex flex-col">
+                                <SheetContent side="left" className="flex w-[300px] flex-col p-0">
                                     <SheetTitle className="sr-only">Menu de navigation</SheetTitle>
-                                    <div className="p-6 border-b">
+                                    <div className="border-b border-border p-5">
                                         <Logo />
                                     </div>
-                                    <nav className="p-4 space-y-1 flex-1 overflow-y-auto" data-testid="mobile-menu-list">
-                                        {[
-                                            { to: "/", label: "Accueil", icon: "fa-house" },
-                                            { to: "/boutique", label: "Boutique", icon: "fa-store" },
-                                            ...categories.map((c) => ({ to: `/boutique/${c.id}`, label: c.name, icon: c.icon })),
-                                            { to: "/achat-en-gros", label: "Achat en gros", icon: "fa-boxes-stacked" },
-                                        ].map((l) => (
+                                    <nav className="flex-1 space-y-0.5 overflow-y-auto p-3" data-testid="mobile-menu-list">
+                                        {mobileNav.map((l) => (
                                             <NavLink
                                                 key={l.to}
                                                 to={l.to}
-                                                end={l.to === "/"}
+                                                end={l.end}
                                                 onClick={() => setMenuOpen(false)}
                                                 className={({ isActive }) =>
-                                                    `flex items-center justify-between pl-2 pr-3 py-3 rounded-lg text-sm font-medium transition-colors ${
-                                                        isActive
-                                                            ? "bg-primary/10 text-primary"
-                                                            : "text-foreground hover:bg-muted"
+                                                    `flex items-center justify-between rounded-lg py-3 pl-3 pr-3 text-sm font-medium transition-colors ${
+                                                        isActive ? "bg-primary/10 text-primary" : "text-foreground hover:bg-muted"
                                                     }`
                                                 }
                                             >
                                                 <span className="flex items-center gap-3">
-                                                    <i className={`fa-solid ${l.icon} text-primary text-xs w-4 text-center shrink-0`} />
+                                                    <i className={`fa-solid ${l.icon} w-4 shrink-0 text-center text-xs text-primary`} aria-hidden="true" />
                                                     <span className="leading-none">{t(l.label)}</span>
                                                 </span>
-                                                <i className="fa-solid fa-chevron-right text-xs opacity-40" />
+                                                <i className="fa-solid fa-chevron-right text-xs opacity-40" aria-hidden="true" />
                                             </NavLink>
                                         ))}
                                     </nav>
-                                    <div className="p-4 border-t mt-auto">
+                                    <div className="mt-auto border-t border-border p-4">
                                         <Link
                                             to="/suivi"
                                             data-testid="mobile-menu-tracking-link"
                                             onClick={() => setMenuOpen(false)}
-                                            className="flex items-center justify-center gap-2 w-full h-11 rounded-full bg-ink text-ink-foreground text-sm font-medium hover:bg-ink/90 transition-colors"
+                                            className="flex h-11 w-full items-center justify-center gap-2 rounded-full bg-ink text-sm font-semibold text-ink-foreground transition-opacity hover:opacity-90"
                                         >
-                                            <i className="fa-solid fa-truck-fast text-xs" />
+                                            <i className="fa-solid fa-truck-fast text-xs" aria-hidden="true" />
                                             {t("Suivi de commande")}
                                         </Link>
                                     </div>
                                 </SheetContent>
                             </Sheet>
 
-                            <Logo />
+                            <Logo compact />
                         </div>
 
-                        {/* desktop nav */}
-                        <nav className="hidden lg:flex items-center gap-1">
-                            {navLinks.map((l) => (
-                                <NavLink
-                                    key={l.to}
-                                    to={l.to}
-                                    end={l.to === "/"}
-                                    className={({ isActive }) =>
-                                        `relative px-4 py-2 text-sm font-medium transition-colors ${
-                                            isActive
-                                                ? "text-primary"
-                                                : "text-foreground/70 hover:text-foreground"
-                                        }`
-                                    }
-                                >
-                                    {({ isActive }) => (
-                                        <>
-                                            {t(l.label)}
-                                            {isActive && (
-                                                <span className="absolute left-1/2 -translate-x-1/2 -bottom-0.5 h-1 w-1 rounded-full bg-primary" />
-                                            )}
-                                        </>
-                                    )}
-                                </NavLink>
-                            ))}
-                        </nav>
-
-                        <div className="flex items-center gap-1">
-                            {/* desktop search */}
-                            <form onSubmit={submitSearch} className="hidden md:flex relative">
-                                <Search className="h-4 w-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-                                <Input
-                                    value={query}
-                                    onChange={(e) => { setQuery(e.target.value); setSugOpen(true); }}
-                                    onFocus={() => setSugOpen(true)}
-                                    onBlur={() => setSugOpen(false)}
-                                    onKeyDown={(e) => e.key === "Escape" && setSugOpen(false)}
-                                    placeholder={t("Rechercher...")}
-                                    data-testid="navbar-search-input"
-                                    className="pl-9 h-9 w-[220px] bg-muted/50 border-transparent focus-visible:bg-background focus-visible:border-border"
-                                />
-                                <SearchSuggestions query={query} open={sugOpen} onPick={pickSuggestion} className="left-auto right-0 w-[360px]" />
-                            </form>
-                            <Button variant="ghost" size="icon" className="md:hidden" onClick={() => setSearchOpen(true)}>
-                                <Search className="h-5 w-5" />
-                            </Button>
-                            <Button variant="ghost" size="icon" className="hidden sm:inline-flex">
-                                <Heart className="h-5 w-5" />
-                            </Button>
-                            <Button variant="ghost" size="icon" className="hidden sm:inline-flex">
-                                <User className="h-5 w-5" />
-                            </Button>
-                            <Button
-                                variant="ghost"
-                                size="icon"
-                                className="relative"
-                                onClick={() => setDrawerOpen(true)}
-                                aria-label="Panier"
-                            >
-                                <ShoppingBag className="h-5 w-5" />
-                                {count > 0 && (
-                                    <span className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] px-1 rounded-full bg-primary text-primary-foreground text-[10px] font-semibold flex items-center justify-center">
-                                        {count}
-                                    </span>
-                                )}
-                            </Button>
+                        {/* Recherche desktop — élément central du header */}
+                        <div className="hidden min-w-0 flex-1 md:block">
+                            <SearchBar testId="navbar-search-input" className="max-w-2xl" />
                         </div>
+
+                        {cartButton}
                     </div>
+                </div>
 
-                    {/* mobile search overlay */}
-                    {searchOpen && (
-                        <div className="md:hidden pb-3">
-                            <form onSubmit={submitSearch} className="relative">
-                                <Search className="h-4 w-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-                                <Input
-                                    autoFocus
-                                    value={query}
-                                    onChange={(e) => { setQuery(e.target.value); setSugOpen(true); }}
-                                    onFocus={() => setSugOpen(true)}
-                                    onBlur={() => setSugOpen(false)}
-                                    placeholder={t("Que cherchez-vous ?")}
-                                    data-testid="navbar-mobile-search-input"
-                                    className="pl-9 pr-9 h-10 bg-muted/50"
-                                />
-                                <button type="button" onClick={() => setSearchOpen(false)} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground">
-                                    <X className="h-4 w-4" />
-                                </button>
-                                <SearchSuggestions query={query} open={sugOpen} onPick={pickSuggestion} />
-                            </form>
-                        </div>
-                    )}
+                {/* Navigation catégories — desktop */}
+                <nav
+                    aria-label={t("Catégories")}
+                    className="hidden border-t border-border lg:block"
+                    data-testid="category-nav"
+                >
+                    <div className="container mx-auto px-5">
+                        <ul className="flex items-center gap-1 overflow-x-auto no-scrollbar">
+                            {primaryNav.map((l) => (
+                                <li key={l.to}>
+                                    <NavLink
+                                        to={l.to}
+                                        end={l.end}
+                                        className={({ isActive }) =>
+                                            `relative inline-block whitespace-nowrap px-3 py-3 text-sm font-medium transition-colors duration-200 ${
+                                                isActive ? "text-primary" : "text-foreground/70 hover:text-foreground"
+                                            }`
+                                        }
+                                    >
+                                        {({ isActive }) => (
+                                            <>
+                                                {t(l.label)}
+                                                {isActive && (
+                                                    <span className="absolute inset-x-3 bottom-0 h-[2px] rounded-full bg-primary" />
+                                                )}
+                                            </>
+                                        )}
+                                    </NavLink>
+                                </li>
+                            ))}
+                        </ul>
+                    </div>
+                </nav>
+
+                {/* Recherche mobile — toujours accessible, sous le logo */}
+                <div className="border-t border-border px-5 py-2.5 md:hidden">
+                    <SearchBar size="md" testId="navbar-mobile-search-input" />
                 </div>
             </header>
         </>

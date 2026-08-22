@@ -501,6 +501,82 @@ const EN = {
         "Wave, Orange Money, MTN or card. Your money is protected and you are notified at every step.",
     "Une équipe basée à Dakar, disponible en français, qui répond à toutes vos questions avant et après l'achat.":
         "A dedicated team, available 7 days a week, answering all your questions before and after purchase.",
+    // --- Avis clients vérifiés ---
+    "Avis clients": "Customer reviews",
+    "avis vérifiés": "verified reviews",
+    "Achat vérifié": "Verified purchase",
+    "Aucun avis pour le moment — soyez le premier !": "No reviews yet — be the first!",
+    "Donner mon avis": "Write a review",
+    "Annuler": "Cancel",
+    "Seuls les clients ayant acheté ce produit peuvent laisser un avis.":
+        "Only customers who purchased this product can leave a review.",
+    "N° de commande (ex : 1024)": "Order number (e.g. 1024)",
+    "Email utilisé pour la commande": "Email used for the order",
+    "Votre note": "Your rating",
+    "Votre commentaire (facultatif)": "Your comment (optional)",
+    "Publier mon avis": "Publish my review",
+    "Envoi…": "Sending…",
+    "Merci pour votre avis !": "Thank you for your review!",
+    "Il est maintenant visible sous le produit.": "It is now visible under the product.",
+    "Avis impossible": "Review not accepted",
+    "Réessayez plus tard.": "Please try again later.",
+    "Champs requis": "Required fields",
+    "N° de commande, email et note sont obligatoires.": "Order number, email and rating are required.",
+    "Avis supprimé": "Review deleted",
+    "Suppression impossible": "Could not delete",
+    // Refonte UI — header / recherche
+    "Rechercher un produit": "Search for a product",
+    "Rechercher parmi des milliers de produits…": "Search thousands of products…",
+    "Panier": "Cart",
+    "Ouvrir le menu": "Open menu",
+    "Tous les produits": "All products",
+    // Barre de confiance
+    "Nos engagements": "Our commitments",
+    "Livraison internationale": "Worldwide delivery",
+    "Chine → monde, 10–20 jours": "China → worldwide, 10–20 days",
+    "Mobile Money & carte bancaire": "Mobile Money & bank card",
+    "Assistance client": "Customer support",
+    "7 jours / 7, en français": "7 days a week",
+    "Depuis votre n° de commande": "With your order number",
+    // Hero
+    "Livraison 10–20 jours · Paiement sécurisé": "10–20 day delivery · Secure payment",
+    "Tout ce que vous cherchez.": "Everything you're looking for.",
+    "Directement depuis la Chine.": "Straight from China.",
+    "Mode, électronique, maison, beauté et bien plus encore — livrés directement chez vous.":
+        "Fashion, electronics, home, beauty and much more — delivered straight to your door.",
+    "Découvrir les produits": "Browse products",
+    "Voir les nouveautés": "See new arrivals",
+    // Sections homepage
+    "Explorez nos catégories": "Explore our categories",
+    "Trouvez rapidement ce dont vous avez besoin": "Quickly find what you need",
+    "Les derniers produits ajoutés": "The latest products added",
+    "Aucun produit disponible pour le moment": "No products available right now",
+    "Notre catalogue est en cours de mise à jour. Revenez très bientôt.":
+        "Our catalogue is being updated. Please check back soon.",
+    "Offres du moment": "Current deals",
+    "Prix réduits sur une sélection": "Reduced prices on selected items",
+    "Les plus appréciés": "Most loved",
+    "Notés par nos clients vérifiés": "Rated by our verified customers",
+    "Vous pourriez aussi aimer": "You might also like",
+    "Voir tous les produits": "View all products",
+    // Footer
+    "Mode, électronique, maison, beauté et bien plus encore — commandés en Chine et livrés directement chez vous en 10 à 20 jours.":
+        "Fashion, electronics, home, beauty and much more — ordered in China and delivered to your door in 10 to 20 days.",
+    "Paiement sécurisé (Mobile Money & carte bancaire)": "Secure payment (Mobile Money & bank card)",
+    "Suivi de commande disponible": "Order tracking available",
+    "Assistance client 7 jours / 7": "Customer support 7 days a week",
+    "Se connecter": "Sign in",
+    "Moyens de paiement acceptés": "Accepted payment methods",
+    "Suivre ma commande": "Track my order",
+    "Acheter maintenant": "Buy now",
+    "Retirer du panier": "Remove from cart",
+    "Diminuer la quantité": "Decrease quantity",
+    "Augmenter la quantité": "Increase quantity",
+    "Retirer ce filtre": "Remove this filter",
+    "Essayez d'ajuster vos filtres ou de modifier votre recherche.":
+        "Try adjusting your filters or changing your search.",
+    "Aucune description détaillée n'est disponible pour ce produit.":
+        "No detailed description is available for this product.",
 };
 
 export const t = (fr) => (current.lang === "en" ? (EN[fr] ?? fr) : fr);

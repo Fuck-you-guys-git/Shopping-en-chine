@@ -59,3 +59,11 @@ Payments were failing with a **DNS error** because `backend/paxity_router.py` ha
   - CSS d'impression e-ticket (Orders.jsx) très spécifique — modifier avec extrême prudence.
   - Le user teste en PRODUCTION (shoppingenchine.com) → rappeler de REDÉPLOYER après chaque fix.
   - Toutes les réponses au user en FRANÇAIS.
+
+## Refonte UI/UX (Juin 2026) — décisions figées par le user
+- Identité : fond blanc / blanc cassé, texte noir profond, **rouge vermillon** comme unique couleur signature (usage parcimonieux : CTA, promos, éléments clés).
+- Typographie : **100 % Inter** (la police serif Fraunces a été retirée ; la classe `.font-display` existe encore mais pointe sur Inter).
+- Pas de comptes clients ni de favoris : les icônes correspondantes ont été retirées du header et de la fiche produit (interdiction d'afficher une fonctionnalité inexistante).
+- Pas de sélecteur de langue manuel : la détection automatique par IP (LocaleContext) reste la seule source.
+- RÈGLE ABSOLUE : ne JAMAIS inventer de données pour remplir l'interface (avis, notes, compteurs, stock, promos, dates de livraison, certifications). Si la donnée n'existe pas → masquer le composant ou afficher un état vide.
+- Livraison par lots avec validation user entre chaque lot (voir ROADMAP.md).
