@@ -2,9 +2,9 @@ import { Link } from "react-router-dom";
 
 /**
  * Logotype Shopping en Chine — grand « S » vermillon + devise en baseline.
- * `compact` masque la devise sur mobile, `inverted` pour fond sombre.
+ * `inverted` pour fond sombre.
  */
-export const Logo = ({ className = "", compact = false, inverted = false }) => (
+export const Logo = ({ className = "", inverted = false }) => (
     <Link
         to="/"
         data-testid="site-logo"
@@ -25,7 +25,7 @@ export const Logo = ({ className = "", compact = false, inverted = false }) => (
             </span>
         </span>
         <span
-            className={`mt-[3px] text-[9px] font-medium uppercase tracking-[0.26em] ${compact ? "hidden sm:block" : "block"} ${
+            className={`mt-[3px] block text-[9px] font-medium uppercase tracking-[0.22em] sm:tracking-[0.26em] ${
                 inverted ? "text-ink-foreground/50" : "text-muted-foreground"
             }`}
         >

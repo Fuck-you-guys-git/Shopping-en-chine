@@ -146,7 +146,7 @@ export const Navbar = () => {
                                 </SheetContent>
                             </Sheet>
 
-                            <Logo compact />
+                            <Logo />
                         </div>
 
                         {/* Recherche desktop — élément central du header */}
