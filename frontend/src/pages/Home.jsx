@@ -57,10 +57,6 @@ export default function Home() {
                                 {t("Tout ce que vous cherchez.")}
                                 <span className="mt-1 block text-primary">{t("Directement depuis la Chine.")}</span>
                             </h1>
-                            <p className="mt-5 max-w-xl text-base leading-relaxed text-muted-foreground md:text-lg">
-                                {t("Mode, électronique, maison, beauté et bien plus encore — livrés directement chez vous.")}
-                            </p>
-
                             <div className="mt-7 flex flex-wrap items-center gap-3">
                                 <Link
                                     to="/boutique"
