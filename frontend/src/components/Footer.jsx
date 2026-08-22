@@ -19,7 +19,6 @@ const columns = [
         title: "Aide",
         links: [
             { label: "Suivre ma commande", to: "/suivi" },
-            { label: "À propos", to: "/a-propos" },
             { label: "Contact", href: "mailto:serviceclients@shoppingenchine.com" },
             { label: "serviceclients@shoppingenchine.com", href: "mailto:serviceclients@shoppingenchine.com", small: true },
         ],

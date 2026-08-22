@@ -15,7 +15,6 @@ const mobileNav = [
     { to: "/boutique", label: "Tous les produits", icon: "fa-store", end: true },
     ...categories.map((c) => ({ to: `/boutique/${c.id}`, label: c.name, icon: c.icon })),
     { to: "/achat-en-gros", label: "Achat en gros", icon: "fa-boxes-stacked" },
-    { to: "/a-propos", label: "À propos", icon: "fa-circle-info" },
 ];
 
 export const Navbar = () => {
