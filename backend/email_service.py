@@ -63,9 +63,11 @@ def _order_no(order_id) -> str:
 
 def _test_tag(order) -> str:
     """Préfixe [TEST] pour les commandes de l'environnement de preview —
-    évite toute confusion avec les vraies commandes dans la boîte mail."""
+    évite toute confusion avec les vraies commandes dans la boîte mail.
+    NB : un id `tmp_xxx` signifie seulement « pas encore payée » (panier
+    abandonné) et NON « commande de test » — ne pas s'y fier ici."""
     oid = str((order or {}).get("id") or "")
-    is_test = (order or {}).get("is_test") or oid.startswith(("TEST-", "tmp_"))
+    is_test = bool((order or {}).get("is_test")) or oid.startswith("TEST-")
     return "[TEST] " if is_test else ""
 
 
