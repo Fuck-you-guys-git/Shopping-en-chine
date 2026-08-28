@@ -863,3 +863,15 @@
 - Sous-titre hero « Mode, électronique, maison, beauté… » supprimé.
 - ORDRE DE LA PAGE D'ACCUEIL refondu selon le user : (1) titres + CTA, (2) **produits sur 3 rangées** (6 items en 2 col, 9 en 3 col, 12 en 4 col via `rowVisibility`), (3) **menu des catégories au milieu**, (4) autres sections conditionnelles (Offres du moment, Les plus appréciés), (5) « Tous nos produits » jusqu'en bas + CTA. Toujours aucune section vide, aucune donnée inventée.
 - ⚠️ REDEPLOY requis à chaque fois (le user teste en production).
+
+## Update — Juin 2026 (🐛 BUG CRITIQUE : clients Europe/USA voyaient les prix en F CFA)
+- SYMPTÔME (signalé par le user, production) : « les gens en Europe et aux USA voient parfois les prix en F CFA au lieu de € / $ ».
+- CAUSE RACINE (2 défauts cumulés) :
+  1. `geo_router.py` interrogeait 3 API IP gratuites en cascade et, en cas d'échec, renvoyait `DEFAULT` = **Afrique / XOF**. Or ip-api.com est limité à **45 req/min par IP serveur** et ipwho.is a un quota mensuel : en production tous les visiteurs sortent par la MÊME IP, donc dès qu'il y a du trafic les fournisseurs renvoient 429/échec → tout le monde basculait en F CFA. De plus le cache était **en mémoire seule**, donc vidé à chaque redéploiement/redémarrage → rafale d'appels externes juste après chaque deploy.
+  2. Le timeout navigateur (`axios` 6 s) était **inférieur** au budget backend (3 fournisseurs × 4 s = 12 s) : un fournisseur lent suffisait à faire échouer l'appel côté client, qui restait alors sur son défaut FR/XOF pour toute la session, sans nouvelle tentative.
+- CORRECTIFS :
+  - `geo_router.py` : lecture prioritaire des en-têtes pays du CDN/ingress (`cf-ipcountry`, `x-vercel-ip-country`, …) — instantané et jamais limité ; **cache persistant MongoDB** (`geo_cache`, TTL 30 jours) qui survit aux redéploiements et réduit massivement les appels externes ; timeout ramené à **2 s par fournisseur** (6 s au pire) ; en dernier recours, repli sur la **région du navigateur** (`Accept-Language: fr-FR` → France → EUR) au lieu d'imposer les F CFA ; champ `source` renvoyé pour le diagnostic (`header` / `cache` / `ip` / `accept-language` / `default`).
+  - `LocaleContext.jsx` : la devise résolue est **mémorisée dans localStorage** (`sec_locale_v1`) et réappliquée dès le premier rendu → plus de flash en F CFA, et si `/api/geo` échoue le client **conserve sa bonne devise** ; timeout porté à 12 s + **une seconde tentative** automatique.
+- TESTS : 9/9 sur `/api/geo` (IP FR/US/SN, cache mémoire, en-tête CDN DE/US, repli Accept-Language fr-FR/en-US, défaut). Cache MongoDB vérifié : après `supervisorctl restart backend`, FR et US répondent `source=cache`. Playwright : avec `/api/geo` **totalement coupé**, les prix restent affichés en **$** (localStorage) au lieu de retomber en F CFA.
+- NB : côté produits, aucun défaut — `_fill_missing_localized_prices` garantit que chaque produit porte ses prix EUR et USD à la création ET à la mise à jour (0 produit sans prix EUR/USD en base).
+- ⚠️ REDEPLOY requis.
