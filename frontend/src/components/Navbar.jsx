@@ -68,9 +68,6 @@ export const Navbar = () => {
                             <span className="text-sm leading-none">{preset.flag}</span>
                             <span>{preset.short}</span>
                         </span>
-                        <Link to="/suivi" className="font-medium opacity-80 transition-colors hover:text-primary">
-                            {t("Suivi de commande")}
-                        </Link>
                         <Link
                             to="/admin"
                             className="hidden items-center gap-1.5 font-medium opacity-80 transition-colors hover:text-primary sm:inline-flex"
