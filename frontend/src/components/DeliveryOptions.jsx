@@ -1,11 +1,11 @@
 import { useState } from "react";
-import { Truck, Zap, Check, ChevronDown } from "lucide-react";
+import { Truck, Check, ChevronDown } from "lucide-react";
 import { formatMoney, getLocale, t } from "@/lib/locale";
 
 /*
  * Choix du mode de livraison (étape 2 du checkout, avant le paiement).
- * - Afrique (FCFA) : 2 options — économique 6 500 F/kg (15-20 j ouvrés)
- *   et express 11 000 F/kg (5-7 j ouvrés), textes complets du marchand.
+ * - Afrique (FCFA) : une seule option 6 500 F/kg (15-20 j ouvrés).
+ *   (L'option express a été retirée à la demande du marchand.)
  * - Europe / USA : UNE SEULE option standard « Chine-Europe » 13 €/kg
  *   (15-20 j ouvrés) avec remboursement intégral en cas de perte/douane.
  * Cliquer sur un bouton le sélectionne ET affiche le texte explicatif complet.
@@ -29,27 +29,6 @@ const AFRICA_MODES = [
             { p: "Après votre commande, votre colis est pesé afin de déterminer vos frais de livraison." },
             { p: "Le calcul est simple :" },
             { calc: 6500 },
-            { p: "Le montant obtenu correspond à vos frais de livraison jusqu'à Dakar." },
-            { p: "Une fois votre colis prêt à être expédié, nous vous communiquerons le montant exact de vos frais de livraison." },
-            { p: "Vous avez le choix :" },
-            { bullets: ["payer vos frais de livraison avant l'expédition, ou", "payer à l'arrivée de votre colis à Dakar."] },
-            { p: "Les frais de livraison sont calculés uniquement lorsque le colis est pesé et prêt à être expédié." },
-            { p: "Et une fois à Dakar le livreur vous contactera pour la réception de votre colis." },
-            { home: true },
-        ],
-    },
-    {
-        id: "express",
-        icon: Zap,
-        title: "Livraison express Chine-Dakar",
-        delay: "5 à 7 jours ouvrés",
-        rateXof: 11000,
-        lines: [
-            { p: "Pour recevoir votre commande plus rapidement, choisissez cette option express." },
-            { p: "Le délai estimatif est de 5 à 7 jours ouvrés après l'expédition." },
-            { p: "Après votre commande, votre colis est pesé afin de déterminer vos frais de livraison." },
-            { p: "Le calcul est simple :" },
-            { calc: 11000 },
             { p: "Le montant obtenu correspond à vos frais de livraison jusqu'à Dakar." },
             { p: "Une fois votre colis prêt à être expédié, nous vous communiquerons le montant exact de vos frais de livraison." },
             { p: "Vous avez le choix :" },
