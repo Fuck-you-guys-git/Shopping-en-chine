@@ -145,6 +145,7 @@ async def _persist_stripe_order(db, payload: StripeCheckoutRequest, data: Stripe
     now = datetime.now(timezone.utc).isoformat()
     await db.orders.insert_one({
         "id": data.order_id,
+        "provider": "stripe",
         "customer": payload.customer.model_dump(),
         "items": data.order_items,
         "amount": data.amount,

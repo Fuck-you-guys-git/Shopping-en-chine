@@ -520,6 +520,7 @@ async def _persist_order(db: AsyncIOMotorDatabase, order_id: str, payload: Paxit
         await db.orders.insert_one({
             "id": order_id,
             "is_test": is_test,
+            "provider": "paxity",
             "customer": payload.customer.model_dump(),
             "items": [it.model_dump() for it in payload.items],
             "amount": payload.amount,

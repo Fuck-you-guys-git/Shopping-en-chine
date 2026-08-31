@@ -2,17 +2,19 @@
 Seller orders — real orders created by the Paxity payin flow (db.orders).
 
 GET  /api/orders               -> list all orders (seller auth required)
+GET  /api/orders/export.csv    -> CSV export (Paxity only, Stripe excluded)
 PUT  /api/orders/bulk-tracking -> set the tracking step of many orders at once
 """
 from __future__ import annotations
 
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, HTTPException, Request, Response
 from pydantic import BaseModel
 from pymongo import ReturnDocument
 
 from auth_router import get_current_seller
+from orders_export import build_orders_csv, export_filename
 from tracking_router import TRACKING_STEPS, STEP_LABELS
 
 router = APIRouter(prefix="/orders", tags=["orders"])
@@ -56,6 +58,28 @@ async def list_orders(request: Request) -> dict:
         {}, {"_id": 0, "raw_response": 0}
     ).sort("created_at", -1).to_list(5000)
     return {"orders": orders}
+
+
+@router.get("/export.csv")
+async def export_orders_csv(request: Request):
+    """Fichier CSV de toutes les commandes PAYÉES via Paxity (Stripe exclu),
+    avec les totaux Carte bancaire / Mobile Money en fin de fichier."""
+    await get_current_seller(request)
+    db = request.app.state.db
+    orders = await db.orders.find({}, {"_id": 0, "raw_response": 0}).to_list(20000)
+    content, summary = build_orders_csv(orders)
+    return Response(
+        content=content.encode("utf-8"),
+        media_type="text/csv; charset=utf-8",
+        headers={
+            "Content-Disposition": f'attachment; filename="{export_filename()}"',
+            "X-Export-Orders": str(summary["orders"]),
+            "X-Export-Card-Total": str(summary["card_total"]),
+            "X-Export-Mobile-Total": str(summary["mobile_total"]),
+            "X-Export-Grand-Total": str(summary["grand_total"]),
+            "Access-Control-Expose-Headers": "Content-Disposition, X-Export-Orders, X-Export-Card-Total, X-Export-Mobile-Total, X-Export-Grand-Total",
+        },
+    )
 
 
 @router.put("/bulk-tracking")

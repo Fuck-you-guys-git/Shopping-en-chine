@@ -1,6 +1,8 @@
 import { useState } from "react";
-import { ChevronDown } from "lucide-react";
+import { ChevronDown, Download, Loader2 } from "lucide-react";
+import { toast } from "sonner";
 import { useSeller } from "@/context/SellerContext";
+import { ordersAPI } from "@/lib/api";
 import { formatCfa } from "@/lib/locale";
 import { PAYMENT_CODE_LABELS } from "@/lib/payments";
 
@@ -16,21 +18,61 @@ export const PaymentMethodsCard = () => {
     const { metrics } = useSeller();
     const dist = metrics.paymentDist || [];
     const [open, setOpen] = useState(null);
+    const [downloading, setDownloading] = useState(false);
 
     const grandTotal = dist.reduce((s, g) => s + g.total, 0);
     const grandCount = dist.reduce((s, g) => s + g.count, 0);
+
+    const download = async () => {
+        setDownloading(true);
+        try {
+            const res = await ordersAPI.exportCsv();
+            const name =
+                /filename="?([^"]+)"?/.exec(res.headers?.["content-disposition"] || "")?.[1] ||
+                "commandes-paxity.csv";
+            const url = URL.createObjectURL(res.data);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = name;
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            URL.revokeObjectURL(url);
+            toast.success("Fichier téléchargé", { description: name });
+        } catch {
+            toast.error("Téléchargement impossible", { description: "Réessayez dans un instant." });
+        } finally {
+            setDownloading(false);
+        }
+    };
 
     return (
         <div
             className="bg-card rounded-2xl shadow-card border border-border/50"
             data-testid="payment-methods-card"
         >
-            <div className="p-5 md:p-6 pb-4">
-                <h3 className="font-display text-lg font-medium">Paiements par moyen</h3>
-                <p className="text-xs text-muted-foreground mt-0.5">
-                    Qui a payé par carte, Wave, Orange Money ou MTN — et combien au total
-                </p>
+            <div className="p-5 md:p-6 pb-4 flex flex-wrap items-start justify-between gap-3">
+                <div>
+                    <h3 className="font-display text-lg font-medium">Paiements par moyen</h3>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                        Qui a payé par carte, Wave, Orange Money ou MTN — et combien au total
+                    </p>
+                </div>
+                <button
+                    type="button"
+                    onClick={download}
+                    disabled={downloading}
+                    data-testid="export-orders-csv-btn"
+                    className="inline-flex h-10 shrink-0 items-center gap-2 rounded-full border-2 border-border bg-card px-4 text-sm font-semibold transition-colors hover:border-primary hover:text-primary disabled:opacity-60"
+                >
+                    {downloading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
+                    Télécharger le fichier
+                </button>
             </div>
+            <p className="px-5 md:px-6 -mt-2 pb-4 text-[11px] text-muted-foreground">
+                Le fichier (Excel/CSV) liste toutes les commandes payées avec les totaux carte
+                bancaire et Mobile Money. Les paiements Stripe ne sont pas inclus.
+            </p>
 
             {dist.length === 0 ? (
                 <p className="px-5 md:px-6 pb-8 text-sm text-muted-foreground text-center">
