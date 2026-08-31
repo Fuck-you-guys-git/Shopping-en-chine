@@ -1,6 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { categories } from "@/data/products";
 import { productsAPI, ordersAPI, trackingAPI } from "@/lib/api";
+import { PAYMENT_GROUPS, OTHER_GROUP, paymentGroupId } from "@/lib/payments";
 import { useCatalog } from "@/context/CatalogContext";
 
 const SellerContext = createContext(null);
@@ -52,6 +53,7 @@ const mapOrder = (o, productsById) => ({
     total: o.amount_xof ?? o.amount ?? 0,
     paidAmount: o.amount ?? 0,
     paidCurrency: o.currency || "XOF",
+    paymentMethod: o.payment_method || null,
     deliveryMode: o.delivery_mode === "express" ? "express" : "standard",
     payment: isPaidOrder(o) ? "success" : (PAYMENT_LABELS[o.status] ? o.status : "pending"),
     // Étape de suivi : tracking_step prioritaire ; anciennes commandes où
@@ -224,6 +226,23 @@ export const SellerProvider = ({ children }) => {
             }, 0),
         })).filter((c) => c.value > 0);
 
+        // Répartition par moyen de paiement (données réelles uniquement) :
+        // qui a payé par carte / Wave / Orange Money / MTN, et combien au total.
+        const groupsOrder = [...PAYMENT_GROUPS, OTHER_GROUP];
+        const paymentDist = groupsOrder
+            .map((g) => {
+                const list = paid.filter((o) => paymentGroupId(o.paymentMethod) === g.id);
+                return {
+                    id: g.id,
+                    label: g.label,
+                    icon: g.icon,
+                    count: list.length,
+                    total: sum(list),
+                    orders: list.slice(0, 50),
+                };
+            })
+            .filter((g) => g.count > 0);
+
         return {
             revenueToday, revenue7, revenue30,
             ordersToday: today.length, orders7: last7.length, orders30: last30.length,
@@ -235,7 +254,7 @@ export const SellerProvider = ({ children }) => {
             active, delivered,
             avgBasket: last30.length ? revenue30 / last30.length : 0,
             trendRevenue, trendOrders, trendBasket,
-            daily, topProducts, catDist,
+            daily, topProducts, catDist, paymentDist,
         };
     }, [orders, productsById]);
 

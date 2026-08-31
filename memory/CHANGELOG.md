@@ -875,3 +875,11 @@
 - TESTS : 9/9 sur `/api/geo` (IP FR/US/SN, cache mémoire, en-tête CDN DE/US, repli Accept-Language fr-FR/en-US, défaut). Cache MongoDB vérifié : après `supervisorctl restart backend`, FR et US répondent `source=cache`. Playwright : avec `/api/geo` **totalement coupé**, les prix restent affichés en **$** (localStorage) au lieu de retomber en F CFA.
 - NB : côté produits, aucun défaut — `_fill_missing_localized_prices` garantit que chaque produit porte ses prix EUR et USD à la création ET à la mise à jour (0 produit sans prix EUR/USD en base).
 - ⚠️ REDEPLOY requis.
+
+## Update — Juin 2026 (Dashboard : répartition par moyen de paiement)
+- DEMANDE USER : « on the dashboard make a list for who's paid par card and who paid by wave and om and how much total ».
+- NOUVEAU `src/lib/payments.js` : regroupe les codes Paxity réels (`CARD`, `WAVESN`, `WAVECI`, `OMSN`, `OMCI`, `MTNCI`) en familles lisibles (Carte bancaire / Wave / Orange Money / MTN) + libellés précis par code.
+- `SellerContext.jsx` : `mapOrder` remonte désormais `paymentMethod` (il était ignoré) et `metrics.paymentDist` calcule, pour chaque famille, le nombre de clients, le total encaissé (F CFA) et la liste des commandes payées. Les familles sans paiement réel sont masquées (pas de ligne à 0).
+- NOUVEAU `pages/seller/PaymentMethodsCard.jsx` : carte « Paiements par moyen » sur le tableau de bord — une ligne dépliable par moyen (icône, nb de clients, part du total, montant), la liste des clients avec n° de commande + date + libellé précis (ex. « Wave Sénégal »), et le **total encaissé** global en pied de carte.
+- VÉRIFIÉ en preview (login vendeur réel) : Carte bancaire 5 clients / 37 850 F, Wave 2 clients / 223 000 F, total 260 850 F — chiffres recoupés à la main avec la base. Orange Money n'apparaît pas car aucune commande OM **payée** n'existe (comportement voulu).
+- ⚠️ REDEPLOY requis.
