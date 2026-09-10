@@ -1,8 +1,8 @@
 import { useState } from "react";
-import { ChevronDown, Download, Loader2 } from "lucide-react";
+import { ChevronDown, Download, Loader2, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 import { useSeller } from "@/context/SellerContext";
-import { ordersAPI } from "@/lib/api";
+import { ordersAPI, paxityAPI } from "@/lib/api";
 import { formatCfa } from "@/lib/locale";
 import { PAYMENT_CODE_LABELS } from "@/lib/payments";
 
@@ -15,10 +15,33 @@ const fmtDate = (ts) =>
  * 100 % dérivé des commandes PAYÉES réelles — aucune donnée inventée.
  */
 export const PaymentMethodsCard = () => {
-    const { metrics } = useSeller();
+    const { metrics, refreshOrders } = useSeller();
     const dist = metrics.paymentDist || [];
     const [open, setOpen] = useState(null);
     const [downloading, setDownloading] = useState(false);
+    const [checking, setChecking] = useState(false);
+
+    const checkPending = async () => {
+        setChecking(true);
+        try {
+            const r = await paxityAPI.reconcile();
+            if (r.confirmed > 0) {
+                toast.success(
+                    `${r.confirmed} paiement${r.confirmed > 1 ? "s" : ""} confirmé${r.confirmed > 1 ? "s" : ""}`,
+                    { description: "Les emails de confirmation viennent de partir." },
+                );
+                await refreshOrders();
+            } else {
+                toast.success("Aucun paiement en attente à confirmer", {
+                    description: `${r.checked} transaction${r.checked > 1 ? "s" : ""} vérifiée${r.checked > 1 ? "s" : ""} auprès de Paxity.`,
+                });
+            }
+        } catch {
+            toast.error("Vérification impossible", { description: "Réessayez dans un instant." });
+        } finally {
+            setChecking(false);
+        }
+    };
 
     const grandTotal = dist.reduce((s, g) => s + g.total, 0);
     const grandCount = dist.reduce((s, g) => s + g.count, 0);
@@ -58,16 +81,28 @@ export const PaymentMethodsCard = () => {
                         Qui a payé par carte, Wave, Orange Money ou MTN — et combien au total
                     </p>
                 </div>
-                <button
-                    type="button"
-                    onClick={download}
-                    disabled={downloading}
-                    data-testid="export-orders-csv-btn"
-                    className="inline-flex h-10 shrink-0 items-center gap-2 rounded-full border-2 border-border bg-card px-4 text-sm font-semibold transition-colors hover:border-primary hover:text-primary disabled:opacity-60"
-                >
-                    {downloading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
-                    Télécharger le fichier
-                </button>
+                <div className="flex flex-wrap items-center gap-2">
+                    <button
+                        type="button"
+                        onClick={checkPending}
+                        disabled={checking}
+                        data-testid="reconcile-payments-btn"
+                        className="inline-flex h-10 shrink-0 items-center gap-2 rounded-full border-2 border-border bg-card px-4 text-sm font-semibold transition-colors hover:border-primary hover:text-primary disabled:opacity-60"
+                    >
+                        <RefreshCw className={`h-4 w-4 ${checking ? "animate-spin" : ""}`} />
+                        Vérifier les paiements en attente
+                    </button>
+                    <button
+                        type="button"
+                        onClick={download}
+                        disabled={downloading}
+                        data-testid="export-orders-csv-btn"
+                        className="inline-flex h-10 shrink-0 items-center gap-2 rounded-full border-2 border-border bg-card px-4 text-sm font-semibold transition-colors hover:border-primary hover:text-primary disabled:opacity-60"
+                    >
+                        {downloading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
+                        Télécharger le fichier
+                    </button>
+                </div>
             </div>
             <p className="px-5 md:px-6 -mt-2 pb-4 text-[11px] text-muted-foreground">
                 Le fichier (Excel/CSV) liste toutes les commandes payées avec les totaux carte

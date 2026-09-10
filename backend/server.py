@@ -145,6 +145,12 @@ async def startup_seed():
     # Cart-abandonment recovery loop (checks every 30 min)
     import asyncio
     asyncio.create_task(_recovery_loop())
+    # Rattrapage durable des paiements Paxity restés « en attente » : rend la
+    # confirmation (et les emails) indépendante de l'IPN, du retour navigateur
+    # et des redéploiements. Sans cette boucle, une commande réellement payée
+    # pouvait rester « pending » pour toujours → aucun email envoyé.
+    from paxity_router import reconciliation_loop
+    asyncio.create_task(reconciliation_loop(db))
     # Migration en arrière-plan : photos base64 → URLs légères + miniatures
     asyncio.create_task(migrate_base64_images(db))
 

@@ -35,7 +35,7 @@ import os
 import socket
 import time
 import uuid
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Optional
 from urllib.parse import urlparse
 
@@ -44,6 +44,7 @@ from fastapi import APIRouter, HTTPException, Request
 from motor.motor_asyncio import AsyncIOMotorDatabase
 from pydantic import BaseModel, Field
 
+from auth_router import get_current_seller
 from email_service import maybe_send_order_confirmation, maybe_send_customer_confirmation
 from orders_router import next_order_number, next_test_order_number
 from products_router import decrement_stock_for_order
@@ -849,6 +850,90 @@ async def _watch_pending_tx(db: AsyncIOMotorDatabase, tx_id: str) -> None:
         except Exception:
             logger.warning(f"[Paxity] Watcher error tx={tx_id}", exc_info=True)
     logger.info(f"[Paxity] Watcher timeout tx={tx_id} (toujours pending après 15 min)")
+
+
+# ---------------------------------------------------------------------------
+# Rattrapage DURABLE des paiements en attente
+# ---------------------------------------------------------------------------
+# Le watcher ci-dessus vit dans le processus : il disparaît à chaque
+# redémarrage / redéploiement du backend, et s'arrête après 15 minutes.
+# Résultat constaté en production : des transactions réellement payées
+# restaient « pending » pour toujours (IPN perdu + client jamais revenu +
+# redéploiement), donc AUCUN email de confirmation ne partait, ni au client
+# ni au marchand. Cette boucle relit la base et re-interroge Paxity, ce qui
+# rend la confirmation indépendante du navigateur, de l'IPN et des redeploys.
+
+RECONCILE_MAX_AGE_HOURS = 24 * 7  # 7 jours : couvre un week-end + un redeploy tardif
+RECONCILE_INTERVAL_SECONDS = 180
+RECONCILE_BATCH = 200
+
+
+async def reconcile_pending_transactions(db: AsyncIOMotorDatabase, *,
+                                         max_age_hours: int = RECONCILE_MAX_AGE_HOURS) -> dict:
+    """Re-vérifie auprès de Paxity toutes les transactions encore « pending ».
+
+    `_refresh_pending_tx` se charge, si le paiement est confirmé, d'attribuer
+    le numéro de commande, de décrémenter le stock et d'envoyer les deux
+    emails (client + marchand) — de façon idempotente.
+    """
+    if not PAXITY_CONFIGURED:
+        return {"checked": 0, "confirmed": 0, "failed": 0, "unverifiable": 0}
+
+    cutoff = (datetime.now(timezone.utc) - timedelta(hours=max_age_hours)).strftime("%Y-%m-%dT%H:%M:%S")
+    # Les transactions carte sans id Paxity ne sont pas interrogeables :
+    # on les compte pour le diagnostic mais on ne les appelle pas.
+    unverifiable = await db.paxity_transactions.count_documents({
+        "status": "pending",
+        "paxity_transaction_id": {"$in": [None, ""]},
+        "created_at": {"$gte": cutoff},
+    })
+    pending = await db.paxity_transactions.find({
+        "status": "pending",
+        "paxity_transaction_id": {"$nin": [None, ""]},
+        "created_at": {"$gte": cutoff},
+    }, {"_id": 0}).to_list(RECONCILE_BATCH)
+
+    confirmed = failed = 0
+    for tx in pending:
+        try:
+            status = await _refresh_pending_tx(db, tx)
+        except Exception:
+            logger.warning(f"[Paxity] Rattrapage impossible tx={tx.get('id')}", exc_info=True)
+            continue
+        if status == "success":
+            confirmed += 1
+        elif status == "failed":
+            failed += 1
+
+    if confirmed or failed:
+        logger.info(
+            f"[Paxity] Rattrapage : {len(pending)} vérifiée(s) → {confirmed} confirmée(s), "
+            f"{failed} échouée(s) ({unverifiable} non vérifiable(s))"
+        )
+    return {
+        "checked": len(pending),
+        "confirmed": confirmed,
+        "failed": failed,
+        "unverifiable": unverifiable,
+    }
+
+
+async def reconciliation_loop(db: AsyncIOMotorDatabase) -> None:
+    """Tâche de fond lancée au démarrage : rattrapage toutes les 3 minutes."""
+    await asyncio.sleep(15)  # laisse le démarrage se terminer
+    while True:
+        try:
+            await reconcile_pending_transactions(db)
+        except Exception:
+            logger.warning("[Paxity] Boucle de rattrapage en erreur", exc_info=True)
+        await asyncio.sleep(RECONCILE_INTERVAL_SECONDS)
+
+
+@router.post("/reconcile")
+async def reconcile_now(request: Request) -> dict:
+    """Rattrapage à la demande depuis l'espace vendeur (auth vendeur)."""
+    await get_current_seller(request)
+    return await reconcile_pending_transactions(_db(request))
 
 
 def _parse_webhook_ids(payload: dict) -> tuple[Optional[str], Optional[str], str]:

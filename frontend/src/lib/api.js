@@ -45,6 +45,8 @@ export const paxityAPI = {
     cardAttach: (payload) => api.post("/paxity/card/attach", payload).then((r) => r.data),
     getStatus: (transactionId) => api.get(`/paxity/status/${transactionId}`).then((r) => r.data),
     getOrder: (orderId) => api.get(`/paxity/orders/${orderId}`).then((r) => r.data),
+    // Rattrapage des paiements restés « en attente » (auth vendeur)
+    reconcile: () => api.post("/paxity/reconcile", {}, { timeout: 120000 }).then((r) => r.data),
 };
 
 // --------- Suivi de commande ---------
