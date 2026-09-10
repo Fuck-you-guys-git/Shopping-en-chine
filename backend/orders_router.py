@@ -3,6 +3,8 @@ Seller orders — real orders created by the Paxity payin flow (db.orders).
 
 GET  /api/orders               -> list all orders (seller auth required)
 GET  /api/orders/export.csv    -> CSV export (Paxity only, Stripe excluded)
+GET  /api/orders/missing-confirmations -> paid orders never confirmed by email
+POST /api/orders/resend-confirmations  -> resend those confirmations (client + merchant)
 PUT  /api/orders/bulk-tracking -> set the tracking step of many orders at once
 """
 from __future__ import annotations
@@ -14,6 +16,7 @@ from pydantic import BaseModel
 from pymongo import ReturnDocument
 
 from auth_router import get_current_seller
+from email_service import maybe_send_customer_confirmation, maybe_send_order_confirmation
 from orders_export import build_orders_csv, export_filename
 from tracking_router import TRACKING_STEPS, STEP_LABELS
 
@@ -80,6 +83,84 @@ async def export_orders_csv(request: Request):
             "Access-Control-Expose-Headers": "Content-Disposition, X-Export-Orders, X-Export-Card-Total, X-Export-Mobile-Total, X-Export-Grand-Total",
         },
     )
+
+
+PAID_STATUSES_LIST = [
+    "success", "successful", "paid", "completed", "confirmed", "ok", "done",
+    "shipped", "customs", "delivery", "delivered",
+]
+
+
+def _missing_confirmation_query() -> dict:
+    """Commandes PAYÉES dont au moins un des deux emails de confirmation
+    n'est jamais parti (client ou marchand)."""
+    return {
+        "status": {"$in": PAID_STATUSES_LIST},
+        "$or": [
+            {"customer_email_sent": {"$ne": True}},
+            {"confirmation_email_sent": {"$ne": True}},
+        ],
+    }
+
+
+@router.get("/missing-confirmations")
+async def list_missing_confirmations(request: Request) -> dict:
+    """Aperçu AVANT envoi : qui n'a jamais reçu sa confirmation de commande."""
+    await get_current_seller(request)
+    db = request.app.state.db
+    docs = await db.orders.find(
+        _missing_confirmation_query(),
+        {"_id": 0, "id": 1, "customer": 1, "amount": 1, "currency": 1,
+         "created_at": 1, "customer_email_sent": 1, "confirmation_email_sent": 1},
+    ).sort("created_at", -1).to_list(500)
+    orders = [{
+        "id": d.get("id"),
+        "name": (d.get("customer") or {}).get("name") or "",
+        "email": (d.get("customer") or {}).get("email") or "",
+        "amount": d.get("amount"),
+        "currency": d.get("currency", "XOF"),
+        "created_at": d.get("created_at"),
+        "customer_missing": d.get("customer_email_sent") is not True,
+        "merchant_missing": d.get("confirmation_email_sent") is not True,
+    } for d in docs]
+    return {"count": len(orders), "orders": orders}
+
+
+@router.post("/resend-confirmations")
+async def resend_confirmations(request: Request) -> dict:
+    """Renvoie les confirmations manquantes : email au CLIENT + notification
+    au MARCHAND pour chaque commande payée qui n'en a jamais reçu.
+
+    Les deux fonctions d'envoi réclament leur drapeau atomiquement : un client
+    déjà notifié ne peut PAS recevoir de doublon, même en cas de double clic.
+    """
+    await get_current_seller(request)
+    db = request.app.state.db
+    docs = await db.orders.find(_missing_confirmation_query(), {"_id": 0, "id": 1}).to_list(500)
+
+    customer_sent = merchant_sent = customer_failed = 0
+    for d in docs:
+        oid = d.get("id")
+        if not oid:
+            continue
+        # Un envoi client était-il dû pour cette commande ?
+        due = await db.orders.count_documents({
+            "id": oid, "customer_email_sent": {"$ne": True},
+            "customer.email": {"$nin": [None, ""]},
+        })
+        if await maybe_send_customer_confirmation(db, oid):
+            customer_sent += 1
+        elif due:
+            customer_failed += 1
+        if await maybe_send_order_confirmation(db, oid):
+            merchant_sent += 1
+
+    return {
+        "orders": len(docs),
+        "customer_sent": customer_sent,
+        "customer_failed": customer_failed,
+        "merchant_sent": merchant_sent,
+    }
 
 
 @router.put("/bulk-tracking")

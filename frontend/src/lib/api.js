@@ -85,6 +85,10 @@ export const ordersAPI = {
         api.put("/orders/bulk-tracking", { order_ids: orderIds, step }).then((r) => r.data),
     // Export CSV (commandes payées via Paxity uniquement, Stripe exclu)
     exportCsv: () => api.get("/orders/export.csv", { responseType: "blob" }),
+    // Confirmations de commande jamais envoyées
+    missingConfirmations: () => api.get("/orders/missing-confirmations").then((r) => r.data),
+    resendConfirmations: () =>
+        api.post("/orders/resend-confirmations", {}, { timeout: 300000 }).then((r) => r.data),
 };
 
 // --------- Avis clients vérifiés ---------
