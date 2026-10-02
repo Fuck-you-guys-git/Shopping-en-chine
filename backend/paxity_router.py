@@ -943,6 +943,9 @@ def _parse_webhook_ids(payload: dict) -> tuple[Optional[str], Optional[str], str
     order_id = (
         root.get("idClient") or root.get("orderId")
         or payload.get("idClient") or payload.get("orderId")
+        # Paxity v2 : notre n° de commande voyage dans metadata.order_id
+        or (root.get("metadata") or {}).get("order_id")
+        or (payload.get("metadata") or {}).get("order_id")
     )
     normalized = _map_status(root.get("status") or payload.get("status"))
     return paxity_tx_id, order_id, normalized

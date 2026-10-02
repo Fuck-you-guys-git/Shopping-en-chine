@@ -82,6 +82,8 @@ async def get_status_checks():
 # ---- Paxity payment gateway ---------------------------------------------
 from paxity_router import router as paxity_router
 api_router.include_router(paxity_router)
+from paxity_v2_router import router as paxity_v2_router
+api_router.include_router(paxity_v2_router)
 
 # ---- Order tracking (Où est mon colis ?) ---------------------------------
 from tracking_router import router as tracking_router
