@@ -30,9 +30,26 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/paxity/v2", tags=["paxity-v2"])
 
 V2_BASE_URL = os.environ.get("PAXITY_V2_BASE_URL", "https://merchant-v2.paxity.io")
-V2_API_KEY = os.environ.get("PAXITY_V2_API_KEY", "")
+V2_API_KEY = os.environ.get("PAXITY_V2_API_KEY", "").strip()
 V2_ORG_ID = os.environ.get("PAXITY_V2_ORG_ID", "")
-V2_ENV = os.environ.get("PAXITY_V2_ENV", "test")
+
+
+def _resolve_env(key: str) -> str:
+    """L'environnement est DÉDUIT du préfixe de la clé, pas configuré à la main.
+
+    Les clés Paxity sont liées à leur environnement : une `pax_test_` ne
+    fonctionne qu'en `test`, une `pax_live_` qu'en `live`. Déduire évite deux
+    erreurs coûteuses : clé live envoyée en `test` (paiements refusés) et clé
+    test envoyée en `live` (on croit encaisser alors que rien n'est débité).
+    """
+    if key.startswith("pax_live_"):
+        return "live"
+    if key.startswith("pax_test_"):
+        return "test"
+    return os.environ.get("PAXITY_V2_ENV", "test")
+
+
+V2_ENV = _resolve_env(V2_API_KEY)
 V2_ENABLED = bool(V2_API_KEY and V2_ORG_ID)
 
 # Devises sans décimale : le montant mineur est le montant lui-même.
