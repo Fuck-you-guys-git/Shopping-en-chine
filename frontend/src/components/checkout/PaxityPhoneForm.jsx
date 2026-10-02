@@ -60,6 +60,7 @@ export const PaxityPhoneForm = ({ buyer, setBuyer, prefix, setPrefix, otp, setOt
                 <Button
                     type="submit"
                     disabled={processing || disabled}
+                    data-testid="paxity-pay-btn"
                     className="bg-primary hover:bg-primary/90 text-primary-foreground rounded-full h-11 px-8 flex-1 sm:flex-none shadow-warm"
                 >
                     {processing ? (

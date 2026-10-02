@@ -40,7 +40,22 @@ api.interceptors.response.use((response) => {
 export const paxityAPI = {
     getConfig: () => api.get("/paxity/config").then((r) => r.data),
     getDiagnostic: () => api.get("/paxity/diagnostic").then((r) => r.data),
-    createPayin: (payload) => api.post("/paxity/payin", payload).then((r) => r.data),
+    // Routage automatique v2 / v1 : la v2 n'encaisse que l'Afrique en devise
+    // locale (XOF/XAF/…). Pour EUR/USD le backend répond 409 et on rebascule
+    // sur la v1, de façon totalement transparente pour le client.
+    createPayin: async (payload) => {
+        try {
+            const cfg = await api.get("/paxity/v2/config").then((r) => r.data);
+            if (cfg?.enabled) {
+                return await api.post("/paxity/v2/payin", payload).then((r) => r.data);
+            }
+        } catch (err) {
+            const code = err.response?.status;
+            // 409 = hors périmètre v2, 503 = v2 éteinte -> on passe en v1.
+            if (code && code !== 409 && code !== 503) throw err;
+        }
+        return api.post("/paxity/payin", payload).then((r) => r.data);
+    },
     cardInit: (payload) => api.post("/paxity/card/init", payload).then((r) => r.data),
     cardAttach: (payload) => api.post("/paxity/card/attach", payload).then((r) => r.data),
     getStatus: (transactionId) => api.get(`/paxity/status/${transactionId}`).then((r) => r.data),

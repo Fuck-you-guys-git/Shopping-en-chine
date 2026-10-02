@@ -1104,9 +1104,17 @@ async def init_card_payment(payload: PaxityCardInitRequest, request: Request) ->
 
 @router.get("/orders/{order_id}")
 async def get_order(order_id: str, request: Request) -> dict:
-    """Fetch order details by id."""
+    """Fetch order details by id.
+
+    Accepte aussi l'id temporaire (`tmp_xxx`) : au paiement confirmé la
+    commande reçoit son numéro séquentiel définitif, mais le navigateur du
+    client connaît encore l'ancien id — sans ce repli, la page de
+    confirmation affichait un numéro de commande vide.
+    """
     db = _db(request)
     order = await db.orders.find_one({"id": order_id}, {"_id": 0})
+    if not order:
+        order = await db.orders.find_one({"tmp_id": order_id}, {"_id": 0})
     if not order:
         raise HTTPException(status_code=404, detail="Commande introuvable")
     return order
