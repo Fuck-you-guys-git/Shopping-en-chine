@@ -34,13 +34,41 @@ const readStored = () => {
 
 const LocaleContext = createContext(null);
 
+/* Les devises forçables manuellement, UNIQUEMENT sur la preview.
+   Sur la preview, l'infrastructure masque l'IP réelle du visiteur (le backend
+   voit une IP Google Cloud située aux USA) : tout le monde y voit donc des
+   dollars, quel que soit son pays. Ce paramètre permet de tester les 3 devises.
+   En production, la détection par IP reste la seule source. */
+const OVERRIDE_PRESETS = {
+    XOF: { lang: "fr", currency: "XOF", country: "SN" },
+    EUR: { lang: "fr", currency: "EUR", country: "FR" },
+    USD: { lang: "en", currency: "USD", country: "US" },
+};
+const OVERRIDE_KEY = "sec_locale_override";
+const isPreview = () => typeof window !== "undefined" && window.location.hostname.includes("preview");
+
+const readOverride = () => {
+    if (!isPreview()) return null;
+    try {
+        const url = new URLSearchParams(window.location.search).get("devise");
+        const forced = (url || localStorage.getItem(OVERRIDE_KEY) || "").toUpperCase();
+        if (!OVERRIDE_PRESETS[forced]) return null;
+        if (url) localStorage.setItem(OVERRIDE_KEY, forced);
+        return OVERRIDE_PRESETS[forced];
+    } catch {
+        return null;
+    }
+};
+
 export const LocaleProvider = ({ children }) => {
-    const [locale, setLocaleState] = useState(() => readStored() || FALLBACK);
+    const override = readOverride();
+    const [locale, setLocaleState] = useState(() => override || readStored() || FALLBACK);
     // Synchroniser l'état module AVANT le premier rendu des enfants
     setLocaleValues(locale.lang, locale.currency, locale.country);
 
     // Détection IP à chaque chargement du site (2 tentatives)
     useEffect(() => {
+        if (override) return; // devise forcée pour les tests : on ne l'écrase pas
         let cancelled = false;
 
         const apply = (data) => {
@@ -66,7 +94,7 @@ export const LocaleProvider = ({ children }) => {
 
         fetchGeo();
         return () => { cancelled = true; };
-    }, []);
+    }, [override]);
 
     const preset =
         LOCALE_PRESETS.find((p) => p.lang === locale.lang && p.currency === locale.currency) || LOCALE_PRESETS[0];
