@@ -53,13 +53,6 @@ export const ProductPreview = ({ form, photos, mainImage }) => {
                 <span className="font-display text-lg font-semibold">{form.price ? formatPrice(Number(form.price)) : "0 F"}</span>
                 {form.oldPrice && <span className="text-xs text-muted-foreground line-through">{formatPrice(Number(form.oldPrice))}</span>}
             </div>
-            {(form.priceEur || form.priceUsd) && (
-                <p className="text-xs text-muted-foreground mt-1" data-testid="preview-multi-currency">
-                    {form.priceEur && <>Europe : <span className="font-medium text-foreground">{form.priceEur} €</span></>}
-                    {form.priceEur && form.priceUsd && " · "}
-                    {form.priceUsd && <>USA/Canada : <span className="font-medium text-foreground">${form.priceUsd}</span></>}
-                </p>
-            )}
         </div>
     );
 };

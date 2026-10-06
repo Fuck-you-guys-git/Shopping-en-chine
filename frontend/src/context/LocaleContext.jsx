@@ -41,9 +41,12 @@ const LocaleContext = createContext(null);
    En production, la détection par IP reste la seule source. */
 const OVERRIDE_PRESETS = {
     XOF: { lang: "fr", currency: "XOF", country: "SN" },
-    EUR: { lang: "fr", currency: "EUR", country: "FR" },
-    USD: { lang: "en", currency: "USD", country: "US" },
+    EUR: { lang: "fr", currency: "XOF", country: "FR" },
+    USD: { lang: "en", currency: "XOF", country: "US" },
 };
+// Devise unique du site : tout le monde paie en F CFA (Wave / Orange Money),
+// la banque du client fait le change. Seule la LANGUE dépend de la géoloc.
+const SITE_CURRENCY = "XOF";
 const OVERRIDE_KEY = "sec_locale_override";
 const isPreview = () => typeof window !== "undefined" && window.location.hostname.includes("preview");
 
@@ -62,7 +65,7 @@ const readOverride = () => {
 
 export const LocaleProvider = ({ children }) => {
     const override = readOverride();
-    const [locale, setLocaleState] = useState(() => override || readStored() || FALLBACK);
+    const [locale, setLocaleState] = useState(() => ({ ...(override || readStored() || FALLBACK), currency: SITE_CURRENCY }));
     // Synchroniser l'état module AVANT le premier rendu des enfants
     setLocaleValues(locale.lang, locale.currency, locale.country);
 
@@ -73,7 +76,7 @@ export const LocaleProvider = ({ children }) => {
 
         const apply = (data) => {
             if (cancelled || !data?.lang || !data?.currency) return;
-            const next = { lang: data.lang, currency: data.currency, country: data.country_code || null };
+            const next = { lang: data.lang, currency: SITE_CURRENCY, country: data.country_code || null };
             setLocaleValues(next.lang, next.currency, next.country);
             setLocaleState(next);
             try {

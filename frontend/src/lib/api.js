@@ -36,29 +36,10 @@ api.interceptors.response.use((response) => {
     return Promise.reject(err);
 });
 
-// --------- Paxity ---------
+// --------- Paxity v2 (Wave / Orange Money, F CFA) ---------
 export const paxityAPI = {
-    v2Config: () => api.get("/paxity/v2/config").then((r) => r.data),
     getConfig: () => api.get("/paxity/config").then((r) => r.data),
-    getDiagnostic: () => api.get("/paxity/diagnostic").then((r) => r.data),
-    // Routage automatique v2 / v1 : la v2 n'encaisse que l'Afrique en devise
-    // locale (XOF/XAF/…). Pour EUR/USD le backend répond 409 et on rebascule
-    // sur la v1, de façon totalement transparente pour le client.
-    createPayin: async (payload) => {
-        try {
-            const cfg = await api.get("/paxity/v2/config").then((r) => r.data);
-            if (cfg?.enabled) {
-                return await api.post("/paxity/v2/payin", payload).then((r) => r.data);
-            }
-        } catch (err) {
-            const code = err.response?.status;
-            // 409 = hors périmètre v2, 503 = v2 éteinte -> on passe en v1.
-            if (code && code !== 409 && code !== 503) throw err;
-        }
-        return api.post("/paxity/payin", payload).then((r) => r.data);
-    },
-    cardInit: (payload) => api.post("/paxity/card/init", payload).then((r) => r.data),
-    cardAttach: (payload) => api.post("/paxity/card/attach", payload).then((r) => r.data),
+    createPayin: (payload) => api.post("/paxity/payin", payload).then((r) => r.data),
     getStatus: (transactionId) => api.get(`/paxity/status/${transactionId}`).then((r) => r.data),
     getOrder: (orderId) => api.get(`/paxity/orders/${orderId}`).then((r) => r.data),
     // Rattrapage des paiements restés « en attente » (auth vendeur)
@@ -88,18 +69,12 @@ export const productsAPI = {
     remove: (id) => api.delete(`/products/${id}`).then((r) => r.data),
 };
 
-// --------- Stripe (paiement carte) ---------
-export const stripeAPI = {
-    checkout: (payload) => api.post("/payments/stripe/checkout", payload).then((r) => r.data),
-    status: (sessionId) => api.get(`/payments/stripe/status/${sessionId}`).then((r) => r.data),
-};
-
 // --------- Commandes vendeur (réelles) ---------
 export const ordersAPI = {
     list: () => api.get("/orders").then((r) => r.data.orders),
     bulkTracking: (orderIds, step) =>
         api.put("/orders/bulk-tracking", { order_ids: orderIds, step }).then((r) => r.data),
-    // Export CSV (commandes payées via Paxity uniquement, Stripe exclu)
+    // Export CSV des commandes payées
     exportCsv: () => api.get("/orders/export.csv", { responseType: "blob" }),
     // Confirmations de commande jamais envoyées
     missingConfirmations: () => api.get("/orders/missing-confirmations").then((r) => r.data),

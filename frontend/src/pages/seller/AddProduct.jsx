@@ -168,12 +168,6 @@ export default function AddProduct() {
             toast.error("Champs requis manquants", { description: "Nom, catégorie et prix sont obligatoires." });
             return;
         }
-        if (!(Number(form.priceEur) > 0) || !(Number(form.priceUsd) > 0)) {
-            toast.error("Prix EUR et USD obligatoires", {
-                description: "Saisissez le prix en euros et en dollars — aucune conversion automatique n'est appliquée.",
-            });
-            return;
-        }
         const product = {
             name: form.name,
             category: form.category,

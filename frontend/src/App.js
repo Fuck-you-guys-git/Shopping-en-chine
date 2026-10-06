@@ -15,8 +15,6 @@ import ProductDetail from "@/pages/ProductDetail";
 import Cart from "@/pages/Cart";
 import Checkout from "@/pages/Checkout";
 import TrackOrder from "@/pages/TrackOrder";
-import PaymentSuccess from "@/pages/PaymentSuccess";
-import PaymentCancel from "@/pages/PaymentCancel";
 import RetryOrder from "@/pages/RetryOrder";
 import Wholesale from "@/pages/Wholesale";
 import { WhatsAppButton } from "@/components/WhatsAppButton";
@@ -44,7 +42,7 @@ function PaymentReturnRedirect() {
     const navigate = useNavigate();
     useEffect(() => {
         const path = window.location.pathname;
-        if (path === "/commande" || path.startsWith("/vendeur") || path.startsWith("/admin") || path.startsWith("/paiement")) return;
+        if (path === "/commande" || path.startsWith("/vendeur") || path.startsWith("/admin")) return;
         try {
             const raw = localStorage.getItem("sec_pending_paxity_tx_v1");
             if (!raw) return;
@@ -103,8 +101,6 @@ function App() {
                                 <Route path="/commande" element={<Checkout />} />
                                 <Route path="/suivi" element={<TrackOrder />} />
                                 <Route path="/suivi/:orderId" element={<TrackOrder />} />
-                                <Route path="/payment/success" element={<PaymentSuccess />} />
-                                <Route path="/payment/cancel" element={<PaymentCancel />} />
                                 <Route path="/reprise/:orderId" element={<RetryOrder />} />
                                 <Route path="/achat-en-gros" element={<Wholesale />} />
 

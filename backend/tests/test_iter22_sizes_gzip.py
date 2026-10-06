@@ -1,5 +1,5 @@
 """Iteration 22 backend tests — sizes on products/orders, GZip, GET /{id}.
-Scénario Stripe découpé en petits tests via fixture module (session + commande)."""
+"""
 import os
 from typing import Generator
 
@@ -7,7 +7,6 @@ import pytest
 import requests
 from dotenv import dotenv_values
 
-from conftest import skip_if_stripe_unavailable
 
 frontend_env = dotenv_values("/app/frontend/.env")
 base_url = os.environ.get("REACT_APP_BACKEND_URL") or frontend_env.get("REACT_APP_BACKEND_URL")
@@ -107,47 +106,3 @@ class TestProductSizesRoundTrip:
         assert r.status_code == 404
 
 
-# --- Stripe checkout : items[].name doit contenir ' — Taille X' -----------
-@pytest.fixture(scope="module")
-def stripe_size_checkout(seller_token: str, created_product_ids: list) -> dict:
-    """Crée un produit avec tailles + une session de checkout Stripe (taille M).
-    Skippe tout le scénario si le compte Stripe est indisponible."""
-    skip_if_stripe_unavailable()
-    h = {"Authorization": f"Bearer {seller_token}"}
-    r = requests.post(f"{BASE_URL}/api/products", json={
-        "name": "TEST_QA stripe size",
-        "category": "mode",
-        "price": 5000,
-        "image": "https://example.com/x.png",
-        "sizes": ["M", "L"],
-    }, headers=h)
-    assert r.status_code == 201
-    pid = r.json()["id"]
-    created_product_ids.append(pid)
-
-    r = requests.post(f"{BASE_URL}/api/payments/stripe/checkout", json={
-        "origin_url": BASE_URL,
-        "customer": {"name": "TEST_QA", "email": "qa@test.com", "city": "Dakar"},
-        "items": [{"product_id": pid, "qty": 1, "size": "M"}],
-    })
-    assert r.status_code == 200, f"Checkout failed: {r.status_code} {r.text[:300]}"
-    return r.json()
-
-
-class TestStripeCheckoutWithSize:
-    def test_checkout_returns_session_and_order(self, stripe_size_checkout: dict) -> None:
-        # Checkout Stripe embarqué (ui_mode="embedded") : client_secret présent,
-        # checkout_url peut être None (pas de redirection externe).
-        assert stripe_size_checkout.get("client_secret") or stripe_size_checkout.get("checkout_url")
-        assert stripe_size_checkout.get("order_id")
-
-    def test_order_item_name_contains_size(self, stripe_size_checkout: dict, seller_token: str) -> None:
-        order_id = stripe_size_checkout["order_id"]
-        oh = {"Authorization": f"Bearer {seller_token}"}
-        ords = requests.get(f"{BASE_URL}/api/orders", headers=oh)
-        assert ords.status_code == 200, f"orders fetch failed: {ords.status_code}"
-        arr = ords.json() if isinstance(ords.json(), list) else ords.json().get("orders", [])
-        found = next((o for o in arr if o.get("id") == order_id), None)
-        assert found is not None, f"Order {order_id} not found in /api/orders"
-        item_names = [it.get("name", "") for it in found.get("items", [])]
-        assert any(" — Taille M" in n for n in item_names), f"No ' — Taille M' in items: {item_names}"

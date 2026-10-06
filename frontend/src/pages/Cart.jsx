@@ -107,11 +107,9 @@ export default function Cart() {
                         <Button asChild size="lg" className="w-full bg-ink text-ink-foreground hover:bg-ink/90 rounded-full h-12">
                             <Link data-testid="cart-checkout-btn" to="/commande">{t("Passer commande")}</Link>
                         </Button>
-                        <div className="flex items-center justify-center gap-4 text-muted-foreground opacity-70">
-                            <i className="fa-brands fa-cc-visa text-2xl" />
-                            <i className="fa-brands fa-cc-mastercard text-2xl" />
-                            <i className="fa-brands fa-cc-paypal text-2xl" />
-                            <i className="fa-brands fa-cc-apple-pay text-2xl" />
+                        <div className="flex items-center justify-center gap-3 text-xs font-semibold">
+                            <span className="rounded-full bg-[#1DC7FA]/15 px-3 py-1 text-[#1DC7FA]">Wave</span>
+                            <span className="rounded-full bg-[#FF7900]/15 px-3 py-1 text-[#FF7900]">Orange Money</span>
                         </div>
                     </div>
                 </aside>

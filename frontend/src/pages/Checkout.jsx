@@ -1,15 +1,13 @@
 import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { Check, ArrowLeft, XCircle, AlertTriangle, ShieldCheck } from "lucide-react";
+import { Check, ArrowLeft, XCircle, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useCart } from "@/context/CartContext";
 import { toast } from "sonner";
 import { paxityAPI } from "@/lib/api";
-import { loadPaxityCardWidget, setCardRedirectUrl, closePaymentOverlays, onCardPayinResponse, onThreeDSReturn } from "@/lib/paxityWidget";
-import { paxityDirectPayin, paxityDirectAvailable } from "@/lib/paxityDirect";
 import { DeliveryOptions } from "@/components/DeliveryOptions";
 import { orderNo } from "@/lib/utils";
-import { t, getLocale, cartDisplayTotal, unitAmount, formatPaid } from "@/lib/locale";
+import { t, getLocale } from "@/lib/locale";
 import { findCountry, countryName, STATES } from "@/lib/countries";
 import { colorName } from "@/lib/colors";
 import { OPERATOR_META } from "@/components/checkout/operatorMeta";
@@ -17,7 +15,6 @@ import { CheckoutSuccess } from "@/components/checkout/CheckoutSuccess";
 import { CheckoutPending } from "@/components/checkout/CheckoutPending";
 import { AddressStep } from "@/components/checkout/AddressStep";
 import { PaymentMethodPicker } from "@/components/checkout/PaymentMethodPicker";
-import { PaxityCardPanel } from "@/components/checkout/PaxityCardPanel";
 import { PaxityPhoneForm } from "@/components/checkout/PaxityPhoneForm";
 import { CheckoutSummary } from "@/components/checkout/CheckoutSummary";
 
@@ -25,8 +22,6 @@ import { CheckoutSummary } from "@/components/checkout/CheckoutSummary";
 // l'app Wave/Orange Money et que le navigateur recharge la page au retour,
 // on restaure l'attente et on affiche la confirmation dès que c'est payé.
 const PENDING_TX_KEY = "sec_pending_paxity_tx_v1";
-// Paiement par carte : via le WIDGET PAXITY (Visa/Mastercard).
-const CARD_PAYMENT_ENABLED = true;
 
 // Libellé complet d'un article pour la commande : nom + taille + couleur
 // choisies par le client (visibles partout : dashboard vendeur, tickets, emails).
@@ -65,20 +60,6 @@ export default function Checkout() {
     const [deliveryMode, setDeliveryMode] = useState("standard");
     const shipping = 0;
     const total = subtotal + shipping;
-    // Paiement CARTE : débit dans la devise d'affichage UNIQUEMENT si tous les
-    // articles ont un prix vendeur saisi dans cette devise (AUCUNE conversion).
-    // Sinon : montant F CFA tel quel — Paxity/la banque du client fait le change.
-    const localizedCartTotal = getLocale().currency === "XOF" ? null : cartDisplayTotal(items);
-    const cardChargeCurrency = localizedCartTotal != null ? getLocale().currency : "XOF";
-    const cardChargeAmount = localizedCartTotal != null
-        ? Math.round(localizedCartTotal * 100) / 100
-        : total;
-    // Wave / Orange Money / MTN n'encaissent QUE le F CFA (vérifié API Paxity
-    // v1 et v2) : hors zone XOF ils restent proposés mais débitent le prix
-    // vendeur F CFA — un bandeau l'annonce clairement au client (€/$ ↔ F CFA).
-    const mobileMoneyXofNotice = localizedCartTotal != null
-        ? formatPaid(cardChargeAmount, cardChargeCurrency)
-        : null;
 
     const [buyer, setBuyer] = useState(() => {
         // Pays pré-sélectionné depuis la géolocalisation IP (si connu)
@@ -102,7 +83,6 @@ export default function Checkout() {
         const c = findCountry(code);
         if (c) setPrefix(c.dial); // indicatif appliqué automatiquement
     };
-    const [otp, setOtp] = useState("");
 
     const [processing, setProcessing] = useState(false);
     const [transaction, setTransaction] = useState(null); // { transaction_id, status, order_id, ... }
@@ -177,12 +157,7 @@ export default function Checkout() {
                 setPaxityConfig(cfg);
                 // Pre-select first available method (sans écraser
                 // l'indicatif déduit du pays choisi par le client).
-                // Hors zone F CFA, seule la carte est disponible.
-                if (getLocale().currency !== "XOF") {
-                    setPaymentMethod("CARD");
-                } else if (cfg.methods && cfg.methods.length > 0) {
-                    setPaymentMethod(cfg.methods[0].code);
-                }
+                if (cfg.methods && cfg.methods.length > 0) setPaymentMethod(cfg.methods[0].code);
             })
             .catch(() => setPaxityError("Impossible de contacter le service de paiement."));
     }, []);
@@ -205,9 +180,6 @@ export default function Checkout() {
             console.debug("[Paxity] fermeture onglet paiement impossible", e?.message);
         }
         payWinRef.current = null;
-        // Carte : ferme aussi la vérification bancaire 3DS et la modale du
-        // widget pour révéler notre page de confirmation.
-        closePaymentOverlays();
     };
     const openPayWindow = (url) => {
         if (isMobileDevice) {
@@ -306,102 +278,8 @@ export default function Checkout() {
         (!STATES[buyer.country] || buyer.state);
 
     const selectedMethod = paxityConfig?.methods?.find((m) => m.code === paymentMethod);
-    const operatorIconMeta = selectedMethod ? (OPERATOR_META[selectedMethod.icon] || OPERATOR_META.card) : OPERATOR_META.card;
+    const operatorIconMeta = (selectedMethod && OPERATOR_META[selectedMethod.icon]) || OPERATOR_META.wave;
 
-    // Paiement CARTE via le widget Paxity : le backend crée la commande,
-    // puis le widget s'ouvre par-dessus la page. La confirmation arrive par
-    // IPN → le polling existant (écran d'attente) affiche la confirmation.
-    const handleCardPayment = async () => {
-        sessionStorage.removeItem(COMPLETE_TX_KEY); // nouvelle commande : oublier l'ancienne confirmation
-        setProcessing(true);
-        setPaxityError(null);
-        try {
-            await loadPaxityCardWidget();
-            // Retour après 3-D Secure : la banque/Paxity redirige vers notre
-            // page commande (la confirmation y est restaurée automatiquement).
-            setCardRedirectUrl(`${window.location.origin}/commande`);
-            // Clients Europe / USA-Canada : paiement carte DIRECTEMENT dans
-            // leur devise (€/$) si les prix vendeur existent — AUCUNE conversion.
-            // (cardChargeAmount = même montant que celui affiché sur le bouton)
-            const payCurrency = cardChargeCurrency;
-            const chargedAmount = cardChargeAmount;
-            const res = await paxityAPI.cardInit({
-                amount: chargedAmount,
-                currency: payCurrency,
-                base_amount_xof: total,
-                delivery_mode: deliveryMode,
-                description: `Commande Shopping en Chine — ${items.length} article(s)`,
-                customer: {
-                    name: `${buyer.firstName} ${buyer.lastName}`.trim(),
-                    email: buyer.email,
-                    city: buyer.city,
-                    phone: buyer.phone ? `+${prefix} ${buyer.phone}` : undefined,
-                    address: [buyer.address, buyer.zip, buyer.state, selectedCountry ? countryName(selectedCountry) : null].filter(Boolean).join(", ") || undefined,
-                },
-                items: items.map((it) => {
-                    const localUnit = payCurrency === "XOF" ? null : unitAmount(it);
-                    return {
-                        product_id: it.id,
-                        name: itemLabel(it),
-                        price: it.price,
-                        qty: it.qty,
-                        color: it.color || undefined,
-                        size: it.size || undefined,
-                        // Prix unitaire saisi par le vendeur dans la devise payée (EUR/USD)
-                        price_paid: localUnit != null ? Math.round(localUnit * 100) / 100 : undefined,
-                    };
-                }),
-            });
-            // Écran d'attente + polling (mêmes mécanismes que le mobile money)
-            setTransaction({
-                transaction_id: res.transaction_id,
-                order_id: res.order_id,
-                status: "pending",
-                operator_label: t("Carte bancaire"),
-                amount: chargedAmount,
-                currency: payCurrency,
-            });
-            // Dès que le widget reçoit la réponse Paxity, on attache l'id de
-            // transaction au backend : le polling interroge alors Paxity EN
-            // DIRECT (confirmation ~2 s après le 3DS, sans attendre l'IPN).
-            onCardPayinResponse((data) => {
-                const root = data?.data && typeof data.data === "object" ? data.data : data;
-                const pid = root?.transactionId || root?.id || root?.txId;
-                if (pid) {
-                    paxityAPI.cardAttach({ order_id: res.order_id, paxity_transaction_id: String(pid) })
-                        .catch((e) => console.debug("[PaxityCard] attach impossible", e?.message));
-                }
-            });
-            // Retour 3DS vers notre domaine : l'overlay est déjà fermé par le
-            // widget-lib ; on force une vérification de statut immédiate.
-            onThreeDSReturn(() => {
-                window.dispatchEvent(new Event("focus"));
-            });
-            window.PaxityWidget.open({
-                amount: res.amount,
-                currency: res.currency,
-                country: res.country,
-                ipn: res.ipn,
-                idClient: res.order_id,
-                // NB : le code du widget exige credentials.apiKey (K majuscule)
-                // et isOpen au niveau racine — la doc publique est inexacte.
-                isOpen: true,
-                setIsOpen: () => {},
-                credentials: {
-                    apiKey: res.credentials.apikey,
-                    apikey: res.credentials.apikey,
-                    apiToken: res.credentials.apiToken,
-                },
-            });
-        } catch (err) {
-            console.error("[PaxityCard] init error", err);
-            toast.error(t("Paiement carte indisponible"), {
-                description: err.response?.data?.detail || t("Réessayez ou utilisez Mobile Money."),
-            });
-        } finally {
-            setProcessing(false);
-        }
-    };
 
     const handlePayment = async (e) => {
         e.preventDefault();
@@ -412,28 +290,12 @@ export default function Checkout() {
         const expectedLengths = {
             "221": [9],       // Sénégal
             "225": [10],      // Côte d'Ivoire
-            "226": [8],       // Burkina Faso
-            "227": [8],       // Niger
-            "228": [8],       // Togo
-            "229": [8, 10],   // Bénin
-            "233": [9],       // Ghana
-            "237": [9],       // Cameroun
-            "241": [9],       // Gabon
         };
         const validLengths = expectedLengths[prefix] || [8, 9, 10];
         if (!validLengths.includes(cleanPhone.length)) {
             const expected = validLengths.join(" ou ");
             toast.error(t("Numéro de téléphone invalide"), {
                 description: `${t("Pour l'indicatif")} +${prefix}, ${t("le numéro doit contenir")} ${expected} ${t("chiffres")}. ${t("Vous avez saisi")} ${cleanPhone.length} ${t("chiffres")}.`,
-            });
-            return;
-        }
-
-        // Phase 3: block submission when the selected method requires an OTP
-        // but the user hasn't filled it in.
-        if (selectedMethod?.requires_otp && !otp.trim()) {
-            toast.error(t("Code OTP requis"), {
-                description: `${selectedMethod.label} ${t("exige un code OTP avant de valider le paiement.")}`,
             });
             return;
         }
@@ -445,7 +307,6 @@ export default function Checkout() {
                 phone_number: buyer.phone.replace(/\s+/g, ""),
                 prefix_phone: prefix,
                 payment_method: paymentMethod,
-                otp_code: otp || undefined,
                 description: `Commande Shopping en Chine · ${items.length} article(s)`,
                 delivery_mode: deliveryMode,
                 customer: {
@@ -465,55 +326,17 @@ export default function Checkout() {
                 })),
             };
 
-            let res;
-            let usedFallback = false;
-            try {
-                res = await paxityAPI.createPayin(payload);
-            } catch (backendErr) {
-                // Detect DNS/network failures that mean the backend can't reach Paxity
-                const rawDetail = backendErr.response?.data?.detail || "";
-                const looksBlocked =
-                    (typeof rawDetail === "string" && (
-                        rawDetail.includes("DNS") ||
-                        rawDetail.includes("Name or service not known") ||
-                        rawDetail.includes("Erreur réseau") ||
-                        rawDetail.includes("Aucune réponse")
-                    )) ||
-                    backendErr.response?.status === 424 ||
-                    backendErr.response?.status === 502 ||
-                    backendErr.response?.status === 503 ||
-                    backendErr.response?.status === 504;
-
-                if (looksBlocked && paxityDirectAvailable()) {
-                    // Fallback: call Paxity directly from the browser
-                    toast("Bascule vers Paxity direct…", {
-                        description: "Le backend est bloqué, appel depuis le navigateur.",
-                    });
-                    res = await paxityDirectPayin({
-                        amount: total,
-                        phone_number: payload.phone_number,
-                        prefix_phone: payload.prefix_phone,
-                        payment_method: payload.payment_method,
-                        otp_code: payload.otp_code,
-                        description: payload.description,
-                        order_id: `ord_${Date.now()}`,
-                        currency: paxityConfig?.currency,
-                    });
-                    usedFallback = true;
-                } else {
-                    throw backendErr;
-                }
-            }
+            const res = await paxityAPI.createPayin(payload);
 
             setTransaction({ ...res, operator_label: operatorIconMeta.label });
             if (res.status === "success") {
                 setComplete(true);
                 clear();
-                toast.success("Paiement confirmé ✦", usedFallback ? { description: "Via Paxity direct" } : {});
+                toast.success(t("Paiement confirmé ✦"));
             } else if (res.status === "pending") {
-                toast("Paiement en cours…", { description: "Validez la transaction sur votre téléphone." });
+                toast(t("Paiement en cours…"), { description: t("Validez la transaction sur votre téléphone.") });
             } else {
-                toast.error("Paiement refusé", { description: res.message || "Réessayez ou changez de moyen." });
+                toast.error(t("Paiement refusé"), { description: res.message || t("Réessayez ou changez de moyen.") });
             }
         } catch (err) {
             // Show a customer-friendly French message. Technical details
@@ -644,16 +467,6 @@ export default function Checkout() {
                                 </div>
                             )}
 
-                            {paxityDirectAvailable() && (
-                                <div className="flex gap-3 p-3 rounded-xl bg-primary/5 border border-primary/20 text-xs">
-                                    <ShieldCheck className="h-4 w-4 shrink-0 text-primary mt-0.5" />
-                                    <div className="text-muted-foreground">
-                                        <span className="font-medium text-foreground">Paiement résilient activé.</span>{" "}
-                                        Si le serveur ne peut pas joindre Paxity, la transaction bascule automatiquement sur un appel direct depuis votre navigateur.
-                                    </div>
-                                </div>
-                            )}
-
                             {paxityError && (
                                 <div data-testid="paxity-error-banner" className="flex gap-3 p-4 rounded-xl bg-destructive/10 border border-destructive/20 text-destructive text-sm">
                                     <XCircle className="h-5 w-5 shrink-0 mt-0.5" />
@@ -668,18 +481,7 @@ export default function Checkout() {
                                     setPaymentMethod(m.code);
                                     if (m.prefix !== "*") setPrefix(m.prefix);
                                 }}
-                                onSelectCard={CARD_PAYMENT_ENABLED ? () => setPaymentMethod("CARD") : undefined}
                             />
-
-                            {CARD_PAYMENT_ENABLED && paymentMethod === "CARD" && (
-                                <PaxityCardPanel
-                                    total={cardChargeAmount}
-                                    currency={cardChargeCurrency}
-                                    processing={processing}
-                                    onBack={goBackStep}
-                                    onPay={handleCardPayment}
-                                />
-                            )}
 
                             {selectedMethod && (
                                 <PaxityPhoneForm
@@ -687,12 +489,9 @@ export default function Checkout() {
                                     setBuyer={setBuyer}
                                     prefix={prefix}
                                     setPrefix={setPrefix}
-                                    otp={otp}
-                                    setOtp={setOtp}
                                     processing={processing}
                                     disabled={!paxityConfig?.configured}
                                     total={total}
-                                    localizedTotalLabel={mobileMoneyXofNotice}
                                     onSubmit={handlePayment}
                                     onBack={goBackStep}
                                 />

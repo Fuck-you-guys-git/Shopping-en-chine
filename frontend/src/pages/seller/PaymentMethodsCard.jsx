@@ -105,8 +105,7 @@ export const PaymentMethodsCard = () => {
                 </div>
             </div>
             <p className="px-5 md:px-6 -mt-2 pb-4 text-[11px] text-muted-foreground">
-                Le fichier (Excel/CSV) liste toutes les commandes payées avec les totaux carte
-                bancaire et Mobile Money. Les paiements Stripe ne sont pas inclus.
+                Le fichier (Excel/CSV) liste toutes les commandes payées (Wave, Orange Money) avec leurs totaux.
             </p>
 
             {dist.length === 0 ? (

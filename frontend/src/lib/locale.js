@@ -10,6 +10,7 @@ export const LOCALE_PRESETS = [
     { id: "sn", flag: "🇸🇳", lang: "fr", currency: "XOF", label: "Afrique · FCFA", short: "FR · F CFA" },
     { id: "eu", flag: "🇪🇺", lang: "fr", currency: "EUR", label: "Europe · EUR", short: "FR · €" },
     { id: "us", flag: "🇺🇸", lang: "en", currency: "USD", label: "USA · USD", short: "EN · $" },
+    { id: "en-xof", flag: "🌍", lang: "en", currency: "XOF", label: "English · FCFA", short: "EN · F CFA" },
 ];
 
 // État module (mis à jour par LocaleContext AVANT chaque re-render)
@@ -396,7 +397,6 @@ const EN = {
     "Carte bancaire": "Card",
     "Paiement par carte sécurisé (Visa, Mastercard)": "Secure card payment (Visa, Mastercard)",
     "Payez directement sur le site, sans redirection.": "Pay directly on the site, no redirect.",
-    "Paiement sécurisé via Stripe · Chiffrement bout-en-bout": "Secure payment via Stripe · End-to-end encryption",
     "Paiement sécurisé via Paxity · Chiffrement bout-en-bout": "Secure payment via Paxity · End-to-end encryption",
     "Payer par carte": "Pay by card",
     "Chargement…": "Loading…",
@@ -408,11 +408,10 @@ const EN = {
     "Après validation, vous recevrez un lien de paiement à confirmer. Si votre opérateur vous a déjà fourni un code, saisissez-le ici.":
         "After validation you will receive a payment link to confirm. If your operator already gave you a code, enter it here.",
     "Payer": "Pay",
-    "Wave et Orange Money encaissent uniquement en F CFA.": "Wave and Orange Money only accept F CFA.",
-    "Vous paierez": "You will pay",
-    "(total affiché :": "(displayed total:",
-    "Pour payer en": "To pay in",
-    "choisissez la carte bancaire.": "choose the bank card.",
+    "Après validation, vous recevrez une demande de paiement à confirmer dans votre application.": "After validation, you will receive a payment request to confirm in your app.",
+    "Paiement refusé": "Payment declined",
+    "Réessayez ou changez de moyen.": "Try again or choose another method.",
+    "Validez la transaction sur votre téléphone.": "Approve the transaction on your phone.",
     "Traitement…": "Processing…",
     "attendu :": "expected:",
     "saisi :": "entered:",
@@ -502,8 +501,8 @@ const EN = {
     "Suivi de colis en temps réel, de la commande jusqu'à votre porte : Commandé → Expédié → Douane → Livré.":
         "Real-time package tracking, from order to your door: Ordered → Shipped → Customs → Delivered.",
     "Paiement 100 % sécurisé": "100% secure payment",
-    "Wave, Orange Money, MTN ou carte bancaire. Votre argent est protégé, vous êtes notifié à chaque étape.":
-        "Wave, Orange Money, MTN or card. Your money is protected and you are notified at every step.",
+    "Wave ou Orange Money. Votre argent est protégé, vous êtes notifié à chaque étape.":
+        "Wave or Orange Money. Your money is protected and you are notified at every step.",
     "Une équipe basée à Dakar, disponible en français, qui répond à toutes vos questions avant et après l'achat.":
         "A dedicated team, available 7 days a week, answering all your questions before and after purchase.",
     // --- Avis clients vérifiés ---
@@ -539,7 +538,7 @@ const EN = {
     "Nos engagements": "Our commitments",
     "Livraison internationale": "Worldwide delivery",
     "Chine → monde, 10–20 jours": "China → worldwide, 10–20 days",
-    "Mobile Money & carte bancaire": "Mobile Money & bank card",
+    "Wave & Orange Money": "Wave & Orange Money",
     "Assistance client": "Customer support",
     "7 jours / 7, en français": "7 days a week",
     "Depuis votre n° de commande": "With your order number",
@@ -568,7 +567,7 @@ const EN = {
     // Footer
     "Mode, électronique, maison, beauté et bien plus encore — commandés en Chine et livrés directement chez vous en 10 à 20 jours.":
         "Fashion, electronics, home, beauty and much more — ordered in China and delivered to your door in 10 to 20 days.",
-    "Paiement sécurisé (Mobile Money & carte bancaire)": "Secure payment (Mobile Money & bank card)",
+    "Paiement sécurisé (Wave & Orange Money)": "Secure payment (Wave & Orange Money)",
     "Suivi de commande disponible": "Order tracking available",
     "Assistance client 7 jours / 7": "Customer support 7 days a week",
     "Se connecter": "Sign in",

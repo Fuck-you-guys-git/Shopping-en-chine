@@ -3,7 +3,7 @@ import { t } from "@/lib/locale";
 
 const items = [
     { icon: Truck, title: "Livraison internationale", desc: "Chine → monde, 10–20 jours" },
-    { icon: ShieldCheck, title: "Paiement sécurisé", desc: "Mobile Money & carte bancaire" },
+    { icon: ShieldCheck, title: "Paiement sécurisé", desc: "Wave & Orange Money" },
     { icon: Headset, title: "Assistance client", desc: "7 jours / 7, en français" },
     { icon: PackageSearch, title: "Suivi de commande", desc: "Depuis votre n° de commande" },
 ];
