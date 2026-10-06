@@ -509,8 +509,8 @@ const EN = {
     "Suivi de colis en temps réel, de la commande jusqu'à votre porte : Commandé → Expédié → Douane → Livré.":
         "Real-time package tracking, from order to your door: Ordered → Shipped → Customs → Delivered.",
     "Paiement 100 % sécurisé": "100% secure payment",
-    "Wave ou Orange Money. Votre argent est protégé, vous êtes notifié à chaque étape.":
-        "Wave or Orange Money. Your money is protected and you are notified at every step.",
+    "Wave, Orange Money, MTN ou carte bancaire. Votre argent est protégé, vous êtes notifié à chaque étape.":
+        "Wave, Orange Money, MTN or card. Your money is protected and you are notified at every step.",
     "Une équipe basée à Dakar, disponible en français, qui répond à toutes vos questions avant et après l'achat.":
         "A dedicated team, available 7 days a week, answering all your questions before and after purchase.",
     // --- Avis clients vérifiés ---
@@ -546,7 +546,7 @@ const EN = {
     "Nos engagements": "Our commitments",
     "Livraison internationale": "Worldwide delivery",
     "Chine → monde, 10–20 jours": "China → worldwide, 10–20 days",
-    "Wave & Orange Money": "Wave & Orange Money",
+    "Mobile Money & carte bancaire": "Mobile Money & bank card",
     "Assistance client": "Customer support",
     "7 jours / 7, en français": "7 days a week",
     "Depuis votre n° de commande": "With your order number",
@@ -575,7 +575,7 @@ const EN = {
     // Footer
     "Mode, électronique, maison, beauté et bien plus encore — commandés en Chine et livrés directement chez vous en 10 à 20 jours.":
         "Fashion, electronics, home, beauty and much more — ordered in China and delivered to your door in 10 to 20 days.",
-    "Paiement sécurisé (Wave & Orange Money)": "Secure payment (Wave & Orange Money)",
+    "Paiement sécurisé (Mobile Money & carte bancaire)": "Secure payment (Mobile Money & bank card)",
     "Suivi de commande disponible": "Order tracking available",
     "Assistance client 7 jours / 7": "Customer support 7 days a week",
     "Se connecter": "Sign in",

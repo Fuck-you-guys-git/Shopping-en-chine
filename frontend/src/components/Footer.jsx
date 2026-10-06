@@ -42,7 +42,7 @@ export const Footer = () => {
                         <ul className="mt-6 space-y-2 text-sm text-ink-foreground/70">
                             <li className="flex items-center gap-2.5">
                                 <i className="fa-solid fa-lock w-4 text-center text-xs text-primary" aria-hidden="true" />
-                                {t("Paiement sécurisé (Wave & Orange Money)")}
+                                {t("Paiement sécurisé (Mobile Money & carte bancaire)")}
                             </li>
                             <li className="flex items-center gap-2.5">
                                 <i className="fa-solid fa-box w-4 text-center text-xs text-primary" aria-hidden="true" />
@@ -86,9 +86,9 @@ export const Footer = () => {
 
                 <div className="mt-14 flex flex-col items-center justify-between gap-4 border-t border-ink-foreground/10 pt-7 text-xs text-ink-foreground/50 sm:flex-row">
                     <p>© {new Date().getFullYear()} Shopping en Chine. {t("Tous droits réservés.")}</p>
-                    <div className="flex items-center gap-3 text-xs font-semibold" aria-label={t("Moyens de paiement acceptés")}>
-                        <span className="rounded-full bg-[#1DC7FA]/15 px-3 py-1 text-[#1DC7FA]">Wave</span>
-                        <span className="rounded-full bg-[#FF7900]/15 px-3 py-1 text-[#FF7900]">Orange Money</span>
+                    <div className="flex items-center gap-3 opacity-70" aria-label={t("Moyens de paiement acceptés")}>
+                        <i className="fa-brands fa-cc-visa text-2xl" aria-hidden="true" />
+                        <i className="fa-brands fa-cc-mastercard text-2xl" aria-hidden="true" />
                     </div>
                 </div>
             </div>

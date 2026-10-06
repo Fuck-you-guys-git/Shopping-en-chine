@@ -40,6 +40,8 @@ api.interceptors.response.use((response) => {
 export const paxityAPI = {
     getConfig: () => api.get("/paxity/config").then((r) => r.data),
     createPayin: (payload) => api.post("/paxity/payin", payload).then((r) => r.data),
+    cardInit: (payload) => api.post("/paxity/card/init", payload).then((r) => r.data),
+    cardConfirm: (payload) => api.post("/paxity/card/confirm", payload).then((r) => r.data),
     getStatus: (transactionId) => api.get(`/paxity/status/${transactionId}`).then((r) => r.data),
     getOrder: (orderId) => api.get(`/paxity/orders/${orderId}`).then((r) => r.data),
     // Rattrapage des paiements restés « en attente » (auth vendeur)

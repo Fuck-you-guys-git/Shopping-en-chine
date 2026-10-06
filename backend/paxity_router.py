@@ -32,9 +32,21 @@ V2_API_KEY = os.environ.get("PAXITY_V2_API_KEY", "").strip()
 PAXITY_IPN_URL = os.environ.get("PAXITY_IPN_URL", "").strip()
 V2_ENV = "live" if V2_API_KEY.startswith("pax_live_") else "test"
 PAXITY_CONFIGURED = bool(V2_API_KEY and V2_ORG_ID)
+
+# Carte bancaire : widget hébergé Paxity v2 (checkout-v2.paxity.io). Le numéro
+# de carte ne transite JAMAIS par notre serveur (PCI SAQ-A) : on crée la session
+# de paiement (token) côté serveur, le widget encaisse et gère le 3DS côté Paxity.
+WIDGET_BASE_URL = os.environ.get("PAXITY_WIDGET_BASE_URL", "https://checkout-v2.paxity.io").rstrip("/")
+WIDGET_SCRIPT = f"{WIDGET_BASE_URL}/widget/v1/paxity.js"
+CARD_CONFIGURED = PAXITY_CONFIGURED
+CARD_PROVIDER = "paxity-v2-card"
 CURRENCY = "XOF"
 DEFAULT_PREFIX = "221"
 PROVIDER = "paxity-v2"
+# Devise carte -> pays du corridor accepté par le widget v2
+CARD_COUNTRY_BY_CURRENCY = {"XOF": "SN", "EUR": "FR", "USD": "US"}
+# Devises à 0 décimale : amount_minor == montant entier (le F CFA n'a pas de centimes)
+ZERO_DECIMAL_CURRENCIES = {"XOF", "XAF"}
 
 # Codes historiques (db.orders.payment_method) -> méthode + pays attendus par la v2
 PAYMENT_METHODS = {
@@ -44,7 +56,7 @@ PAYMENT_METHODS = {
     "OMCI":   {"label": "Orange Money Côte d'Ivoire", "country": "CI", "prefix": "225", "icon": "orange-money", "method": "ORANGE_MONEY", "requires_otp": False},
 }
 
-_STATE_SUCCESS = {"success", "succeeded", "successful", "paid", "completed", "confirmed"}
+_STATE_SUCCESS = {"success", "succeeded", "successful", "paid", "completed", "confirmed", "approved", "accepted"}
 _STATE_FAILED = {
     "failed", "failure", "error", "canceled", "cancelled", "declined",
     "rejected", "expired", "timeout", "aborted",
@@ -96,6 +108,7 @@ class PaxityOrderItem(BaseModel):
     qty: int = 1
     color: Optional[str] = None
     size: Optional[str] = None
+    price_paid: Optional[float] = None  # prix vendeur dans la devise payée (carte EUR/USD)
 
 
 class PaxityPayinRequest(BaseModel):
@@ -107,6 +120,22 @@ class PaxityPayinRequest(BaseModel):
     delivery_mode: Optional[str] = "standard"
     customer: PaxityCustomer
     items: list[PaxityOrderItem] = []
+
+
+class PaxityCardInitRequest(BaseModel):
+    amount: float
+    currency: Optional[str] = None
+    base_amount_xof: Optional[float] = None
+    description: str = "Commande Shopping en Chine"
+    delivery_mode: Optional[str] = "standard"
+    customer: PaxityCustomer
+    items: list[PaxityOrderItem] = []
+
+
+class PaxityCardConfirm(BaseModel):
+    transaction_id: str
+    order_id: Optional[str] = None
+    outcome: str = "success"  # success | failed
 
 
 class PaxityTransaction(BaseModel):
@@ -167,6 +196,23 @@ async def fetch_transaction(txn_id: str) -> tuple[int, dict]:
         return r.status_code, {"raw": r.text[:500]}
 
 
+async def create_widget_session(currency: str, country: str, amount_minor: int) -> tuple[int, dict]:
+    """Crée une session de paiement carte v2 (token) via le proxy du widget
+    hébergé — server-to-server, sans contrainte CORS."""
+    url = f"{WIDGET_BASE_URL}/api/widget/token"
+    body = {"currency": currency, "country": country, "amount_minor": amount_minor, "org_id": V2_ORG_ID}
+    try:
+        async with httpx.AsyncClient(timeout=httpx.Timeout(30.0, connect=5.0)) as client:
+            r = await client.post(url, json=body, headers={"Content-Type": "application/json", "Accept": "application/json"})
+    except httpx.RequestError as e:
+        logger.error(f"[Paxity] Widget session transport error: {type(e).__name__}: {e}")
+        return 0, {"detail": str(e)}
+    try:
+        return r.status_code, r.json()
+    except Exception:
+        return r.status_code, {"raw": r.text[:500]}
+
+
 # --------------------------------------------------------------------------
 # Router
 # --------------------------------------------------------------------------
@@ -181,6 +227,7 @@ def _db(request: Request) -> AsyncIOMotorDatabase:
 async def get_config() -> dict:
     return {
         "configured": PAXITY_CONFIGURED,
+        "card_enabled": CARD_CONFIGURED,
         "environment": V2_ENV,
         "currency": CURRENCY,
         "default_prefix": DEFAULT_PREFIX,
@@ -188,20 +235,21 @@ async def get_config() -> dict:
     }
 
 
-async def _persist_order(db: AsyncIOMotorDatabase, order_id: str, payload: PaxityPayinRequest,
-                         tx: PaxityTransaction, is_test: bool) -> None:
+async def _persist_order(db: AsyncIOMotorDatabase, order_id: str, payload, tx: PaxityTransaction,
+                         is_test: bool, *, payment_method: str, currency: str = CURRENCY,
+                         provider: str = PROVIDER, amount_xof: Optional[float] = None) -> None:
     """La commande est enregistrée AVANT l'appel Paxity : source de vérité."""
     await db.orders.insert_one({
         "id": order_id,
         "is_test": is_test,
-        "provider": PROVIDER,
+        "provider": provider,
         "customer": payload.customer.model_dump(),
         "items": [it.model_dump() for it in payload.items],
         "amount": payload.amount,
-        "amount_xof": payload.amount,
-        "currency": CURRENCY,
+        "amount_xof": amount_xof if amount_xof is not None else payload.amount,
+        "currency": currency,
         "status": "pending",
-        "payment_method": payload.payment_method,
+        "payment_method": payment_method,
         "delivery_mode": payload.delivery_mode or "standard",
         "transaction_id": tx.id,
         "created_at": tx.created_at.isoformat(),
@@ -261,7 +309,7 @@ async def create_payin(payload: PaxityPayinRequest, request: Request) -> dict:
         customer_email=payload.customer.email,
         description=payload.description or f"Commande {order_id}",
     )
-    await _persist_order(db, order_id, payload, tx, _is_test_env(request))
+    await _persist_order(db, order_id, payload, tx, _is_test_env(request), payment_method=tx.payment_method)
 
     body = {
         "amount_minor": int(round(payload.amount)),
@@ -323,12 +371,18 @@ async def create_payin(payload: PaxityPayinRequest, request: Request) -> dict:
 async def _refresh_pending_tx(db: AsyncIOMotorDatabase, tx: dict) -> str:
     """Interroge Paxity v2 pour une transaction pending ; met à jour commande,
     stock et emails si elle est confirmée. Mutate `tx`, renvoie le statut."""
-    if tx.get("status") != "pending" or not tx.get("paxity_transaction_id") or not PAXITY_CONFIGURED:
+    if tx.get("status") != "pending" or not tx.get("paxity_transaction_id"):
         return tx.get("status", "pending")
+    # Carte : confirmée par le callback du widget v2 (/card/confirm), jamais pollée
+    # (la session carte n'expose pas de statut interrogeable avec notre clé).
+    if tx.get("provider") == CARD_PROVIDER:
+        return "pending"
+    if not PAXITY_CONFIGURED:
+        return "pending"
     try:
         code, data = await fetch_transaction(tx["paxity_transaction_id"])
     except Exception:
-        logger.warning("[Paxity] Statut v2 indisponible", exc_info=True)
+        logger.warning("[Paxity] Statut indisponible", exc_info=True)
         return "pending"
     if code != 200:
         return "pending"
@@ -387,7 +441,7 @@ RECONCILE_BATCH = 200
 async def reconcile_pending_transactions(db: AsyncIOMotorDatabase, *,
                                          max_age_hours: int = RECONCILE_MAX_AGE_HOURS) -> dict:
     """Rattrapage durable (survit aux redéploiements) des paiements « pending »."""
-    if not PAXITY_CONFIGURED:
+    if not (PAXITY_CONFIGURED or CARD_CONFIGURED):
         return {"checked": 0, "confirmed": 0, "failed": 0, "unverifiable": 0}
     cutoff = (datetime.now(timezone.utc) - timedelta(hours=max_age_hours)).strftime("%Y-%m-%dT%H:%M:%S")
     base = {"status": "pending", "created_at": {"$gte": cutoff}}
@@ -445,10 +499,96 @@ async def paxity_webhook(request: Request) -> dict:
     if not query:
         return {"received": True}
     tx = await db.paxity_transactions.find_one(query, {"_id": 0})
+    if not tx and order_id and paxity_tx_id:
+        tx = await db.paxity_transactions.find_one({"order_id": order_id}, {"_id": 0})
     if tx:
-        await db.paxity_transactions.update_one({"id": tx["id"]}, {"$set": {"webhook_payload": payload}})
+        update = {"webhook_payload": payload}
+        # Le widget carte crée la transaction AVANT que Paxity n'attribue son id
+        if paxity_tx_id and not tx.get("paxity_transaction_id"):
+            update["paxity_transaction_id"] = paxity_tx_id
+            tx["paxity_transaction_id"] = paxity_tx_id
+        await db.paxity_transactions.update_one({"id": tx["id"]}, {"$set": update})
         await _refresh_pending_tx(db, tx)
     return {"received": True}
+
+
+@router.post("/card/init")
+async def init_card_payment(payload: PaxityCardInitRequest, request: Request) -> dict:
+    """Carte via le widget hébergé Paxity v2. On crée la commande et la session
+    de paiement (token) côté serveur ; le widget encaisse côté navigateur et la
+    confirmation revient par le callback `onSuccess` du widget (/card/confirm)."""
+    if not CARD_CONFIGURED:
+        raise HTTPException(status_code=503, detail="Le paiement par carte est momentanément indisponible.")
+    if payload.amount <= 0:
+        raise HTTPException(status_code=400, detail="Montant invalide.")
+    currency = (payload.currency or CURRENCY).upper()
+    country = CARD_COUNTRY_BY_CURRENCY.get(currency, "SN")
+    amount_minor = (
+        int(round(payload.amount)) if currency in ZERO_DECIMAL_CURRENCIES
+        else int(round(payload.amount * 100))
+    )
+
+    db = _db(request)
+    order_id = f"tmp_{uuid.uuid4().hex[:10]}"
+    tx = PaxityTransaction(
+        order_id=order_id,
+        amount=payload.amount,
+        currency=currency,
+        payment_method="CARD",
+        phone_number="",
+        prefix_phone="",
+        provider=CARD_PROVIDER,
+        customer_name=payload.customer.name,
+        customer_email=payload.customer.email,
+        description=payload.description,
+    )
+    code, data = await create_widget_session(currency, country, amount_minor)
+    token = data.get("token") if isinstance(data, dict) else None
+    if code == 0 or code >= 400 or not token:
+        logger.error(f"[Paxity] Session carte refusée ({code}) order={order_id} resp={data}")
+        raise HTTPException(status_code=502, detail="Impossible d'ouvrir le paiement par carte. Veuillez réessayer.")
+    tx.paxity_transaction_id = None
+    tx.raw_response = data
+    await _persist_order(
+        db, order_id, payload, tx, _is_test_env(request),
+        payment_method="CARD", currency=currency, provider=CARD_PROVIDER,
+        amount_xof=payload.amount if currency == CURRENCY else (payload.base_amount_xof or payload.amount),
+    )
+    await db.paxity_transactions.insert_one(tx.model_dump(mode="json"))
+    logger.info(f"[Paxity] Card widget v2 init order={order_id} amount={payload.amount} {currency} country={country}")
+    return {
+        "order_id": order_id,
+        "transaction_id": tx.id,
+        "status": "pending",
+        "token": token,
+        "widget_script": WIDGET_SCRIPT,
+        "default_method": "CARD",
+        "amount": int(payload.amount) if currency in ZERO_DECIMAL_CURRENCIES else round(payload.amount, 2),
+        "currency": currency,
+    }
+
+
+@router.post("/card/confirm")
+async def confirm_card_payment(payload: PaxityCardConfirm, request: Request) -> dict:
+    """Appelé par le widget v2 (`onSuccess`) : la banque a confirmé le paiement
+    carte côté Paxity. On finalise la commande (numéro, stock, emails). Idempotent."""
+    db = _db(request)
+    tx = await db.paxity_transactions.find_one(
+        {"id": payload.transaction_id, "payment_method": "CARD"}, {"_id": 0}
+    )
+    if not tx:
+        raise HTTPException(status_code=404, detail="Transaction introuvable")
+    if tx["status"] == "success":
+        return {"status": "success", "order_id": tx["order_id"]}
+    now = datetime.now(timezone.utc).isoformat()
+    if (payload.outcome or "success").lower() == "failed":
+        await db.paxity_transactions.update_one({"id": tx["id"]}, {"$set": {"status": "failed", "updated_at": now}})
+        await db.orders.update_one({"id": tx["order_id"]}, {"$set": {"status": "failed"}})
+        return {"status": "failed", "order_id": tx["order_id"]}
+    await db.paxity_transactions.update_one({"id": tx["id"]}, {"$set": {"status": "success", "updated_at": now}})
+    order_id = await _handle_payment_success(db, tx["order_id"])
+    logger.info(f"[Paxity] Carte confirmée (widget v2) tx={tx['id']} order={order_id}")
+    return {"status": "success", "order_id": order_id}
 
 
 @router.get("/orders/{order_id}")

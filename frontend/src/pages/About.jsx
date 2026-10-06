@@ -7,12 +7,12 @@ import { t } from "@/lib/locale";
 const values = [
     { icon: Globe, title: "Import direct de Chine", desc: "Nous sélectionnons et importons vos produits directement depuis les meilleurs fournisseurs chinois, sans intermédiaire." },
     { icon: Truck, title: "Livraison mondiale en 10–20 jours", desc: "Suivi de colis en temps réel, de la commande jusqu'à votre porte : Commandé → Expédié → Douane → Livré." },
-    { icon: ShieldCheck, title: "Paiement 100 % sécurisé", desc: "Wave ou Orange Money. Votre argent est protégé, vous êtes notifié à chaque étape." },
+    { icon: ShieldCheck, title: "Paiement 100 % sécurisé", desc: "Wave, Orange Money, MTN ou carte bancaire. Votre argent est protégé, vous êtes notifié à chaque étape." },
     { icon: HeadphonesIcon, title: "Service client 7j/7", desc: "Une équipe basée à Dakar, disponible en français, qui répond à toutes vos questions avant et après l'achat." },
 ];
 
 export default function About() {
-    usePageTitle("À propos", "Shopping en Chine : votre boutique d'importation depuis la Chine vers le monde entier. Livraison 10–20 jours, paiement Wave / Orange Money, suivi en temps réel.");
+    usePageTitle("À propos", "Shopping en Chine : votre boutique d'importation depuis la Chine vers le monde entier. Livraison 10–20 jours, paiement Mobile Money et carte, suivi en temps réel.");
     return (
         <div data-testid="about-page">
             <section className="bg-gradient-hero border-b border-border">

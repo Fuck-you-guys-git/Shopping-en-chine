@@ -1,3 +1,13 @@
+## Update — Juin 2026 (Carte bancaire via widget Paxity v2 — v1 totalement supprimé)
+- **Découverte clé**: la carte sur Paxity v2 ne passe JAMAIS par l'API brute `/v2/external/transactions` (méthodes `CARD`/`GIM_UEMOA` → 424 "Operator unavailable", par conception PCI/PAN). Elle passe OBLIGATOIREMENT par le **widget hébergé v2** `checkout-v2.paxity.io`.
+- **Intégration**: `POST {WIDGET_BASE_URL}/api/widget/token` (body `{currency,country,amount_minor,org_id}`) crée la session → token JWT. Frontend charge `checkout-v2.paxity.io/widget/v1/paxity.js` et appelle `Paxity.open({token, default_method:'CARD', onSuccess, onFailure, onCancel, onError})`.
+- **Backend** (`paxity_router.py`): supprimé TOUT le code v1 (V1_BASE_URL/API_KEY/API_TOKEN, `fetch_card_transaction`, `/card/attach`, branche is_card du polling). `/card/init` crée la commande + session widget v2 et renvoie `token`+`widget_script`. Nouveau `/card/confirm` (idempotent) finalise la commande (numéro, stock, emails) sur le callback `onSuccess` du widget. `card_enabled` = `PAXITY_CONFIGURED`.
+- **Devises carte**: débit DIRECT en devise d'affichage (EUR→FR, USD→US) sinon XOF→SN. `amount_minor` = centimes pour EUR/USD, francs entiers pour XOF (standard). ⚠️ Le proxy widget en mode **test** (`env:test`) affiche `amount_minor` en unités majeures (quirk sandbox) → en LIVE l'affichage sera correct.
+- **Frontend**: `lib/paxityWidget.js` réécrit (loader v2 `loadPaxityV2Widget`), `Checkout.jsx` `handleCardPayment` recâblé widget v2, `api.js` `cardAttach`→`cardConfirm`.
+- Wave + Orange Money (v2 direct, XOF) **intacts**. Testé e2e: onglet Card visible, clic ouvre le widget v2 (iframe `method=CARD`), formulaire carte affiché; `/card/init`+`/card/confirm` validés par curl (commande TEST-109 finalisée, idempotent).
+- **⚠️ ACTION PAXITY REQUISE (côté user)**: pour le LIVE réel, Paxity doit (1) activer l'opérateur carte sur l'org `67bb94e8-5373-4dd5-b125-9ec83e409cff` et (2) autoriser la clé `pax_live_` sur l'endpoint de session + webhook (actuellement `/api/checkout/sessions` → 401, confirmation serveur du paiement carte en dépend). La confirmation carte repose pour l'instant sur le callback `onSuccess` du widget.
+
+
 ## Update — Feb 2026 (real keys + response envelope fix)
 - Added real `PAXITY_API_KEY` / `PAXITY_API_TOKEN` to `/app/backend/.env`; `configured=true`.
 - **Bug fixed**: Paxity's real response nests fields inside a `data` object (`{"code":201,"data":{"status":"PENDING","transactionId","link","qrCode"}}`). Added `_payload_root()` to unwrap it; backend + `paxityDirect.js` now parse status/transactionId/link/qrCode from the nested object. Webhook also unwraps `data`.
