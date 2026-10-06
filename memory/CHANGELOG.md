@@ -970,3 +970,7 @@
 - PREVIEW (`/app/backend/.env`) : `PAXITY_V2_API_KEY` (valeur `pax_test_…`) **supprimée**, ainsi que `PAXITY_V2_ENV` (devenue obsolète, l'env est déduit du préfixe de clé). La clé **live n'a volontairement PAS été mise dans la preview** (chaque test aurait déclenché un vrai débit). Conservés : `PAXITY_V2_BASE_URL`, `PAXITY_V2_ORG_ID`.
 - CONSÉQUENCE PREVIEW VÉRIFIÉE : `GET /api/paxity/v2/config` → `{"enabled": false}`. Le routage de `lib/api.js` rebascule automatiquement sur la v1 (503 → v1), donc **la preview continue d'encaisser normalement via Paxity v1**, y compris en XOF forcé (`?devise=XOF`). Aucune régression de tunnel.
 - PRODUCTION (vérifié auprès du deployer, 32 secrets listés) : **aucun secret `PAXITY_V2_API_KEY` n'existe encore** en prod, et aucun `PAXITY_V2_ENV`. La prod encaisse donc **toujours via Paxity v1**. Le user doit ajouter la clé live lui-même : Re-publish → onglet Secrets → « View & edit » → ajouter `PAXITY_V2_API_KEY` = `pax_live_…` → Save and Re-publish. `PAXITY_V2_ORG_ID` et `PAXITY_V2_BASE_URL` ont des valeurs par défaut dans le code, ils ne sont pas obligatoires.
+
+## 2026-06 — Clé Paxity v2 LIVE
+- `PAXITY_V2_API_KEY` (pax_live_…) ajoutée au backend/.env preview, `/api/paxity/v2/config` renvoie `env: live`.
+- Redéploiement production lancé via deployer_agent pour propager la clé (vérifier dans Deployment Panel → Secrets après déploiement).
