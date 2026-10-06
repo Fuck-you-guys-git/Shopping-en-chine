@@ -7,7 +7,7 @@ import { toast } from "sonner";
 import { paxityAPI } from "@/lib/api";
 import { DeliveryOptions } from "@/components/DeliveryOptions";
 import { orderNo } from "@/lib/utils";
-import { t, getLocale } from "@/lib/locale";
+import { t, getLocale, cartDisplayTotal, formatPaid } from "@/lib/locale";
 import { findCountry, countryName, STATES } from "@/lib/countries";
 import { colorName } from "@/lib/colors";
 import { OPERATOR_META } from "@/components/checkout/operatorMeta";
@@ -60,6 +60,10 @@ export default function Checkout() {
     const [deliveryMode, setDeliveryMode] = useState("standard");
     const shipping = 0;
     const total = subtotal + shipping;
+    // Wave / Orange Money n'encaissent QUE le F CFA : pour un client €/$ on
+    // débite le prix vendeur F CFA (aucune conversion) et on l'annonce.
+    const localizedCartTotal = getLocale().currency === "XOF" ? null : cartDisplayTotal(items);
+    const xofNotice = localizedCartTotal != null ? formatPaid(Math.round(localizedCartTotal * 100) / 100, getLocale().currency) : null;
 
     const [buyer, setBuyer] = useState(() => {
         // Pays pré-sélectionné depuis la géolocalisation IP (si connu)
@@ -155,11 +159,18 @@ export default function Checkout() {
         paxityAPI.getConfig()
             .then((cfg) => {
                 setPaxityConfig(cfg);
-                // Pre-select first available method (sans écraser
-                // l'indicatif déduit du pays choisi par le client).
-                if (cfg.methods && cfg.methods.length > 0) setPaymentMethod(cfg.methods[0].code);
+                // Pré-sélection : l'opérateur du pays du client (indicatif) si
+                // disponible, sinon le premier ; l'indicatif suit l'opérateur
+                // (Wave / OM exigent un numéro sénégalais ou ivoirien).
+                const methods = cfg.methods || [];
+                const first = methods.find((m) => m.prefix === prefix) || methods[0];
+                if (first) {
+                    setPaymentMethod(first.code);
+                    setPrefix(first.prefix);
+                }
             })
             .catch(() => setPaxityError("Impossible de contacter le service de paiement."));
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
     // L'API Paxity n'accepte AUCUNE URL de retour (doc officielle) : le retour
@@ -492,6 +503,7 @@ export default function Checkout() {
                                     processing={processing}
                                     disabled={!paxityConfig?.configured}
                                     total={total}
+                                    localizedTotalLabel={xofNotice}
                                     onSubmit={handlePayment}
                                     onBack={goBackStep}
                                 />

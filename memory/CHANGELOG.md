@@ -987,3 +987,6 @@
 - Footer/TrustBar/Cart/About : mentions carte → Wave & Orange Money.
 - Tests obsolètes v1/Stripe/multi-devises supprimés. Testing agent iteration_36 : 100 % OK (backend 12/12 + frontend).
 - Vérifié live : payin Wave crée une transaction v2 `requires_customer_action` avec QR + lien ; faux webhook ne confirme rien.
+
+## 2026-06 — Retour de l'affichage multi-devises (€/$/F CFA), carte toujours en pause
+- LocaleContext, PricingSection, ProductPreview, AddProduct restaurés (commit 02a7878). Checkout : bandeau F CFA pour les clients €/$ (Wave/OM débitent le prix vendeur F CFA). Pré-sélection de l'opérateur selon l'indicatif + indicatif aligné sur l'opérateur.
