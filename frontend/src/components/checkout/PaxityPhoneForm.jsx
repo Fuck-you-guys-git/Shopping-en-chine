@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { formatPrice } from "@/components/ProductCard";
+import { PaxityVersionBadge } from "@/components/checkout/PaxityVersionBadge";
 import { t } from "@/lib/locale";
 
 const EXPECTED_DIGITS = { 221: 9, 225: 10, 226: 8, 227: 8, 228: 8, 233: 9, 237: 9 };
@@ -54,6 +55,8 @@ export const PaxityPhoneForm = ({ buyer, setBuyer, prefix, setPrefix, otp, setOt
                 <ShieldCheck className="h-4 w-4 text-success" />
                 {t("Paiement sécurisé via Paxity · Chiffrement bout-en-bout")}
             </div>
+
+            <PaxityVersionBadge />
 
             <div className="flex gap-2 pt-2">
                 <Button type="button" variant="outline" onClick={onBack} className="rounded-full h-11 px-6">{t("Retour")}</Button>

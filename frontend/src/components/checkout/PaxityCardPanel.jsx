@@ -1,6 +1,7 @@
 import { CreditCard, Loader2, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { t, formatPaid } from "@/lib/locale";
+import { PaxityVersionBadge } from "@/components/checkout/PaxityVersionBadge";
 
 // Panneau paiement CARTE via le widget Paxity (Visa / Mastercard)
 // `total` + `currency` = montant EXACT que Paxity débitera (aucune conversion).
@@ -11,9 +12,9 @@ export const PaxityCardPanel = ({ total, currency = "XOF", processing, onBack, o
             {t("Payez par carte Visa ou Mastercard — le formulaire sécurisé s'ouvre sur cette page.")}
         </p>
         <div className="flex items-center gap-2 text-xs text-muted-foreground">
-            <ShieldCheck className="h-4 w-4 text-success" />
-            {t("Paiement sécurisé via Paxity · Chiffrement bout-en-bout")}
+            <ShieldCheck className="h-4 w-4 text-success" />            {t("Paiement sécurisé via Paxity · Chiffrement bout-en-bout")}
         </div>
+        <PaxityVersionBadge />
         <div className="flex gap-2 pt-2">
             <Button type="button" variant="outline" onClick={onBack} className="rounded-full h-11 px-6">{t("Retour")}</Button>
             <Button

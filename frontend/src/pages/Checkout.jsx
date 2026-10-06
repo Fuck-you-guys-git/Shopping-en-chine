@@ -70,6 +70,10 @@ export default function Checkout() {
     // Sinon : montant F CFA tel quel — Paxity/la banque du client fait le change.
     const localizedCartTotal = getLocale().currency === "XOF" ? null : cartDisplayTotal(items);
     const cardChargeCurrency = localizedCartTotal != null ? getLocale().currency : "XOF";
+    // Wave / Orange Money / MTN n'encaissent QUE le F CFA : hors zone XOF on
+    // ne propose que la carte, sinon le bouton annonçait « Payer 1500 F »
+    // alors que le récapitulatif affichait 2,83 € (montants incohérents).
+    const mobileMoneyAvailable = getLocale().currency === "XOF";
     const cardChargeAmount = localizedCartTotal != null
         ? Math.round(localizedCartTotal * 100) / 100
         : total;
@@ -170,8 +174,11 @@ export default function Checkout() {
             .then((cfg) => {
                 setPaxityConfig(cfg);
                 // Pre-select first available method (sans écraser
-                // l'indicatif déduit du pays choisi par le client)
-                if (cfg.methods && cfg.methods.length > 0) {
+                // l'indicatif déduit du pays choisi par le client).
+                // Hors zone F CFA, seule la carte est disponible.
+                if (getLocale().currency !== "XOF") {
+                    setPaymentMethod("CARD");
+                } else if (cfg.methods && cfg.methods.length > 0) {
                     setPaymentMethod(cfg.methods[0].code);
                 }
             })
@@ -653,7 +660,7 @@ export default function Checkout() {
                             )}
 
                             <PaymentMethodPicker
-                                methods={paxityConfig?.methods}
+                                methods={mobileMoneyAvailable ? paxityConfig?.methods : []}
                                 value={paymentMethod}
                                 onSelect={(m) => {
                                     setPaymentMethod(m.code);

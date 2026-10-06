@@ -38,6 +38,7 @@ api.interceptors.response.use((response) => {
 
 // --------- Paxity ---------
 export const paxityAPI = {
+    v2Config: () => api.get("/paxity/v2/config").then((r) => r.data),
     getConfig: () => api.get("/paxity/config").then((r) => r.data),
     getDiagnostic: () => api.get("/paxity/diagnostic").then((r) => r.data),
     // Routage automatique v2 / v1 : la v2 n'encaisse que l'Afrique en devise

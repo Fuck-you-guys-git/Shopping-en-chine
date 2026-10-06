@@ -31,7 +31,13 @@ router = APIRouter(prefix="/paxity/v2", tags=["paxity-v2"])
 
 V2_BASE_URL = os.environ.get("PAXITY_V2_BASE_URL", "https://api-v2.paxity.io")
 V2_API_KEY = os.environ.get("PAXITY_V2_API_KEY", "").strip()
-V2_ORG_ID = os.environ.get("PAXITY_V2_ORG_ID", "")
+V2_ORG_ID = os.environ.get(
+    # Identifiant d'organisation « SHOPPING EN CHINE » confirmé par le marchand.
+    # Ce n'est pas un secret (il est visible dans son portail Paxity) : le mettre
+    # par défaut évite d'avoir à déclarer un secret de plus en production, donc
+    # une faute de frappe qui laisserait la v2 silencieusement éteinte.
+    "PAXITY_V2_ORG_ID", "67bb94e8-5373-4dd5-b125-9ec83e409cff",
+)
 
 
 def _resolve_env(key: str) -> str:
