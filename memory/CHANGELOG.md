@@ -1,3 +1,10 @@
+## Update — Feb 2026 (widget carte : affichage montant XOF, plus de « 1 700,00 $US »)
+- **Bug utilisateur** : panier $17 → widget Paxity affichait « 1 700,00 $US » (le widget prend `amount_minor` tel quel, ne divise pas par 100 pour EUR/USD, même en LIVE).
+- **Correctif** : Paxity n'encaisse qu'en F CFA (XOF) → la carte est désormais ouverte en XOF comme Wave/Orange Money. L'équivalent €/$ apparaît en disclaimer SUR LE SITE (sous le bouton « Payer par carte »), jamais dans le widget.
+- Fichiers modifiés : `/app/frontend/src/pages/Checkout.jsx` (constante `cardChargeCurrency` figée sur "XOF"), `/app/frontend/src/components/checkout/PaxityCardPanel.jsx` (disclaimer `showDisclaimer` quand devise d'affichage ≠ XOF).
+- Backend inchangé — `card/init` renvoie bien `amount=1700 currency=XOF` pour un panier 1700 XOF.
+
+
 ## Update — Juin 2026 (Carte bancaire via widget Paxity v2 — v1 totalement supprimé)
 - **Découverte clé**: la carte sur Paxity v2 ne passe JAMAIS par l'API brute `/v2/external/transactions` (méthodes `CARD`/`GIM_UEMOA` → 424 "Operator unavailable", par conception PCI/PAN). Elle passe OBLIGATOIREMENT par le **widget hébergé v2** `checkout-v2.paxity.io`.
 - **Intégration**: `POST {WIDGET_BASE_URL}/api/widget/token` (body `{currency,country,amount_minor,org_id}`) crée la session → token JWT. Frontend charge `checkout-v2.paxity.io/widget/v1/paxity.js` et appelle `Paxity.open({token, default_method:'CARD', onSuccess, onFailure, onCancel, onError})`.

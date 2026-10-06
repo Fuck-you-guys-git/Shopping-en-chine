@@ -62,13 +62,11 @@ export default function Checkout() {
     const [deliveryMode, setDeliveryMode] = useState("standard");
     const shipping = 0;
     const total = subtotal + shipping;
-    // Wave / Orange Money n'encaissent QUE le F CFA : pour un client €/$ on
-    // débite le prix vendeur F CFA (aucune conversion) et on l'annonce.
+    // Paxity (Wave, Orange Money et Carte) n'encaisse QUE en F CFA : on débite
+    // toujours le prix vendeur F CFA et on affiche l'équivalent €/$ en disclaimer.
     const localizedCartTotal = getLocale().currency === "XOF" ? null : cartDisplayTotal(items);
-    // Carte : débit dans la devise d'affichage (€/$) si tous les prix vendeur
-    // existent — AUCUNE conversion ; sinon F CFA.
-    const cardChargeCurrency = localizedCartTotal != null ? getLocale().currency : "XOF";
-    const cardChargeAmount = localizedCartTotal != null ? Math.round(localizedCartTotal * 100) / 100 : total;
+    const cardChargeCurrency = "XOF";
+    const cardChargeAmount = total;
 
     const [buyer, setBuyer] = useState(() => {
         // Pays pré-sélectionné depuis la géolocalisation IP (si connu)
@@ -306,10 +304,10 @@ export default function Checkout() {
         setProcessing(true);
         setPaxityError(null);
         try {
-            // Carte débitée DIRECTEMENT dans la devise d'affichage (€/$) si les
-            // prix vendeur existent — AUCUNE conversion ; sinon F CFA.
-            const payCurrency = cardChargeCurrency;
-            const chargedAmount = cardChargeAmount;
+            // Carte débitée EN F CFA (Paxity encaisse uniquement en XOF) ;
+            // l'équivalent €/$ est affiché en disclaimer côté site.
+            const payCurrency = "XOF";
+            const chargedAmount = total;
             const res = await paxityAPI.cardInit({
                 amount: chargedAmount,
                 currency: payCurrency,
@@ -599,6 +597,7 @@ export default function Checkout() {
                                 <PaxityCardPanel
                                     total={cardChargeAmount}
                                     currency={cardChargeCurrency}
+                                    localizedTotal={localizedCartTotal}
                                     processing={processing}
                                     onBack={goBackStep}
                                     onPay={handleCardPayment}
