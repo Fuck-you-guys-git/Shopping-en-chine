@@ -67,3 +67,8 @@ Payments were failing with a **DNS error** because `backend/paxity_router.py` ha
 - Pas de sélecteur de langue manuel : la détection automatique par IP (LocaleContext) reste la seule source.
 - RÈGLE ABSOLUE : ne JAMAIS inventer de données pour remplir l'interface (avis, notes, compteurs, stock, promos, dates de livraison, certifications). Si la donnée n'existe pas → masquer le composant ou afficher un état vide.
 - Livraison par lots avec validation user entre chaque lot (voir ROADMAP.md).
+
+## État Paxity v2 — Juin 2026
+- Clé de test v2 supprimée du `.env` de la preview → v2 désactivée en preview, repli automatique sur la v1 (vérifié : `/api/paxity/v2/config` = `enabled:false`, `/api/paxity/v2/payin` = 503, repli v1 OK).
+- Clé live `pax_live_…` **à déclarer par le user dans les secrets de PRODUCTION** (`PAXITY_V2_API_KEY`) : elle n'y est pas encore (vérifié auprès du deployer). Tant qu'elle est absente, la production encaisse via Paxity v1.
+- P0 restant : le user ajoute le secret, re-publie, puis valide une vraie transaction XOF en production.
