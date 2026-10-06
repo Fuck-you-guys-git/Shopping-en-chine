@@ -9,7 +9,7 @@ import { loadPaxityCardWidget, setCardRedirectUrl, closePaymentOverlays, onCardP
 import { paxityDirectPayin, paxityDirectAvailable } from "@/lib/paxityDirect";
 import { DeliveryOptions } from "@/components/DeliveryOptions";
 import { orderNo } from "@/lib/utils";
-import { t, getLocale, cartDisplayTotal, unitAmount } from "@/lib/locale";
+import { t, getLocale, cartDisplayTotal, unitAmount, formatPaid } from "@/lib/locale";
 import { findCountry, countryName, STATES } from "@/lib/countries";
 import { colorName } from "@/lib/colors";
 import { OPERATOR_META } from "@/components/checkout/operatorMeta";
@@ -70,13 +70,15 @@ export default function Checkout() {
     // Sinon : montant F CFA tel quel — Paxity/la banque du client fait le change.
     const localizedCartTotal = getLocale().currency === "XOF" ? null : cartDisplayTotal(items);
     const cardChargeCurrency = localizedCartTotal != null ? getLocale().currency : "XOF";
-    // Wave / Orange Money / MTN n'encaissent QUE le F CFA : hors zone XOF on
-    // ne propose que la carte, sinon le bouton annonçait « Payer 1500 F »
-    // alors que le récapitulatif affichait 2,83 € (montants incohérents).
-    const mobileMoneyAvailable = getLocale().currency === "XOF";
     const cardChargeAmount = localizedCartTotal != null
         ? Math.round(localizedCartTotal * 100) / 100
         : total;
+    // Wave / Orange Money / MTN n'encaissent QUE le F CFA (vérifié API Paxity
+    // v1 et v2) : hors zone XOF ils restent proposés mais débitent le prix
+    // vendeur F CFA — un bandeau l'annonce clairement au client (€/$ ↔ F CFA).
+    const mobileMoneyXofNotice = localizedCartTotal != null
+        ? formatPaid(cardChargeAmount, cardChargeCurrency)
+        : null;
 
     const [buyer, setBuyer] = useState(() => {
         // Pays pré-sélectionné depuis la géolocalisation IP (si connu)
@@ -660,7 +662,7 @@ export default function Checkout() {
                             )}
 
                             <PaymentMethodPicker
-                                methods={mobileMoneyAvailable ? paxityConfig?.methods : []}
+                                methods={paxityConfig?.methods}
                                 value={paymentMethod}
                                 onSelect={(m) => {
                                     setPaymentMethod(m.code);
@@ -690,6 +692,7 @@ export default function Checkout() {
                                     processing={processing}
                                     disabled={!paxityConfig?.configured}
                                     total={total}
+                                    localizedTotalLabel={mobileMoneyXofNotice}
                                     onSubmit={handlePayment}
                                     onBack={goBackStep}
                                 />

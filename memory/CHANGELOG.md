@@ -974,3 +974,9 @@
 ## 2026-06 — Clé Paxity v2 LIVE
 - `PAXITY_V2_API_KEY` (pax_live_…) ajoutée au backend/.env preview, `/api/paxity/v2/config` renvoie `env: live`.
 - Redéploiement production lancé via deployer_agent pour propager la clé (vérifier dans Deployment Panel → Secrets après déploiement).
+
+## 2026-06 — Wave / Orange Money proposés aux clients €/$
+- Vérifié API Paxity v1 (`/payment-method`) et v2 : Wave/OM/MTN encaissent UNIQUEMENT XOF. Impossible en EUR/USD.
+- Checkout.jsx : suppression du filtre `mobileMoneyAvailable` → Wave/OM/MTN affichés pour toutes les devises (avant la carte), carte sélectionnée par défaut hors XOF.
+- PaxityPhoneForm.jsx : bandeau `mobile-money-xof-notice` hors zone CFA : « Wave et Orange Money encaissent uniquement en F CFA. Vous paierez 1 500 F CFA (total affiché : 2,83 €)… ». Débit = prix vendeur F CFA (aucune conversion), routé Paxity v2 live.
+- Vérifié E2E en preview (?devise=EUR).

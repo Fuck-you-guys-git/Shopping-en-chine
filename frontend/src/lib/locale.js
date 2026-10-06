@@ -408,6 +408,11 @@ const EN = {
     "Après validation, vous recevrez un lien de paiement à confirmer. Si votre opérateur vous a déjà fourni un code, saisissez-le ici.":
         "After validation you will receive a payment link to confirm. If your operator already gave you a code, enter it here.",
     "Payer": "Pay",
+    "Wave et Orange Money encaissent uniquement en F CFA.": "Wave and Orange Money only accept F CFA.",
+    "Vous paierez": "You will pay",
+    "(total affiché :": "(displayed total:",
+    "Pour payer en": "To pay in",
+    "choisissez la carte bancaire.": "choose the bank card.",
     "Traitement…": "Processing…",
     "attendu :": "expected:",
     "saisi :": "entered:",
