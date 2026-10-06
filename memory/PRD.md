@@ -52,7 +52,7 @@ Payments were failing with a **DNS error** because `backend/paxity_router.py` ha
 - **ROADMAP.md** : backlog priorisé (P0/P1/P2) et prochaines tâches.
 
 ## État actuel (Fév 2026)
-- App e-commerce complète et fonctionnelle : paiements Paxity (Wave/OM direct + carte via widget SaaS), multi-devises EUR/USD géré par Paxity, emails Resend automatisés, e-tickets imprimables, dashboard vendeur complet (stock, stats, journal emails, email de masse).
+- App e-commerce complète et fonctionnelle : paiements **Paxity v2 uniquement** (Wave / Orange Money, F CFA), emails Resend automatisés, e-tickets imprimables, dashboard vendeur complet (stock, stats, journal emails, email de masse).
 - RÈGLES CRITIQUES :
   - Ne jamais retirer le garde-fou `_safe_recipient` (email_service.py) qui bloque les emails de test vers commands@shoppingenchine.com.
   - Checkout.jsx utilise ?step=X pour le bouton retour navigateur — ne pas retirer.
@@ -68,7 +68,10 @@ Payments were failing with a **DNS error** because `backend/paxity_router.py` ha
 - RÈGLE ABSOLUE : ne JAMAIS inventer de données pour remplir l'interface (avis, notes, compteurs, stock, promos, dates de livraison, certifications). Si la donnée n'existe pas → masquer le composant ou afficher un état vide.
 - Livraison par lots avec validation user entre chaque lot (voir ROADMAP.md).
 
-## État Paxity v2 — Juin 2026
-- Clé de test v2 supprimée du `.env` de la preview → v2 désactivée en preview, repli automatique sur la v1 (vérifié : `/api/paxity/v2/config` = `enabled:false`, `/api/paxity/v2/payin` = 503, repli v1 OK).
-- Clé live `pax_live_…` **à déclarer par le user dans les secrets de PRODUCTION** (`PAXITY_V2_API_KEY`) : elle n'y est pas encore (vérifié auprès du deployer). Tant qu'elle est absente, la production encaisse via Paxity v1.
-- P0 restant : le user ajoute le secret, re-publie, puis valide une vraie transaction XOF en production.
+## Paiements — décision figée (Juin 2026)
+- **Paxity v2 UNIQUEMENT** (`/app/backend/paxity_router.py`, clé `PAXITY_V2_API_KEY` live `pax_live_…`, env déduit du préfixe). Tout le code Paxity v1 (widget carte, appel direct, diagnostic) et Stripe a été SUPPRIMÉ à la demande du user. Ne pas le réintroduire.
+- **Carte bancaire EN PAUSE** : la v2 live ne renvoie aucune URL/formulaire carte (`requires_customer_action` sans `redirect_url`) ; le widget carte Paxity n'existe qu'en v1. Réactiver seulement quand Paxity fournira la carte en v2.
+- **Tout le monde paie en F CFA** (`SITE_CURRENCY = "XOF"` dans LocaleContext) : la v2 refuse EUR/USD (`country must be one of SN, CI, ML, BF, NE, TG, BJ, CM, GH, NG, KE`). Seule la LANGUE dépend de la géoloc. Les champs `priceEur/priceUsd` du produit ne sont plus saisis ni affichés.
+- Méthodes exposées : WAVESN, WAVECI, OMSN, OMCI (MTN masqué sur demande « only Wave / OM »).
+- Le webhook `/api/paxity/webhook` ne fait PAS confiance au payload : il déclenche une re-vérification `GET /v2/external/transactions/{id}`. Polling + watcher 15 min + boucle de rattrapage 3 min utilisent la v2.
+- Historique Paxity v1 : visible uniquement dans l'ancien dashboard Paxity v1 ; migration impossible depuis le site (support Paxity uniquement).

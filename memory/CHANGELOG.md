@@ -980,3 +980,10 @@
 - Checkout.jsx : suppression du filtre `mobileMoneyAvailable` → Wave/OM/MTN affichés pour toutes les devises (avant la carte), carte sélectionnée par défaut hors XOF.
 - PaxityPhoneForm.jsx : bandeau `mobile-money-xof-notice` hors zone CFA : « Wave et Orange Money encaissent uniquement en F CFA. Vous paierez 1 500 F CFA (total affiché : 2,83 €)… ». Débit = prix vendeur F CFA (aucune conversion), routé Paxity v2 live.
 - Vérifié E2E en preview (?devise=EUR).
+
+## 2026-06 — Paxity v2 uniquement, carte en pause, suppression v1 + Stripe
+- `paxity_router.py` réécrit (v2-only) : /config, /payin, /status, /webhook (re-vérification serveur), /reconcile, /orders. `paxity_v2_router.py`, `stripe_router.py`, widget/direct v1, PaxityCardPanel, PaxityVersionBadge, StripeEmbedded/StripeCardPanel, PaymentSuccess/Cancel supprimés ; paquets stripe retirés ; clés v1/Stripe retirées des .env.
+- Checkout : 4 méthodes (Wave SN/CI, OM SN/CI), pas de carte, pas d'OTP. Tout le site en F CFA (LocaleContext force XOF). Formulaire produit : prix F CFA seul.
+- Footer/TrustBar/Cart/About : mentions carte → Wave & Orange Money.
+- Tests obsolètes v1/Stripe/multi-devises supprimés. Testing agent iteration_36 : 100 % OK (backend 12/12 + frontend).
+- Vérifié live : payin Wave crée une transaction v2 `requires_customer_action` avec QR + lien ; faux webhook ne confirme rien.

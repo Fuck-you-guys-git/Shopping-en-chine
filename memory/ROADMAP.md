@@ -25,3 +25,8 @@
 - Multi-devises Paxity EUR/USD (débit direct, amount_xof pour stats).
 - Bouton carte = prix affiché (plus de conversion sur l'étiquette).
 - SUPPRESSION totale de la conversion automatique (prix vendeur EUR/USD obligatoires).
+
+## Paiements (Juin 2026)
+- P0 : REDÉPLOYER la production (code v2-only) et vérifier `PAXITY_V2_API_KEY` dans les secrets prod ; faire un vrai paiement Wave de faible montant.
+- P1 : Réactiver la carte bancaire quand Paxity v2 fournira un `redirect_url`/formulaire carte (surveiller l'API).
+- P2 : Filtre « v1 / v2 » et total par canal dans l'espace vendeur (si utile pour les versements Paxity).
