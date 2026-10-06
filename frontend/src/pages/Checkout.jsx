@@ -7,7 +7,7 @@ import { toast } from "sonner";
 import { paxityAPI } from "@/lib/api";
 import { DeliveryOptions } from "@/components/DeliveryOptions";
 import { orderNo } from "@/lib/utils";
-import { t, getLocale, cartDisplayTotal, unitAmount, formatPaid } from "@/lib/locale";
+import { t, getLocale, cartDisplayTotal, unitAmount } from "@/lib/locale";
 import { loadPaxityV2Widget } from "@/lib/paxityWidget";
 import { PaxityCardPanel } from "@/components/checkout/PaxityCardPanel";
 import { findCountry, countryName, STATES } from "@/lib/countries";
@@ -69,7 +69,6 @@ export default function Checkout() {
     // existent — AUCUNE conversion ; sinon F CFA.
     const cardChargeCurrency = localizedCartTotal != null ? getLocale().currency : "XOF";
     const cardChargeAmount = localizedCartTotal != null ? Math.round(localizedCartTotal * 100) / 100 : total;
-    const xofNotice = localizedCartTotal != null ? formatPaid(cardChargeAmount, cardChargeCurrency) : null;
 
     const [buyer, setBuyer] = useState(() => {
         // Pays pré-sélectionné depuis la géolocalisation IP (si connu)
@@ -615,7 +614,6 @@ export default function Checkout() {
                                     processing={processing}
                                     disabled={!paxityConfig?.configured}
                                     total={total}
-                                    localizedTotalLabel={xofNotice}
                                     onSubmit={handlePayment}
                                     onBack={goBackStep}
                                 />

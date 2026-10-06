@@ -1,4 +1,4 @@
-import { Loader2, ShieldCheck, Info } from "lucide-react";
+import { Loader2, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -8,20 +8,11 @@ import { t } from "@/lib/locale";
 const EXPECTED_DIGITS = { 221: 9, 225: 10 };
 
 // Formulaire Wave / Orange Money : indicatif + numéro, puis lien de paiement
-export const PaxityPhoneForm = ({ buyer, setBuyer, prefix, setPrefix, processing, disabled, total, localizedTotalLabel, onSubmit, onBack }) => {
+export const PaxityPhoneForm = ({ buyer, setBuyer, prefix, setPrefix, processing, disabled, total, onSubmit, onBack }) => {
     const digits = buyer.phone.replace(/\D/g, "").length;
     const expected = EXPECTED_DIGITS[prefix] ? `${EXPECTED_DIGITS[prefix]} ${t("chiffres")}` : `8 à 10 ${t("chiffres")}`;
     return (
         <form onSubmit={onSubmit} className="space-y-4">
-            {localizedTotalLabel && (
-                <div data-testid="mobile-money-xof-notice" className="flex gap-3 p-3 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-xs">
-                    <Info className="h-4 w-4 shrink-0 mt-0.5" />
-                    <p>
-                        <span className="font-semibold">{t("Wave et Orange Money encaissent uniquement en F CFA.")}</span>{" "}
-                        {t("Vous paierez")} <span className="font-semibold">{formatPrice(total)} CFA</span> {t("(total affiché :")} {localizedTotalLabel}). {t("Votre banque applique le taux de change.")}
-                    </p>
-                </div>
-            )}
             <div className="grid grid-cols-[100px_1fr] gap-2">
                 <div className="space-y-1.5">
                     <Label>{t("Indicatif")}</Label>
