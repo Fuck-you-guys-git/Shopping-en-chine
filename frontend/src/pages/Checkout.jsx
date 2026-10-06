@@ -164,15 +164,15 @@ export default function Checkout() {
         paxityAPI.getConfig()
             .then((cfg) => {
                 setPaxityConfig(cfg);
-                // Pré-sélection : l'opérateur du pays du client (indicatif) si
-                // disponible, sinon le premier ; l'indicatif suit l'opérateur
-                // (Wave / OM exigent un numéro sénégalais ou ivoirien).
+                // Pré-sélection du moyen de paiement : l'opérateur du pays du
+                // client (indicatif) si disponible, sinon le premier. L'indicatif
+                // téléphone NE suit PAS l'opérateur : il reste celui du pays
+                // sélectionné (ex. États-Unis → +1). Il passe à 221/225 seulement
+                // quand le client choisit explicitement Wave / Orange Money.
                 const methods = cfg.methods || [];
-                const first = methods.find((m) => m.prefix === prefix) || methods[0];
-                if (first) {
-                    setPaymentMethod(first.code);
-                    setPrefix(first.prefix);
-                }
+                const detectedDial = findCountry(getLocale().country)?.dial;
+                const first = methods.find((m) => m.prefix === detectedDial) || methods[0];
+                if (first) setPaymentMethod(first.code);
             })
             .catch(() => setPaxityError("Impossible de contacter le service de paiement."));
         // eslint-disable-next-line react-hooks/exhaustive-deps
