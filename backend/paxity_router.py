@@ -197,8 +197,14 @@ async def fetch_transaction(txn_id: str) -> tuple[int, dict]:
 
 
 async def create_widget_session(currency: str, country: str, amount_minor: int) -> tuple[int, dict]:
-    """Crée une session de paiement carte v2 (token) via le proxy du widget
-    hébergé — server-to-server, sans contrainte CORS."""
+    """Crée une session de paiement carte v2 (token JWT) via le proxy du widget
+    hébergé Paxity (`checkout-v2.paxity.io/api/widget/token`) — server-to-server,
+    sans contrainte CORS.
+
+    ⚠️ LIMITATION LIVE : ce proxy public est actuellement en mode `env:test` même
+    avec une clé `pax_live_`. Pour émettre un token de session LIVE il faut que
+    Paxity active l'endpoint de session LIVE pour notre organisation (contacter
+    le support Paxity avec org_id=`PAXITY_V2_ORG_ID`)."""
     url = f"{WIDGET_BASE_URL}/api/widget/token"
     body = {"currency": currency, "country": country, "amount_minor": amount_minor, "org_id": V2_ORG_ID}
     try:
@@ -373,8 +379,8 @@ async def _refresh_pending_tx(db: AsyncIOMotorDatabase, tx: dict) -> str:
     stock et emails si elle est confirmée. Mutate `tx`, renvoie le statut."""
     if tx.get("status") != "pending" or not tx.get("paxity_transaction_id"):
         return tx.get("status", "pending")
-    # Carte : confirmée par le callback du widget v2 (/card/confirm), jamais pollée
-    # (la session carte n'expose pas de statut interrogeable avec notre clé).
+    # Carte via widget : confirmée par le callback /card/confirm, jamais pollée
+    # (le proxy widget n'expose pas de statut interrogeable avec notre clé).
     if tx.get("provider") == CARD_PROVIDER:
         return "pending"
     if not PAXITY_CONFIGURED:
@@ -542,6 +548,11 @@ async def init_card_payment(payload: PaxityCardInitRequest, request: Request) ->
         customer_email=payload.customer.email,
         description=payload.description,
     )
+    customer = {
+        "name": payload.customer.name,
+        "email": payload.customer.email or "",
+        "phone": payload.customer.phone or f"+{DEFAULT_PREFIX}000000000",
+    }
     code, data = await create_widget_session(currency, country, amount_minor)
     token = data.get("token") if isinstance(data, dict) else None
     if code == 0 or code >= 400 or not token:
