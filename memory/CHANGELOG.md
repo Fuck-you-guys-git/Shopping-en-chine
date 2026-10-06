@@ -1007,3 +1007,10 @@
 
 ## 2026-06 — Retour de l'affichage multi-devises (€/$/F CFA), carte toujours en pause
 - LocaleContext, PricingSection, ProductPreview, AddProduct restaurés (commit 02a7878). Checkout : bandeau F CFA pour les clients €/$ (Wave/OM débitent le prix vendeur F CFA). Pré-sélection de l'opérateur selon l'indicatif + indicatif aligné sur l'opérateur.
+
+## 2026-06 (session fork) — Nouvelle clé LIVE + carte désactivée automatiquement
+- `PAXITY_V2_API_KEY` remplacée par `pax_live_OsYI4r5imHfMAQ8oZ6YpP6XoBdnGXY2A` (ancienne clé supprimée). Wave/OM LIVE vérifiés (lien pay.wave.com, marchand « Systalink Senegal »).
+- PREUVE DÉFINITIVE que la carte est indisponible côté Paxity : `GET https://checkout-v2.paxity.io/api/payment-methods` renvoie pour `CARD` → `countries: []`, `availability: []`. Test réel du widget sandbox (4242…) → « Ce mode de paiement est temporairement indisponible ». API directe `method: CARD` → 201 `environment: live` mais SANS `redirect_url` ni `operator_id` (txn_SB6vPbnTGcEuOvbx, txn_V2HeaaHFHKfFtJEF, txn_EHtMnITCuI78RcaT).
+- Endpoints de session sondés : `/api/widget/token` (toujours `env:test`, même via navigateur avec Origin shoppingenchine.com, même avec X-Paxity-Env: live), `/v2/widget/token`, `/v2/checkout/sessions`, `checkout.paxity.io/sessions` → 401 Not Authenticated. Ne pas re-perdre de temps là-dessus.
+- `paxity_router.py` : nouvelle fonction `card_available()` (cache 10 min) qui interroge `/api/payment-methods` ; `/config.card_enabled` et `/card/init` (503) en dépendent. Le bouton Carte disparaît du checkout et réapparaîtra AUTOMATIQUEMENT dès que Paxity activera l'acquisition carte.
+- Endpoints internes du widget découverts : `GET /api/payment-methods`, `POST /api/card-payment/{jwt}`.

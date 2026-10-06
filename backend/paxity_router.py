@@ -219,6 +219,37 @@ async def create_widget_session(currency: str, country: str, amount_minor: int) 
         return r.status_code, {"raw": r.text[:500]}
 
 
+_CARD_AVAILABILITY_CACHE: dict = {"at": None, "available": False}
+
+
+async def card_available() -> bool:
+    """La carte n'est proposée que si Paxity l'annonce disponible dans au moins
+    un pays (`GET /api/payment-methods` → code CARD, `availability`). Aujourd'hui
+    Paxity renvoie `availability: []` pour CARD : aucun acquéreur carte branché,
+    le widget répond « Ce mode de paiement est temporairement indisponible ».
+    Dès que Paxity l'active, le bouton Carte réapparaît automatiquement."""
+    if not CARD_CONFIGURED:
+        return False
+    cache = _CARD_AVAILABILITY_CACHE
+    now = datetime.now(timezone.utc)
+    if cache["at"] and now - cache["at"] < timedelta(minutes=10):
+        return cache["available"]
+    available = False
+    try:
+        async with httpx.AsyncClient(timeout=httpx.Timeout(10.0, connect=5.0)) as client:
+            r = await client.get(f"{WIDGET_BASE_URL}/api/payment-methods")
+        if r.status_code == 200:
+            for m in r.json().get("data", []):
+                if str(m.get("code")).upper() == "CARD":
+                    available = bool(m.get("availability"))
+                    break
+    except Exception:
+        logger.warning("[Paxity] Disponibilité carte indéterminée", exc_info=True)
+        return cache["available"]
+    cache.update({"at": now, "available": available})
+    return available
+
+
 # --------------------------------------------------------------------------
 # Router
 # --------------------------------------------------------------------------
@@ -233,7 +264,7 @@ def _db(request: Request) -> AsyncIOMotorDatabase:
 async def get_config() -> dict:
     return {
         "configured": PAXITY_CONFIGURED,
-        "card_enabled": CARD_CONFIGURED,
+        "card_enabled": await card_available(),
         "environment": V2_ENV,
         "currency": CURRENCY,
         "default_prefix": DEFAULT_PREFIX,
@@ -523,7 +554,7 @@ async def init_card_payment(payload: PaxityCardInitRequest, request: Request) ->
     """Carte via le widget hébergé Paxity v2. On crée la commande et la session
     de paiement (token) côté serveur ; le widget encaisse côté navigateur et la
     confirmation revient par le callback `onSuccess` du widget (/card/confirm)."""
-    if not CARD_CONFIGURED:
+    if not CARD_CONFIGURED or not await card_available():
         raise HTTPException(status_code=503, detail="Le paiement par carte est momentanément indisponible.")
     if payload.amount <= 0:
         raise HTTPException(status_code=400, detail="Montant invalide.")
