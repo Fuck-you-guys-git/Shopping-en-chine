@@ -4,64 +4,68 @@
 
 @layer base {
     :root {
-        /* ---- Shopping en Chine — Warm Minimalism ---- */
-        /* Warm cream backdrop with vermilion accent (modern take on
-           Chinese-inspired palette). All values are HSL space-separated. */
+        /* ---- Shopping en Chine — Marketplace Clean ----
+           Blanc / blanc cassé, noir profond, vermillon signature.
+           Toutes les valeurs sont en HSL séparé par des espaces. */
 
-        --background: 34 40% 97%;            /* warm cream */
-        --foreground: 20 14% 12%;            /* deep espresso */
+        --background: 0 0% 100%;             /* blanc pur */
+        --surface: 24 14% 97%;               /* blanc cassé (sections) */
+        --foreground: 24 10% 10%;            /* noir profond */
 
         --card: 0 0% 100%;
-        --card-foreground: 20 14% 12%;
+        --card-foreground: 24 10% 10%;
 
         --popover: 0 0% 100%;
-        --popover-foreground: 20 14% 12%;
+        --popover-foreground: 24 10% 10%;
 
-        --primary: 8 72% 52%;                /* vermilion */
-        --primary-glow: 14 82% 62%;
-        --primary-foreground: 34 40% 98%;
+        --primary: 8 78% 50%;                /* vermillon signature */
+        --primary-glow: 12 84% 58%;
+        --primary-foreground: 0 0% 100%;
 
-        --secondary: 30 22% 92%;             /* sand */
-        --secondary-foreground: 20 14% 16%;
+        --secondary: 24 14% 96%;
+        --secondary-foreground: 24 10% 14%;
 
-        --muted: 30 22% 94%;
-        --muted-foreground: 20 8% 42%;
+        --muted: 24 10% 96%;
+        --muted-foreground: 24 6% 42%;
 
-        --accent: 22 62% 60%;                /* terracotta */
-        --accent-foreground: 34 40% 98%;
+        --accent: 8 78% 50%;
+        --accent-foreground: 0 0% 100%;
 
-        --destructive: 0 74% 50%;
-        --destructive-foreground: 34 40% 98%;
+        --destructive: 0 74% 48%;
+        --destructive-foreground: 0 0% 100%;
 
-        --success: 152 46% 40%;
-        --success-foreground: 34 40% 98%;
+        --success: 152 52% 36%;
+        --success-foreground: 0 0% 100%;
 
-        --border: 30 18% 86%;
-        --input: 30 18% 88%;
-        --ring: 8 72% 52%;
+        --warning: 36 92% 46%;
+        --warning-foreground: 24 10% 10%;
 
-        /* Ink neutral for premium contrast */
-        --ink: 20 20% 10%;
-        --ink-foreground: 34 40% 98%;
+        --border: 24 8% 90%;
+        --input: 24 8% 88%;
+        --ring: 8 78% 50%;
+
+        /* Ink neutral pour les surfaces sombres premium */
+        --ink: 24 10% 8%;
+        --ink-foreground: 0 0% 98%;
 
         /* Charts */
-        --chart-1: 8 72% 52%;
-        --chart-2: 22 62% 60%;
-        --chart-3: 152 30% 42%;
-        --chart-4: 40 70% 60%;
-        --chart-5: 210 30% 40%;
+        --chart-1: 8 78% 50%;
+        --chart-2: 24 10% 20%;
+        --chart-3: 152 40% 38%;
+        --chart-4: 36 92% 52%;
+        --chart-5: 210 40% 44%;
 
-        /* Gradients */
-        --gradient-warm: linear-gradient(135deg, hsl(30 55% 92%) 0%, hsl(22 62% 88%) 50%, hsl(14 70% 84%) 100%);
-        --gradient-hero: linear-gradient(180deg, hsl(34 40% 97%) 0%, hsl(30 30% 94%) 100%);
-        --gradient-accent: linear-gradient(135deg, hsl(8 72% 52%) 0%, hsl(14 82% 62%) 100%);
-        --gradient-dark: linear-gradient(135deg, hsl(20 20% 10%) 0%, hsl(20 14% 18%) 100%);
+        /* Gradients (usage parcimonieux) */
+        --gradient-warm: linear-gradient(135deg, hsl(24 14% 97%) 0%, hsl(20 16% 94%) 100%);
+        --gradient-hero: linear-gradient(180deg, hsl(0 0% 100%) 0%, hsl(24 14% 97%) 100%);
+        --gradient-accent: linear-gradient(135deg, hsl(8 78% 50%) 0%, hsl(14 84% 58%) 100%);
+        --gradient-dark: linear-gradient(135deg, hsl(24 10% 8%) 0%, hsl(24 8% 16%) 100%);
 
-        /* Shadows */
-        --shadow-soft: 0 4px 20px -6px hsl(20 14% 12% / 0.08);
-        --shadow-warm: 0 20px 50px -20px hsl(8 72% 52% / 0.25);
-        --shadow-card: 0 1px 2px hsl(20 14% 12% / 0.04), 0 8px 24px -8px hsl(20 14% 12% / 0.08);
-        --shadow-lift: 0 20px 40px -18px hsl(20 14% 12% / 0.22);
+        /* Shadows — très discrètes, style marketplace */
+        --shadow-soft: 0 1px 2px hsl(24 10% 10% / 0.04), 0 4px 14px -6px hsl(24 10% 10% / 0.08);
+        --shadow-warm: 0 12px 32px -14px hsl(8 78% 50% / 0.35);
+        --shadow-card: 0 1px 2px hsl(24 10% 10% / 0.04);
+        --shadow-lift: 0 10px 30px -12px hsl(24 10% 10% / 0.18);
 
         /* Transitions */
         --ease-smooth: cubic-bezier(0.22, 0.61, 0.36, 1);
@@ -71,28 +75,29 @@
     }
 
     .dark {
-        --background: 20 18% 8%;
-        --foreground: 34 40% 96%;
-        --card: 20 16% 11%;
-        --card-foreground: 34 40% 96%;
-        --popover: 20 16% 11%;
-        --popover-foreground: 34 40% 96%;
-        --primary: 14 82% 62%;
-        --primary-glow: 22 82% 66%;
-        --primary-foreground: 20 18% 8%;
-        --secondary: 20 14% 16%;
-        --secondary-foreground: 34 40% 96%;
-        --muted: 20 14% 15%;
-        --muted-foreground: 30 12% 66%;
-        --accent: 22 62% 60%;
-        --accent-foreground: 20 18% 8%;
+        --background: 24 10% 7%;
+        --surface: 24 8% 11%;
+        --foreground: 0 0% 96%;
+        --card: 24 8% 10%;
+        --card-foreground: 0 0% 96%;
+        --popover: 24 8% 10%;
+        --popover-foreground: 0 0% 96%;
+        --primary: 12 84% 58%;
+        --primary-glow: 20 84% 62%;
+        --primary-foreground: 24 10% 7%;
+        --secondary: 24 8% 15%;
+        --secondary-foreground: 0 0% 96%;
+        --muted: 24 8% 14%;
+        --muted-foreground: 24 6% 64%;
+        --accent: 12 84% 58%;
+        --accent-foreground: 24 10% 7%;
         --destructive: 0 62% 50%;
-        --destructive-foreground: 34 40% 96%;
-        --border: 20 12% 20%;
-        --input: 20 12% 22%;
-        --ring: 14 82% 62%;
-        --ink: 34 40% 96%;
-        --ink-foreground: 20 18% 8%;
+        --destructive-foreground: 0 0% 96%;
+        --border: 24 6% 19%;
+        --input: 24 6% 21%;
+        --ring: 12 84% 58%;
+        --ink: 0 0% 96%;
+        --ink-foreground: 24 10% 7%;
     }
 }
 
@@ -107,21 +112,28 @@
     }
     body {
         @apply bg-background text-foreground;
-        font-family: 'Inter', ui-sans-serif, system-ui, sans-serif;
-        font-feature-settings: 'ss01', 'cv11';
+        font-family: 'Inter', ui-sans-serif, system-ui, -apple-system, sans-serif;
+        font-feature-settings: 'cv11', 'ss01';
+        overflow-x: hidden;
     }
+    /* Typographie 100 % Inter — hiérarchie par taille/graisse, pas par police */
     h1, h2, h3, h4, .font-display {
-        font-family: 'Fraunces', 'Playfair Display', ui-serif, Georgia, serif;
-        font-optical-sizing: auto;
-        letter-spacing: -0.02em;
+        font-family: 'Inter', ui-sans-serif, system-ui, -apple-system, sans-serif;
+        letter-spacing: -0.022em;
+        font-weight: 700;
     }
     ::selection {
-        background: hsl(var(--primary) / 0.2);
+        background: hsl(var(--primary) / 0.18);
         color: hsl(var(--foreground));
+    }
+    :focus-visible {
+        outline: 2px solid hsl(var(--ring));
+        outline-offset: 2px;
     }
 }
 
 @layer utilities {
+    .bg-surface { background-color: hsl(var(--surface)); }
     .bg-gradient-warm { background: var(--gradient-warm); }
     .bg-gradient-hero { background: var(--gradient-hero); }
     .bg-gradient-accent { background: var(--gradient-accent); }
@@ -131,6 +143,21 @@
     .shadow-warm { box-shadow: var(--shadow-warm); }
     .shadow-card { box-shadow: var(--shadow-card); }
     .shadow-lift { box-shadow: var(--shadow-lift); }
+
+    /* Transition douce entre les pages — opacité seule : les boutons ne
+       bougent pas pendant l'animation (sinon le 1er tap rate sa cible) */
+    .page-fade { animation: pageFade 0.25s ease-out both; }
+    @keyframes pageFade {
+        from { opacity: 0; }
+        to { opacity: 1; }
+    }
+
+    /* Changement de photo produit (swipe / clic vignette) */
+    .img-swap { animation: imgSwap 0.25s ease both; }
+    @keyframes imgSwap {
+        from { opacity: 0.35; transform: scale(1.02); }
+        to { opacity: 1; transform: scale(1); }
+    }
 
     .text-balance { text-wrap: balance; }
     .text-pretty { text-wrap: pretty; }
@@ -165,15 +192,24 @@
 
     .fade-in-up {
         opacity: 0;
-        transform: translateY(16px);
-        animation: fadeInUp 0.7s var(--ease-smooth) forwards;
+        animation: fadeInUp 0.4s var(--ease-smooth) forwards;
     }
     @keyframes fadeInUp {
+        from { opacity: 0; transform: translateY(8px); }
         to { opacity: 1; transform: translateY(0); }
     }
 
     .no-scrollbar::-webkit-scrollbar { display: none; }
     .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
+    }
 }
 
 @layer base {

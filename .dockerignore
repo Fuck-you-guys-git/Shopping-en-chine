@@ -7,7 +7,9 @@
 # Secrets stay out of the image: Railway provides them as variables.
 **/.env
 **/.env.*
-!**/.env.example
+# Not needed at runtime
 test_reports
+deployer-agent-docs
 memory
 tests
+*.jpeg

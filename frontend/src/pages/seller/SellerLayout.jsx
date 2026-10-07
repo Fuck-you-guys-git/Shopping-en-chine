@@ -1,13 +1,11 @@
 import { Link, NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
-import { LayoutDashboard, Package, PlusCircle, ShoppingBag, Store, Bell, Search, LogOut } from "lucide-react";
+import { LayoutDashboard, Package, PlusCircle, ShoppingBag, Store, Bell, Search, LogOut, Mail } from "lucide-react";
 import { useState, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Menu } from "lucide-react";
 import { SellerProvider, useSeller } from "@/context/SellerContext";
-import { useCatalog } from "@/context/CatalogContext";
-import { CatalogFallback } from "@/components/CatalogFallback";
 import { useSellerAuth } from "@/context/SellerAuthContext";
 import { toast } from "sonner";
 
@@ -21,15 +19,16 @@ const buildNav = (base) => [
     { to: `${base}/commandes`, icon: ShoppingBag, label: "Commandes", badge: true },
     { to: `${base}/produits`, icon: Package, label: "Produits" },
     { to: `${base}/ajouter`, icon: PlusCircle, label: "Ajouter un produit" },
+    { to: `${base}/emails`, icon: Mail, label: "Emails" },
 ];
 
 const SidebarContent = ({ onNavigate }) => {
-    const { metrics, liveEvents } = useSeller();
+    const { orders, liveEvents } = useSeller();
     const { user, logout } = useSellerAuth();
     const navigate = useNavigate();
     const base = useBase();
     const nav = useMemo(() => buildNav(base), [base]);
-    const activeCount = metrics.active;
+    const activeCount = orders.filter((o) => o.status !== "delivered").length;
 
     const handleLogout = () => {
         logout();
@@ -50,25 +49,26 @@ const SidebarContent = ({ onNavigate }) => {
                     </div>
                 </Link>
             </div>
-            <nav className="flex-1 p-3 space-y-1">
+            <nav className="flex-1 p-3 space-y-2">
                 {nav.map((item) => (
                     <NavLink
                         key={item.to}
                         to={item.to}
                         end={item.end}
                         onClick={onNavigate}
+                        data-testid={`seller-nav-${item.label.toLowerCase().replace(/[^a-z]+/g, "-")}`}
                         className={({ isActive }) =>
-                            `flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium transition-colors ${
+                            `flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition-colors ${
                                 isActive
-                                    ? "bg-primary/15 text-primary"
-                                    : "text-ink-foreground/70 hover:bg-ink-foreground/5 hover:text-ink-foreground"
+                                    ? "bg-red-600 text-white shadow-warm"
+                                    : "bg-red-600/85 text-white hover:bg-red-600"
                             }`
                         }
                     >
                         <item.icon className="h-4 w-4" />
                         <span className="flex-1">{item.label}</span>
                         {item.badge && activeCount > 0 && (
-                            <span className="min-w-5 h-5 px-1.5 rounded-full bg-primary text-primary-foreground text-[10px] font-semibold flex items-center justify-center">
+                            <span className="min-w-5 h-5 px-1.5 rounded-full bg-white text-red-600 text-[10px] font-bold flex items-center justify-center">
                                 {activeCount}
                             </span>
                         )}
@@ -83,14 +83,14 @@ const SidebarContent = ({ onNavigate }) => {
                         <span className="absolute inline-flex h-full w-full rounded-full bg-success opacity-75 animate-ping" />
                         <span className="relative inline-flex h-2 w-2 rounded-full bg-success" />
                     </span>
-                    Activité récente
+                    Activité en direct
                 </div>
                 <div className="space-y-2 max-h-40 overflow-y-auto no-scrollbar">
                     {liveEvents.length === 0 && (
-                        <p className="text-xs text-ink-foreground/40 italic">Les nouvelles commandes apparaîtront ici.</p>
+                        <p className="text-xs text-ink-foreground/40 italic">En attente d&apos;activité…</p>
                     )}
                     {liveEvents.slice(0, 4).map((e, i) => (
-                        <div key={i} className="text-xs text-ink-foreground/70 leading-snug">
+                        <div key={`${e.id}-${e.type}-${i}`} className="text-xs text-ink-foreground/70 leading-snug">
                             {e.type === "new" ? (
                                 <>
                                     <span className="text-primary font-medium">Nouvelle commande</span>
@@ -113,7 +113,8 @@ const SidebarContent = ({ onNavigate }) => {
                 <button
                     type="button"
                     onClick={handleLogout}
-                    className="flex items-center gap-2 text-xs text-ink-foreground/60 hover:text-primary w-full"
+                    data-testid="seller-logout-btn"
+                    className="flex items-center gap-2 text-xs font-semibold text-red-400 hover:text-red-300 w-full"
                 >
                     <LogOut className="h-3.5 w-3.5" />
                     Se déconnecter
@@ -135,14 +136,16 @@ const LayoutInner = () => {
     const { user, logout } = useSellerAuth();
     const titles = {
         [base]: "Tableau de bord",
-        [`${base}/commandes`]: "Commandes",
+        [`${base}/commandes`]: "Commandes en temps réel",
         [`${base}/produits`]: "Mes produits",
         [`${base}/ajouter`]: "Ajouter un produit",
-        [`${base}/orders`]: "Commandes",
+        [`${base}/emails`]: "Journal des emails",
+        [`${base}/orders`]: "Commandes en temps réel",
         [`${base}/products`]: "Mes produits",
         [`${base}/add`]: "Ajouter un produit",
     };
-    const pageTitle = titles[location.pathname] || "Espace vendeur";
+    let pageTitle = titles[location.pathname] || "Espace vendeur";
+    if (location.pathname.includes("/modifier/")) pageTitle = "Modifier le produit";
 
     return (
         <div className="min-h-screen flex bg-secondary/30">
@@ -176,6 +179,7 @@ const LayoutInner = () => {
                         </div>
                         <Button variant="ghost" size="icon" className="relative">
                             <Bell className="h-5 w-5" />
+                            <span className="absolute top-1.5 right-1.5 h-2 w-2 rounded-full bg-primary animate-pulse" />
                         </Button>
                         <div className="hidden sm:flex items-center gap-2 pl-3 border-l border-border">
                             <div className="h-8 w-8 rounded-full bg-gradient-accent flex items-center justify-center text-primary-foreground text-xs font-semibold">
@@ -211,14 +215,6 @@ const LayoutInner = () => {
 };
 
 export default function SellerLayout() {
-    const { status } = useCatalog();
-    if (status !== "ready") {
-        return (
-            <div className="container mx-auto px-5 py-16">
-                <CatalogFallback count={4} />
-            </div>
-        );
-    }
     return (
         <SellerProvider>
             <LayoutInner />

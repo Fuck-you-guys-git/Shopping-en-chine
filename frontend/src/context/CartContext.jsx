@@ -1,52 +1,51 @@
-import { createContext, useContext, useEffect, useMemo, useState } from "react";
-import { useCatalog } from "@/context/CatalogContext";
+import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 
 const CartContext = createContext(null);
 const STORAGE_KEY = "sec_cart_v1";
+
+// Identifiant de ligne : même produit + tailles différentes = lignes séparées
+const lineKey = (id, size, color) => [id, size || "", color || ""].filter(Boolean).join("::");
 
 export const CartProvider = ({ children }) => {
     const [items, setItems] = useState(() => {
         try {
             const raw = localStorage.getItem(STORAGE_KEY);
-            return raw ? JSON.parse(raw) : [];
+            const parsed = raw ? JSON.parse(raw) : [];
+            // Migration : anciennes lignes sans `line`
+            return parsed.map((i) => ({ ...i, line: i.line || lineKey(i.id, i.size, i.color) }));
         } catch {
             return [];
         }
     });
     const [drawerOpen, setDrawerOpen] = useState(false);
-    const catalog = useCatalog();
 
     useEffect(() => {
         localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
     }, [items]);
 
-    // A saved cart may hold old prices: refresh items from the catalog and drop
-    // products that no longer exist. The server prices every order anyway.
-    useEffect(() => {
-        if (catalog.status !== "ready") return;
-        const byId = new Map(catalog.products.map((p) => [p.id, p]));
-        setItems((prev) => prev.filter((i) => byId.has(i.id)).map((i) => ({ ...byId.get(i.id), qty: i.qty })));
-    }, [catalog.status, catalog.products]);
-
-    const addItem = (product, qty = 1) => {
+    // Fonctions mémoïsées (identité stable) : utilisables sans risque dans les
+    // tableaux de dépendances des useEffect (polling paiement, restauration panier…)
+    const addItem = useCallback((product, qty = 1, size = null, color = null) => {
+        // On ne stocke pas la galerie complète (base64 lourdes) dans le panier
+        const { images: _images, ...slim } = product;
+        const line = lineKey(product.id, size, color);
         setItems((prev) => {
-            const found = prev.find((i) => i.id === product.id);
+            const found = prev.find((i) => i.line === line);
             if (found) {
                 return prev.map((i) =>
-                    i.id === product.id ? { ...i, qty: i.qty + qty } : i,
+                    i.line === line ? { ...i, qty: i.qty + qty } : i,
                 );
             }
-            return [...prev, { ...product, qty }];
+            return [...prev, { ...slim, qty, size: size || undefined, color: color || undefined, line }];
         });
-        setDrawerOpen(true);
-    };
+    }, []);
 
-    const removeItem = (id) => setItems((prev) => prev.filter((i) => i.id !== id));
-    const updateQty = (id, qty) =>
+    const removeItem = useCallback((line) => setItems((prev) => prev.filter((i) => i.line !== line)), []);
+    const updateQty = useCallback((line, qty) =>
         setItems((prev) =>
-            prev.map((i) => (i.id === id ? { ...i, qty: Math.max(1, qty) } : i)),
-        );
-    const clear = () => setItems([]);
+            prev.map((i) => (i.line === line ? { ...i, qty: Math.max(1, qty) } : i)),
+        ), []);
+    const clear = useCallback(() => setItems([]), []);
 
     const subtotal = useMemo(
         () => items.reduce((s, i) => s + i.price * i.qty, 0),

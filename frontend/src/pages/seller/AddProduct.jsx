@@ -1,49 +1,166 @@
-import { useState } from "react";
-import { useNavigate, useLocation } from "react-router-dom";
-import { Upload, Package, Sparkles, X, ImagePlus } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { useNavigate, useLocation, useParams } from "react-router-dom";
+import { Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Badge } from "@/components/ui/badge";
+import { Switch } from "@/components/ui/switch";
 import { useSeller } from "@/context/SellerContext";
-import { categories } from "@/data/products";
-import { formatPrice } from "@/lib/money";
-import { apiErrorMessage } from "@/lib/api";
+import { productsAPI } from "@/lib/api";
+import { subcategoriesByCategory } from "@/data/products";
 import { toast } from "sonner";
+import { SAMPLE_IMAGES, MAX_PHOTOS, sortSizes } from "./addproduct/constants";
+import { GeneralInfoSection } from "./addproduct/GeneralInfoSection";
+import { PricingSection } from "./addproduct/PricingSection";
+import { PhotosSection } from "./addproduct/PhotosSection";
+import { VariantsSection } from "./addproduct/VariantsSection";
+import { StockSection } from "./addproduct/StockSection";
+import { ProductPreview } from "./addproduct/ProductPreview";
 
-const SAMPLE_IMAGES = [
-    "https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=600&q=80",
-    "https://images.unsplash.com/photo-1546435770-a3e426bf472b?w=600&q=80",
-    "https://images.unsplash.com/photo-1553062407-98eeb64c6a62?w=600&q=80",
-    "https://images.unsplash.com/photo-1602143407151-7111542de6e8?w=600&q=80",
-    "https://images.unsplash.com/photo-1560343090-f0409e92791a?w=600&q=80",
-    "https://images.unsplash.com/photo-1526170375885-4d8ecf77b99f?w=600&q=80",
-];
-
-const PALETTE = ["#111111", "#F5F1EA", "#C64C3A", "#8A5A44", "#C9A26A", "#7A6A54", "#2E7D5A", "#3B5BDB"];
+// Compression côté client (max 800px, JPEG 75%) avant envoi au backend
+const compressFile = (file) =>
+    new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onerror = reject;
+        reader.onload = () => {
+            const img = new Image();
+            img.onerror = reject;
+            img.onload = () => {
+                const MAX = 800;
+                const scale = Math.min(1, MAX / Math.max(img.width, img.height));
+                const canvas = document.createElement("canvas");
+                canvas.width = Math.round(img.width * scale);
+                canvas.height = Math.round(img.height * scale);
+                canvas.getContext("2d").drawImage(img, 0, 0, canvas.width, canvas.height);
+                resolve(canvas.toDataURL("image/jpeg", 0.75));
+            };
+            img.src = reader.result;
+        };
+        reader.readAsDataURL(file);
+    });
 
 export default function AddProduct() {
-    const { addProduct } = useSeller();
+    const { addProduct, updateProduct } = useSeller();
     const navigate = useNavigate();
     const { pathname } = useLocation();
+    const { editId } = useParams();
     const base = pathname.startsWith("/admin") ? "/admin" : "/vendeur";
+    const isEdit = Boolean(editId);
 
     const [form, setForm] = useState({
         name: "",
         category: "",
+        subcategory: "",
         price: "",
         oldPrice: "",
+        priceEur: "",
+        priceUsd: "",
         description: "",
-        image: SAMPLE_IMAGES[0],
+        searchKeywords: "",
         badge: "",
         colors: [],
+        sizes: [],
+        stock: "",
+        outOfStock: false,
+        active: true,
     });
-    const [saving, setSaving] = useState(false);
+    const [urlInput, setUrlInput] = useState("");
+
+    // --- Photos (jusqu'à 5) : photoColors[i] = couleur associée à la photo i ---
+    const [photos, setPhotos] = useState([]);
+    const [photoColors, setPhotoColors] = useState([]);
+    const [uploading, setUploading] = useState(false);
+
+    // --- Mode édition : pré-remplir avec le produit existant (fiche complète,
+    // la liste publique ne contient plus la galerie) ---
+    const [ready, setReady] = useState(!isEdit);
+    const prefilled = useRef(false);
+    useEffect(() => {
+        if (!isEdit || prefilled.current) return;
+        prefilled.current = true;
+        productsAPI.get(editId).then((p) => {
+            setForm({
+                name: p.name || "",
+                category: p.category || "",
+                subcategory: p.subcategory || "",
+                price: String(p.price ?? ""),
+                oldPrice: p.oldPrice ? String(p.oldPrice) : "",
+                priceEur: p.priceEur ? String(p.priceEur) : "",
+                priceUsd: p.priceUsd ? String(p.priceUsd) : "",
+                description: p.description === "Description à compléter." ? "" : (p.description || ""),
+                searchKeywords: (p.keywords || []).join(", "),
+                badge: p.badge || "",
+                colors: p.colors || [],
+                sizes: p.sizes || [],
+                stock: p.stock == null ? "" : String(p.stock),
+                outOfStock: p.outOfStock === true,
+                active: p.active !== false,
+            });
+            setPhotos((p.images?.length ? p.images : [p.image]).filter(Boolean).slice(0, 5));
+            setPhotoColors((p.image_colors || []).slice(0, 5));
+            setReady(true);
+        }).catch(() => {
+            toast.error("Produit introuvable");
+            navigate(`${base}/produits`);
+        });
+    }, [isEdit, editId, base, navigate]);
 
     const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
     const toggleColor = (c) => set("colors", form.colors.includes(c) ? form.colors.filter((x) => x !== c) : [...form.colors, c]);
+    const toggleSize = (s) => set("sizes", form.sizes.includes(s) ? form.sizes.filter((x) => x !== s) : sortSizes([...form.sizes, s]));
+
+    const onPhotoSelected = async (e) => {
+        const files = Array.from(e.target.files || []).filter((f) => f.type.startsWith("image/"));
+        e.target.value = "";
+        if (!files.length) return;
+        const slots = MAX_PHOTOS - photos.length;
+        if (slots <= 0) {
+            toast.error("Maximum 5 photos", { description: "Supprimez une photo pour en ajouter une autre." });
+            return;
+        }
+        setUploading(true);
+        const added = [];
+        for (const file of files.slice(0, slots)) {
+            try {
+                added.push(await compressFile(file));
+            } catch {
+                toast.error("Photo illisible", { description: file.name });
+            }
+        }
+        setUploading(false);
+        if (added.length) {
+            setPhotos((prev) => [...prev, ...added].slice(0, MAX_PHOTOS));
+            setPhotoColors((prev) => [...prev, ...added.map(() => null)].slice(0, MAX_PHOTOS));
+            toast.success(`${added.length} photo(s) ajoutée(s) ✦`, {
+                description: files.length > slots ? "Limite de 5 photos atteinte." : "Visible dans l'aperçu.",
+            });
+        }
+    };
+
+    const removePhoto = (idx) => {
+        setPhotos((prev) => prev.filter((_, i) => i !== idx));
+        setPhotoColors((prev) => prev.filter((_, i) => i !== idx));
+    };
+    const makeMain = (idx) => {
+        setPhotos((prev) => [prev[idx], ...prev.filter((_, i) => i !== idx)]);
+        setPhotoColors((prev) => [prev[idx] ?? null, ...prev.filter((_, i) => i !== idx)]);
+    };
+    const addSample = (src) => {
+        const idx = photos.indexOf(src);
+        if (idx >= 0) {
+            removePhoto(idx);
+        } else if (photos.length < MAX_PHOTOS) {
+            setPhotos((prev) => [...prev, src]);
+            setPhotoColors((prev) => [...prev, null]);
+        }
+    };
+    // Associe (ou retire) une couleur à la photo idx
+    const assignPhotoColor = (idx, c) =>
+        setPhotoColors((prev) => {
+            const next = [...prev];
+            while (next.length < photos.length) next.push(null);
+            next[idx] = next[idx] === c ? null : c;
+            return next;
+        });
+    const mainImage = photos[0] || SAMPLE_IMAGES[0];
 
     const submit = async (e) => {
         e.preventDefault();
@@ -51,199 +168,122 @@ export default function AddProduct() {
             toast.error("Champs requis manquants", { description: "Nom, catégorie et prix sont obligatoires." });
             return;
         }
+        if (!(Number(form.priceEur) > 0) || !(Number(form.priceUsd) > 0)) {
+            toast.error("Prix EUR et USD obligatoires", {
+                description: "Saisissez le prix en euros et en dollars — aucune conversion automatique n'est appliquée.",
+            });
+            return;
+        }
         const product = {
             name: form.name,
             category: form.category,
+            subcategory: form.subcategory && subcategoriesByCategory[form.category] ? form.subcategory : undefined,
             price: Number(form.price),
             oldPrice: form.oldPrice ? Number(form.oldPrice) : undefined,
-            description: form.description || "Description à compléter.",
-            image: form.image,
+            priceEur: form.priceEur ? Number(form.priceEur) : null,
+            priceUsd: form.priceUsd ? Number(form.priceUsd) : null,
+            description: form.description || "",
+            image: mainImage,
+            images: photos.length ? photos : [mainImage],
             badge: form.badge || undefined,
-            colors: form.colors,
+            colors: form.colors.length ? form.colors : undefined,
+            sizes: form.sizes.length ? sortSizes(form.sizes) : undefined,
+            image_colors: photoColors.some(Boolean)
+                ? photos.map((_, i) => photoColors[i] || null)
+                : undefined,
+            keywords: form.searchKeywords
+                ? form.searchKeywords.split(",").map((k) => k.trim()).filter(Boolean)
+                : undefined,
+            stock: form.stock !== "" ? Math.max(0, Math.floor(Number(form.stock))) : null,
+            outOfStock: form.outOfStock,
         };
-        setSaving(true);
         try {
-            await addProduct(product);
-            toast.success("Produit publié ✦", { description: form.name });
+            if (isEdit) {
+                await updateProduct(editId, product);
+                toast.success("Produit mis à jour ✦", { description: form.name });
+            } else {
+                await addProduct(product);
+                toast.success("Produit ajouté ✦", { description: form.name });
+            }
             navigate(`${base}/produits`);
         } catch (err) {
-            toast.error("Produit non publié", { description: apiErrorMessage(err) });
-        } finally {
-            setSaving(false);
+            const status = err.response?.status;
+            if (status === 401) {
+                // Session expirée : le contexte d'auth affiche déjà le message
+                // et redirige vers la page de connexion.
+                return;
+            }
+            if (status === 422) {
+                toast.error("Informations invalides", {
+                    description: "Vérifiez le nom (2 caractères minimum) et le prix (supérieur à 0).",
+                });
+            } else if (status === 413) {
+                toast.error("Photos trop lourdes", {
+                    description: "Supprimez une photo ou utilisez des images plus légères.",
+                });
+            } else if (err.code === "ECONNABORTED") {
+                toast.error("Connexion trop lente", {
+                    description: "L'envoi a pris trop de temps. Réessayez avec moins de photos.",
+                });
+            } else {
+                toast.error("Enregistrement impossible", {
+                    description: err.response?.data?.detail || "Vérifiez votre connexion internet et réessayez.",
+                });
+            }
         }
     };
 
-    const catObj = categories.find((c) => c.id === form.category);
+    if (!ready) {
+        return (
+            <div className="py-24 text-center text-sm text-muted-foreground" data-testid="edit-product-loading">
+                Chargement du produit…
+            </div>
+        );
+    }
 
     return (
         <form onSubmit={submit} className="grid lg:grid-cols-[1fr_360px] gap-5">
             {/* Main form */}
             <div className="space-y-5">
-                <div className="bg-card rounded-2xl p-5 md:p-6 shadow-card border border-border/50">
-                    <h3 className="font-display text-lg font-medium mb-1">Informations générales</h3>
-                    <p className="text-xs text-muted-foreground mb-5">Renseignez les détails principaux du produit.</p>
-                    <div className="space-y-4">
-                        <div className="space-y-1.5">
-                            <Label htmlFor="name">Nom du produit *</Label>
-                            <Input id="name" value={form.name} onChange={(e) => set("name", e.target.value)} placeholder="Ex : Sac à dos en cuir tressé" />
-                        </div>
-                        <div className="grid sm:grid-cols-2 gap-4">
-                            <div className="space-y-1.5">
-                                <Label>Catégorie *</Label>
-                                <Select value={form.category} onValueChange={(v) => set("category", v)}>
-                                    <SelectTrigger><SelectValue placeholder="Choisir une catégorie" /></SelectTrigger>
-                                    <SelectContent>
-                                        {categories.map((c) => (
-                                            <SelectItem key={c.id} value={c.id}>
-                                                <span className="flex items-center gap-2">
-                                                    <i className={`fa-solid ${c.icon} text-primary text-xs`} />
-                                                    {c.name}
-                                                </span>
-                                            </SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
-                            </div>
-                            <div className="space-y-1.5">
-                                <Label htmlFor="badge">Badge (optionnel)</Label>
-                                <Select value={form.badge} onValueChange={(v) => set("badge", v === "none" ? "" : v)}>
-                                    <SelectTrigger><SelectValue placeholder="Aucun" /></SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="none">Aucun</SelectItem>
-                                        <SelectItem value="Nouveauté">Nouveauté</SelectItem>
-                                        <SelectItem value="Bestseller">Bestseller</SelectItem>
-                                        <SelectItem value="Édition limitée">Édition limitée</SelectItem>
-                                        <SelectItem value="Promo">Promo</SelectItem>
-                                    </SelectContent>
-                                </Select>
-                            </div>
-                        </div>
-                        <div className="space-y-1.5">
-                            <Label htmlFor="desc">Description</Label>
-                            <Textarea
-                                id="desc"
-                                rows={4}
-                                value={form.description}
-                                onChange={(e) => set("description", e.target.value)}
-                                placeholder="Décrivez les matériaux, avantages, dimensions…"
-                            />
-                        </div>
+                <GeneralInfoSection form={form} set={set} />
+                <PricingSection form={form} set={set} />
+                <PhotosSection
+                    photos={photos}
+                    photoColors={photoColors}
+                    colors={form.colors}
+                    uploading={uploading}
+                    urlInput={urlInput}
+                    setUrlInput={setUrlInput}
+                    onFilesSelected={onPhotoSelected}
+                    onRemove={removePhoto}
+                    onMakeMain={makeMain}
+                    onAddSample={addSample}
+                    onAssignColor={assignPhotoColor}
+                />
+                <VariantsSection
+                    colors={form.colors}
+                    sizes={form.sizes}
+                    onToggleColor={toggleColor}
+                    onToggleSize={toggleSize}
+                />
+                <StockSection form={form} set={set} />
+                <div className="bg-card rounded-2xl p-5 md:p-6 shadow-card border border-border/50 flex items-center justify-between">
+                    <div>
+                        <p className="font-medium text-sm">Publier immédiatement</p>
+                        <p className="text-xs text-muted-foreground mt-0.5">Le produit sera visible sur la boutique dès l&apos;enregistrement.</p>
                     </div>
+                    <Switch checked={form.active} onCheckedChange={(v) => set("active", v)} />
                 </div>
-
-                <div className="bg-card rounded-2xl p-5 md:p-6 shadow-card border border-border/50">
-                    <h3 className="font-display text-lg font-medium mb-1">Prix</h3>
-                    <p className="text-xs text-muted-foreground mb-5">Prix en francs CFA (F).</p>
-                    <div className="grid sm:grid-cols-2 gap-4">
-                        <div className="space-y-1.5">
-                            <Label htmlFor="price">Prix de vente *</Label>
-                            <div className="relative">
-                                <Input id="price" type="number" min="0" step="500" value={form.price} onChange={(e) => set("price", e.target.value)} placeholder="25000" className="pr-10" />
-                                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">F</span>
-                            </div>
-                        </div>
-                        <div className="space-y-1.5">
-                            <Label htmlFor="oldPrice">Prix barré (optionnel)</Label>
-                            <div className="relative">
-                                <Input id="oldPrice" type="number" min="0" step="500" value={form.oldPrice} onChange={(e) => set("oldPrice", e.target.value)} placeholder="35000" className="pr-10" />
-                                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">F</span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <div className="bg-card rounded-2xl p-5 md:p-6 shadow-card border border-border/50">
-                    <h3 className="font-display text-lg font-medium mb-1">Image du produit</h3>
-                    <p className="text-xs text-muted-foreground mb-5">Choisissez une image depuis nos exemples ou collez une URL.</p>
-                    <div className="space-y-4">
-                        <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
-                            {SAMPLE_IMAGES.map((src) => (
-                                <button
-                                    type="button"
-                                    key={src}
-                                    onClick={() => set("image", src)}
-                                    className={`aspect-square rounded-lg overflow-hidden bg-muted border-2 transition-all ${form.image === src ? "border-primary scale-95" : "border-transparent"}`}
-                                >
-                                    <img src={src} alt="" className="h-full w-full object-cover" />
-                                </button>
-                            ))}
-                        </div>
-                        <div className="space-y-1.5">
-                            <Label htmlFor="image-url">Ou URL personnalisée</Label>
-                            <div className="relative">
-                                <ImagePlus className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                                <Input id="image-url" value={form.image} onChange={(e) => set("image", e.target.value)} placeholder="https://…" className="pl-9" />
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <div className="bg-card rounded-2xl p-5 md:p-6 shadow-card border border-border/50">
-                    <h3 className="font-display text-lg font-medium mb-1">Variantes (optionnel)</h3>
-                    <p className="text-xs text-muted-foreground mb-4">Sélectionnez les couleurs disponibles.</p>
-                    <div className="flex flex-wrap gap-2">
-                        {PALETTE.map((c) => (
-                            <button
-                                key={c}
-                                type="button"
-                                onClick={() => toggleColor(c)}
-                                className={`h-10 w-10 rounded-full border-2 transition-all ${form.colors.includes(c) ? "border-primary scale-110" : "border-border"}`}
-                                style={{ background: c }}
-                                aria-label={c}
-                            />
-                        ))}
-                    </div>
-                </div>
-
             </div>
 
             {/* Preview */}
             <aside className="space-y-4">
                 <div className="sticky top-24 space-y-4">
-                    <div className="bg-card rounded-2xl p-5 shadow-card border border-border/50">
-                        <p className="text-xs uppercase tracking-widest text-muted-foreground mb-3 flex items-center gap-2">
-                            <Sparkles className="h-3.5 w-3.5 text-primary" />
-                            Aperçu en direct
-                        </p>
-                        <div className="aspect-[4/5] rounded-xl overflow-hidden bg-muted relative mb-3">
-                            {form.image ? (
-                                <img src={form.image} alt="" className="h-full w-full object-cover" />
-                            ) : (
-                                <div className="h-full w-full flex items-center justify-center text-muted-foreground">
-                                    <Package className="h-10 w-10 opacity-40" />
-                                </div>
-                            )}
-                            {form.badge && (
-                                <Badge className="absolute top-3 left-3 bg-background text-foreground hover:bg-background rounded-full">
-                                    {form.badge}
-                                </Badge>
-                            )}
-                        </div>
-                        {catObj && (
-                            <p className="text-xs text-muted-foreground mb-1">
-                                <i className={`fa-solid ${catObj.icon} text-primary text-[10px] mr-1.5`} />
-                                {catObj.name}
-                            </p>
-                        )}
-                        <p className="font-medium text-sm mb-1 line-clamp-2">{form.name || "Nom du produit"}</p>
-                        {form.colors.length > 0 && (
-                            <div className="flex gap-1 mb-2">
-                                {form.colors.map((c) => (
-                                    <span key={c} className="h-4 w-4 rounded-full border border-border" style={{ background: c }} />
-                                ))}
-                            </div>
-                        )}
-                        <div className="flex items-baseline gap-2">
-                            <span className="font-display text-lg font-semibold">{form.price ? formatPrice(Number(form.price)) : "0 F"}</span>
-                            {form.oldPrice && <span className="text-xs text-muted-foreground line-through">{formatPrice(Number(form.oldPrice))}</span>}
-                        </div>
-                    </div>
-
+                    <ProductPreview form={form} photos={photos} mainImage={mainImage} />
                     <div className="flex flex-col gap-2">
-                        <Button type="submit" size="lg" disabled={saving} className="bg-primary hover:bg-primary/90 text-primary-foreground shadow-warm rounded-full h-12">
-                            <Upload className="h-4 w-4" /> {saving ? "Publication…" : "Publier le produit"}
+                        <Button type="submit" size="lg" className="bg-primary hover:bg-primary/90 text-primary-foreground shadow-warm rounded-full h-12" data-testid="submit-product-btn">
+                            <Upload className="h-4 w-4" /> {isEdit ? "Mettre à jour le produit" : "Publier le produit"}
                         </Button>
-                        <p className="text-[11px] text-muted-foreground text-center">Visible sur la boutique dès la publication.</p>
                         <Button type="button" variant="outline" size="lg" onClick={() => navigate(`${base}/produits`)} className="rounded-full">
                             Annuler
                         </Button>

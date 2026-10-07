@@ -1,161 +1,496 @@
 import { useEffect, useRef, useState } from "react";
-import { Link } from "react-router-dom";
-import { Check, ShieldCheck, ArrowLeft, Loader2, MapPin, Smartphone, CreditCard, Truck } from "lucide-react";
+import { Link, useNavigate } from "react-router-dom";
+import { Check, ArrowLeft, XCircle, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Separator } from "@/components/ui/separator";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { PaxityWidget } from "@/components/PaxityWidget";
 import { useCart } from "@/context/CartContext";
-import { useCurrency } from "@/context/CurrencyContext";
-import { apiErrorMessage, ordersAPI, paymentsAPI } from "@/lib/api";
-import { formatMinor, formatMoney, formatPrice } from "@/lib/money";
-import { SHIPPING_METHODS, shippingFee } from "@/lib/shipping";
 import { toast } from "sonner";
+import { paxityAPI } from "@/lib/api";
+import { DeliveryOptions } from "@/components/DeliveryOptions";
+import { orderNo } from "@/lib/utils";
+import { t, getLocale, cartDisplayTotal, unitAmount } from "@/lib/locale";
+import { loadPaxityV2Widget } from "@/lib/paxityWidget";
+import { PaxityCardPanel } from "@/components/checkout/PaxityCardPanel";
+import { findCountry, countryName, STATES } from "@/lib/countries";
+import { colorName } from "@/lib/colors";
+import { OPERATOR_META } from "@/components/checkout/operatorMeta";
+import { CheckoutSuccess } from "@/components/checkout/CheckoutSuccess";
+import { CheckoutPending } from "@/components/checkout/CheckoutPending";
+import { AddressStep } from "@/components/checkout/AddressStep";
+import { PaymentMethodPicker } from "@/components/checkout/PaymentMethodPicker";
+import { PaxityPhoneForm } from "@/components/checkout/PaxityPhoneForm";
+import { CheckoutSummary } from "@/components/checkout/CheckoutSummary";
 
-const COUNTRIES = [
-    { code: "SN", label: "Sénégal" },
-    { code: "CI", label: "Côte d'Ivoire" },
-];
+// La transaction en attente est persistée : si le client part payer dans
+// l'app Wave/Orange Money et que le navigateur recharge la page au retour,
+// on restaure l'attente et on affiche la confirmation dès que c'est payé.
+const PENDING_TX_KEY = "sec_pending_paxity_tx_v1";
 
-// Wave / Orange Money are paid in F CFA; cards in € or $ (see backend/orders.py).
-const PAYMENT_OPTIONS = [
-    { id: "mobile_money", icon: Smartphone, label: "Wave / Orange Money", hint: "Payez en F CFA depuis votre téléphone", online: true },
-    { id: "carte", icon: CreditCard, label: "Carte bancaire", hint: "Payez en euros ou en dollars", online: true },
-    { id: "livraison", icon: Truck, label: "Paiement à la livraison", hint: "Réglez en F CFA à la réception du colis", online: false },
-];
-const CARD_CURRENCIES = [
-    { code: "EUR", label: "€ Euro" },
-    { code: "USD", label: "$ Dollar" },
-];
+// Libellé complet d'un article pour la commande : nom + taille + couleur
+// choisies par le client (visibles partout : dashboard vendeur, tickets, emails).
+const itemLabel = (it) => {
+    const opts = [it.size ? `Taille ${it.size}` : null, it.color ? colorName(it.color) : null].filter(Boolean);
+    return opts.length ? `${it.name} — ${opts.join(" · ")}` : it.name;
+};
+// Confirmation persistée en session : survit au remontage du composant
+// (changement de langue/devise) et au rechargement de la page.
+const COMPLETE_TX_KEY = "sec_completed_paxity_tx_v1";
 
 export default function Checkout() {
     const { items, subtotal, clear } = useCart();
-    const { currency: displayCurrency, rates, paxity } = useCurrency();
+    const navigate = useNavigate();
     const [step, setStep] = useState(1);
 
-    const [buyer, setBuyer] = useState({
-        firstName: "", lastName: "", email: "",
-        phone: "", address: "", zip: "", city: "", country: "SN",
-    });
-    const [shippingMethod, setShippingMethod] = useState("standard");
-    const [paymentChoice, setPaymentChoice] = useState(null);
-    const [cardCurrency, setCardCurrency] = useState(displayCurrency === "USD" ? "USD" : "EUR");
-
-    const [processing, setProcessing] = useState(false);
-    const [pendingOrder, setPendingOrder] = useState(null); // created, waiting for the Paxity widget
-    const [doneOrder, setDoneOrder] = useState(null);
-    const paymentBox = useRef(null);
-
-    // The widget replaces the payment choices: bring it into view.
+    // Synchronisation étapes ↔ historique navigateur : chaque « Continuer »
+    // pousse une entrée d'historique ; le bouton RETOUR du navigateur revient
+    // donc à l'étape précédente, exactement comme les boutons Retour du site.
+    const goToStep = (n) => {
+        window.history.pushState(
+            { ...(window.history.state || {}), idx: (window.history.state?.idx ?? 0) + 1, checkoutStep: n },
+            "",
+        );
+        setStep(n);
+    };
+    const goBackStep = () => window.history.back();
     useEffect(() => {
-        if (pendingOrder) paymentBox.current?.scrollIntoView({ behavior: "smooth", block: "start" });
-    }, [pendingOrder]);
-
-    const shipping = shippingFee(shippingMethod, subtotal);
+        const onPop = (e) => {
+            const s = e.state?.checkoutStep;
+            setStep(typeof s === "number" ? s : 1);
+        };
+        window.addEventListener("popstate", onPop);
+        return () => window.removeEventListener("popstate", onPop);
+    }, []);
+    const [deliveryMode, setDeliveryMode] = useState("standard");
+    const shipping = 0;
     const total = subtotal + shipping;
-    const paymentOptions = PAYMENT_OPTIONS.filter((o) => paxity.enabled || !o.online);
-    const payment = paymentOptions.some((o) => o.id === paymentChoice) ? paymentChoice : paymentOptions[0].id;
-    const paymentCurrency = payment === "carte" ? cardCurrency : "XOF";
+    // Paxity (Wave, Orange Money et Carte) n'encaisse QUE en F CFA : on débite
+    // toujours le prix vendeur F CFA et on affiche l'équivalent €/$ en disclaimer.
+    const localizedCartTotal = getLocale().currency === "XOF" ? null : cartDisplayTotal(items);
+    const cardChargeCurrency = "XOF";
+    const cardChargeAmount = total;
 
-    const buyerValid = () =>
-        buyer.firstName && buyer.lastName && buyer.email && buyer.phone && buyer.address && buyer.city;
+    const [buyer, setBuyer] = useState(() => {
+        // Pays pré-sélectionné depuis la géolocalisation IP (si connu)
+        const detected = findCountry(getLocale().country);
+        return {
+            firstName: "", lastName: "", email: "",
+            phone: "", address: "", zip: "", city: "", state: "",
+            country: detected ? detected.code : "SN",
+        };
+    });
 
-    const finish = (order) => {
-        setPendingOrder(null);
-        setDoneOrder(order);
-        clear();
-        toast.success("Commande confirmée ✦", { description: `Commande ${order.id}` });
+    const selectedCountry = findCountry(buyer.country);
+
+    const [paxityConfig, setPaxityConfig] = useState(null);
+    const [paxityError, setPaxityError] = useState(null);
+    const [paymentMethod, setPaymentMethod] = useState("");
+    const [prefix, setPrefix] = useState(() => findCountry(getLocale().country)?.dial || "221");
+
+    const changeCountry = (code) => {
+        setBuyer((b) => ({ ...b, country: code, state: "" }));
+        const c = findCountry(code);
+        if (c) setPrefix(c.dial); // indicatif appliqué automatiquement
     };
 
-    const handleSubmit = async () => {
-        setProcessing(true);
+    const [processing, setProcessing] = useState(false);
+    const [transaction, setTransaction] = useState(null); // { transaction_id, status, order_id, ... }
+    const [complete, setComplete] = useState(false);
+
+    // Remonter en haut de page à chaque changement d'étape (adresse → livraison
+    // → paiement) et à l'affichage des écrans attente/confirmation : sur mobile,
+    // le clic « Continuer » se fait en bas de page et la vue restait en bas.
+    useEffect(() => {
+        window.scrollTo(0, 0); // forme universelle (compatible tous mobiles)
+    }, [step, complete, transaction?.status]);
+    const [checkingNow, setCheckingNow] = useState(false);
+
+    // Restaurer une transaction en attente (retour depuis l'app de paiement)
+    // ou une confirmation récente (remontage/rechargement juste après paiement)
+    const restoredOnce = useRef(false);
+    useEffect(() => {
+        if (restoredOnce.current) return;
+        restoredOnce.current = true;
         try {
-            const order = await ordersAPI.create({
+            const done = sessionStorage.getItem(COMPLETE_TX_KEY);
+            if (done) {
+                if (items.length > 0) {
+                    // Le client démarre une NOUVELLE commande : on oublie
+                    // l'ancienne confirmation.
+                    sessionStorage.removeItem(COMPLETE_TX_KEY);
+                } else {
+                    const tx = JSON.parse(done);
+                    if (tx?.order_id) {
+                        setTransaction(tx);
+                        setComplete(true);
+                        return; // confirmation prioritaire sur toute restauration pending
+                    }
+                }
+            }
+        } catch {
+            sessionStorage.removeItem(COMPLETE_TX_KEY);
+        }
+        try {
+            const raw = localStorage.getItem(PENDING_TX_KEY);
+            if (!raw) return;
+            const tx = JSON.parse(raw);
+            if (tx?.transaction_id && tx.status === "pending") setTransaction(tx);
+            else localStorage.removeItem(PENDING_TX_KEY);
+        } catch {
+            localStorage.removeItem(PENDING_TX_KEY);
+        }
+    }, [items.length]);
+
+    // Persister tant que le paiement est en attente
+    useEffect(() => {
+        if (!transaction) return;
+        if (transaction.status === "pending") {
+            localStorage.setItem(PENDING_TX_KEY, JSON.stringify(transaction));
+        } else {
+            localStorage.removeItem(PENDING_TX_KEY);
+        }
+    }, [transaction]);
+
+    // Persister la confirmation : elle doit survivre à un remontage du composant
+    // (changement de langue/devise détecté) ou à un rechargement de la page.
+    useEffect(() => {
+        if (complete && transaction?.order_id) {
+            sessionStorage.setItem(COMPLETE_TX_KEY, JSON.stringify({ ...transaction, status: "success" }));
+        }
+    }, [complete, transaction]);
+
+    // Fetch backend config
+    useEffect(() => {
+        paxityAPI.getConfig()
+            .then((cfg) => {
+                setPaxityConfig(cfg);
+                // Pré-sélection du moyen de paiement : l'opérateur du pays du
+                // client (indicatif) si disponible, sinon le premier. L'indicatif
+                // téléphone NE suit PAS l'opérateur : il reste celui du pays
+                // sélectionné (ex. États-Unis → +1). Il passe à 221/225 seulement
+                // quand le client choisit explicitement Wave / Orange Money.
+                const methods = cfg.methods || [];
+                const detectedDial = findCountry(getLocale().country)?.dial;
+                const first = methods.find((m) => m.prefix === detectedDial) || methods[0];
+                if (first) setPaymentMethod(first.code);
+            })
+            .catch(() => setPaxityError("Impossible de contacter le service de paiement."));
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
+
+    // L'API Paxity n'accepte AUCUNE URL de retour (doc officielle) : le retour
+    // vers notre site est donc géré ici, différemment selon l'appareil.
+    // - MOBILE (Android/iPhone) : AUCUNE nouvelle fenêtre. Le lien s'ouvre dans
+    //   le même onglet → le système ouvre l'app Wave/OM par-dessus le site.
+    //   Au retour du client, la transaction en attente est restaurée depuis
+    //   localStorage (PENDING_TX_KEY) et confirmée par polling.
+    // - ORDINATEUR : onglet séparé pendant que cette page reste en attente
+    //   active ; dès que Paxity confirme, l'onglet de paiement est fermé
+    //   automatiquement et le client retrouve notre confirmation.
+    const isMobileDevice = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+    const payWinRef = useRef(null);
+    const closePayWindow = () => {
+        try {
+            payWinRef.current?.close();
+        } catch (e) {
+            console.debug("[Paxity] fermeture onglet paiement impossible", e?.message);
+        }
+        payWinRef.current = null;
+    };
+    const openPayWindow = (url) => {
+        if (isMobileDevice) {
+            // Même onglet : pas de fenêtre supplémentaire sur téléphone
+            window.location.href = url;
+            return;
+        }
+        const w = window.open(url, "_blank");
+        if (w) {
+            payWinRef.current = w;
+        } else {
+            // Pop-up bloqué : repli dans le même onglet
+            window.location.href = url;
+        }
+    };
+
+    // Poll status while pending — vérifie immédiatement, puis toutes les 3,5s,
+    // et dès que le client revient sur l'onglet (retour de l'app Wave/OM).
+    useEffect(() => {
+        if (!transaction || transaction.status !== "pending") return;
+        let stopped = false;
+        const checkNow = async () => {
+            try {
+                const res = await paxityAPI.getStatus(transaction.transaction_id);
+                if (stopped) return;
+                if (res.status !== transaction.status) {
+                    // Merge the full response so amount/order_id survive the
+                    // cart clear() and render correctly on the confirmation.
+                    setTransaction((prev) => ({ ...prev, ...res }));
+                }
+                if (res.status === "success") {
+                    closePayWindow();
+                    setComplete(true);
+                    clear();
+                    localStorage.removeItem(PENDING_TX_KEY);
+                    toast.success(t("Paiement confirmé ✦"), { description: `${t("Commande")} ${orderNo(res.order_id)}` });
+                } else if (res.status === "failed") {
+                    closePayWindow();
+                    localStorage.removeItem(PENDING_TX_KEY);
+                    toast.error(t("Paiement échoué"), { description: t("Veuillez réessayer") });
+                }
+            } catch (e) {
+                // Erreur réseau passagère pendant le polling : on retentera au tick suivant
+                console.debug("[Paxity] polling status indisponible, nouvelle tentative…", e?.message);
+            }
+        };
+        checkNow();
+        // Vérification rapide (2s) : dès que Paxity confirme, la fenêtre de
+        // paiement est fermée et la confirmation s'affiche ici.
+        const interval = setInterval(checkNow, 2000);
+        const onVisible = () => {
+            if (document.visibilityState === "visible") checkNow();
+        };
+        document.addEventListener("visibilitychange", onVisible);
+        window.addEventListener("focus", onVisible);
+        return () => {
+            stopped = true;
+            clearInterval(interval);
+            document.removeEventListener("visibilitychange", onVisible);
+            window.removeEventListener("focus", onVisible);
+        };
+    }, [transaction, clear]);
+
+    // Bouton « J'ai payé — Vérifier » sur l'écran d'attente
+    const manualCheck = async () => {
+        if (!transaction?.transaction_id) return;
+        setCheckingNow(true);
+        try {
+            const res = await paxityAPI.getStatus(transaction.transaction_id);
+            if (res.status === "success") {
+                closePayWindow();
+                setTransaction((prev) => ({ ...prev, ...res }));
+                setComplete(true);
+                clear();
+                localStorage.removeItem(PENDING_TX_KEY);
+                toast.success(t("Paiement confirmé ✦"), { description: `${t("Commande")} ${orderNo(res.order_id)}` });
+            } else if (res.status === "failed") {
+                closePayWindow();
+                setTransaction((prev) => ({ ...prev, ...res }));
+                localStorage.removeItem(PENDING_TX_KEY);
+                toast.error(t("Paiement échoué"), { description: t("Veuillez réessayer") });
+            } else {
+                toast(t("Paiement toujours en attente"), {
+                    description: t("Validez la transaction sur votre téléphone, puis revérifiez."),
+                });
+            }
+        } catch {
+            toast.error(t("Vérification impossible"), { description: t("Vérifiez votre connexion et réessayez.") });
+        } finally {
+            setCheckingNow(false);
+        }
+    };
+
+    const buyerValid = () =>
+        buyer.firstName && buyer.lastName && buyer.email && buyer.phone && buyer.address && buyer.city &&
+        (!STATES[buyer.country] || buyer.state);
+
+    const selectedMethod = paxityConfig?.methods?.find((m) => m.code === paymentMethod);
+    const operatorIconMeta = (selectedMethod && OPERATOR_META[selectedMethod.icon]) || OPERATOR_META.wave;
+
+
+    // Paiement CARTE via le widget hébergé Paxity v2 : le backend crée la
+    // commande + la session (token), le widget s'ouvre en modale par-dessus la
+    // page (saisie carte + 3DS côté Paxity). À `onSuccess`, on confirme la
+    // commande côté serveur et on affiche la confirmation.
+    const handleCardPayment = async () => {
+        sessionStorage.removeItem(COMPLETE_TX_KEY); // nouvelle commande : oublier l'ancienne confirmation
+        setProcessing(true);
+        setPaxityError(null);
+        try {
+            // Carte débitée EN F CFA (Paxity encaisse uniquement en XOF) ;
+            // l'équivalent €/$ est affiché en disclaimer côté site.
+            const payCurrency = "XOF";
+            const chargedAmount = total;
+            const res = await paxityAPI.cardInit({
+                amount: chargedAmount,
+                currency: payCurrency,
+                base_amount_xof: total,
+                delivery_mode: deliveryMode,
+                description: `Commande Shopping en Chine — ${items.length} article(s)`,
                 customer: {
-                    first_name: buyer.firstName,
-                    last_name: buyer.lastName,
+                    name: `${buyer.firstName} ${buyer.lastName}`.trim(),
                     email: buyer.email,
-                    phone: buyer.phone,
-                    address: buyer.address,
-                    zip: buyer.zip,
                     city: buyer.city,
-                    country: buyer.country,
+                    phone: buyer.phone ? `+${prefix} ${buyer.phone}` : undefined,
+                    address: [buyer.address, buyer.zip, buyer.state, selectedCountry ? countryName(selectedCountry) : null].filter(Boolean).join(", ") || undefined,
                 },
-                // Only ids and quantities: the server prices the order from its catalog.
-                items: items.map((it) => ({ product_id: it.id, qty: it.qty })),
-                shipping_method: shippingMethod,
-                payment_method: payment,
-                payment_currency: paymentCurrency,
+                items: items.map((it) => {
+                    const localUnit = payCurrency === "XOF" ? null : unitAmount(it);
+                    return {
+                        product_id: it.id,
+                        name: itemLabel(it),
+                        price: it.price,
+                        qty: it.qty,
+                        color: it.color || undefined,
+                        size: it.size || undefined,
+                        // Prix unitaire saisi par le vendeur dans la devise payée (EUR/USD)
+                        price_paid: localUnit != null ? Math.round(localUnit * 100) / 100 : undefined,
+                    };
+                }),
             });
-            if (order.payment_method === "livraison") finish(order);
-            else setPendingOrder(order);
+
+            const Paxity = await loadPaxityV2Widget(res.widget_script);
+
+            // Confirmation serveur après succès du widget : finalise la commande
+            // (numéro définitif, stock, emails) puis affiche la confirmation.
+            const finish = async () => {
+                try {
+                    const done = await paxityAPI.cardConfirm({
+                        transaction_id: res.transaction_id,
+                        order_id: res.order_id,
+                    });
+                    const finalOrder = done.order_id || res.order_id;
+                    setTransaction({
+                        transaction_id: res.transaction_id,
+                        order_id: finalOrder,
+                        status: "success",
+                        operator_label: t("Carte bancaire"),
+                        amount: res.amount,
+                        currency: res.currency,
+                    });
+                    setComplete(true);
+                    clear();
+                    localStorage.removeItem(PENDING_TX_KEY);
+                    toast.success(t("Paiement confirmé ✦"), { description: `${t("Commande")} ${orderNo(finalOrder)}` });
+                } catch (e) {
+                    console.error("[PaxityCard] confirm error", e);
+                    toast.error(t("Paiement reçu — confirmation en cours"), { description: t("Votre commande sera validée sous peu.") });
+                }
+            };
+
+            Paxity.open({
+                token: res.token,
+                default_method: res.default_method || "CARD",
+                closeOnResult: true,
+                onSuccess: finish,
+                onFailure: (reason) => {
+                    console.debug("[PaxityCard] échec", reason);
+                    toast.error(t("Paiement échoué"), { description: t("Veuillez réessayer ou changer de moyen.") });
+                },
+                onCancel: () => { /* le client a fermé la fenêtre de paiement */ },
+                onError: (message) => {
+                    console.error("[PaxityCard] widget error", message);
+                    toast.error(t("Paiement carte indisponible"), { description: t("Réessayez ou utilisez Mobile Money.") });
+                },
+            });
         } catch (err) {
-            toast.error("Impossible d'enregistrer la commande", { description: apiErrorMessage(err) });
+            console.error("[PaxityCard] init error", err);
+            toast.error(t("Paiement carte indisponible"), {
+                description: err.response?.data?.detail || t("Réessayez ou utilisez Mobile Money."),
+            });
         } finally {
             setProcessing(false);
         }
     };
 
-    const paxityHandlers = {
-        onSuccess: async () => {
-            const order = pendingOrder;
-            try {
-                await paymentsAPI.reportPaxity(order.id);
-            } catch {
-                // The payment itself went through; the shop owner checks it in the Paxity dashboard anyway.
+    const handlePayment = async (e) => {
+        e.preventDefault();
+        sessionStorage.removeItem(COMPLETE_TX_KEY); // nouvelle commande : oublier l'ancienne confirmation
+
+        // ---- Client-side validation ----
+        const cleanPhone = buyer.phone.replace(/\D/g, "");
+        const expectedLengths = {
+            "221": [9],       // Sénégal
+            "225": [10],      // Côte d'Ivoire
+        };
+        const validLengths = expectedLengths[prefix] || [8, 9, 10];
+        if (!validLengths.includes(cleanPhone.length)) {
+            const expected = validLengths.join(" ou ");
+            toast.error(t("Numéro de téléphone invalide"), {
+                description: `${t("Pour l'indicatif")} +${prefix}, ${t("le numéro doit contenir")} ${expected} ${t("chiffres")}. ${t("Vous avez saisi")} ${cleanPhone.length} ${t("chiffres")}.`,
+            });
+            return;
+        }
+
+        setProcessing(true);
+        try {
+            const payload = {
+                amount: total,
+                phone_number: buyer.phone.replace(/\s+/g, ""),
+                prefix_phone: prefix,
+                payment_method: paymentMethod,
+                description: `Commande Shopping en Chine · ${items.length} article(s)`,
+                delivery_mode: deliveryMode,
+                customer: {
+                    name: `${buyer.firstName} ${buyer.lastName}`,
+                    email: buyer.email,
+                    city: buyer.city,
+                    phone: `+${prefix} ${buyer.phone}`,
+                    address: [buyer.address, buyer.zip, buyer.state, selectedCountry ? countryName(selectedCountry) : null].filter(Boolean).join(", ") || undefined,
+                },
+                items: items.map((it) => ({
+                    product_id: it.id,
+                    name: itemLabel(it),
+                    price: it.price,
+                    qty: it.qty,
+                    color: it.color || undefined,
+                    size: it.size || undefined,
+                })),
+            };
+
+            const res = await paxityAPI.createPayin(payload);
+
+            setTransaction({ ...res, operator_label: operatorIconMeta.label });
+            if (res.status === "success") {
+                setComplete(true);
+                clear();
+                toast.success(t("Paiement confirmé ✦"));
+            } else if (res.status === "pending") {
+                toast(t("Paiement en cours…"), { description: t("Validez la transaction sur votre téléphone.") });
+            } else {
+                toast.error(t("Paiement refusé"), { description: res.message || t("Réessayez ou changez de moyen.") });
             }
-            finish(order);
-        },
-        onFailure: (reason) =>
-            toast.error("Paiement refusé", { description: reason ? String(reason) : "Réessayez ou choisissez un autre moyen de paiement." }),
-        onCancel: () => {
-            setPendingOrder(null);
-            toast("Paiement annulé");
-        },
-        onError: (message) => {
-            setPendingOrder(null);
-            toast.error("Paiement indisponible", { description: message ? String(message) : "Réessayez dans un instant." });
-        },
+        } catch (err) {
+            // Show a customer-friendly French message. Technical details
+            // (API keys, hosts, .env, status codes) must NEVER reach shoppers —
+            // they are logged to the console for the merchant/support instead.
+            const status = err.response?.status;
+            const rawDetail = err.response?.data?.detail || err.response?.data?.message;
+            console.error("[Paiement] Échec Paxity", { status, detail: rawDetail, error: err.message });
+
+            let detail;
+            if (status === 400 && typeof rawDetail === "string" && rawDetail) {
+                // Actionable validation errors (OTP requis, montant invalide,
+                // méthode inconnue…) are already written for the customer.
+                detail = rawDetail;
+            } else if (err.code === "ECONNABORTED") {
+                detail = "Le paiement a mis trop de temps à répondre. Veuillez réessayer.";
+            } else if (!err.response) {
+                detail = "Impossible de contacter le serveur. Vérifiez votre connexion internet.";
+            } else {
+                detail = "Le paiement n'a pas pu être traité pour le moment. Veuillez réessayer dans quelques instants ou choisir un autre moyen de paiement.";
+            }
+
+            toast.error(t("Erreur de paiement"), { description: detail });
+            setPaxityError(detail);
+        } finally {
+            setProcessing(false);
+        }
     };
 
     // ---------- Success screen ----------
-    if (doneOrder) {
-        const paidOnline = doneOrder.payment_method !== "livraison";
+    if (complete) {
+        return <CheckoutSuccess transaction={transaction} total={total} />;
+    }
+
+    // ---------- Pending screen ----------
+    if (transaction && transaction.status === "pending") {
         return (
-            <div className="container mx-auto px-5 py-24 text-center">
-                <div className="max-w-lg mx-auto">
-                    <div className="h-20 w-20 mx-auto rounded-full bg-success/10 text-success flex items-center justify-center mb-6">
-                        <Check className="h-10 w-10" />
-                    </div>
-                    <h1 className="font-display text-4xl sm:text-5xl mb-3">Commande confirmée !</h1>
-                    <p className="text-muted-foreground mb-2">
-                        {paidOnline ? (
-                            <>
-                                Merci ! Votre paiement de{" "}
-                                <span className="font-semibold text-foreground">{formatMinor(doneOrder.amount_minor, doneOrder.payment_currency)}</span>{" "}
-                                a bien été transmis. Nous vérifions sa réception, puis préparons votre colis.
-                            </>
-                        ) : (
-                            <>
-                                Merci ! Votre commande de <span className="font-semibold text-foreground">{formatPrice(doneOrder.total)}</span> est confirmée.
-                                Vous réglerez à la livraison.
-                            </>
-                        )}
-                    </p>
-                    <p className="text-xs font-mono text-muted-foreground mb-8">Commande {doneOrder.id}</p>
-                    <div className="flex flex-wrap gap-3 justify-center">
-                        <Button asChild size="lg" className="rounded-full bg-ink text-ink-foreground hover:bg-ink/90">
-                            <Link to="/">Retour à l'accueil</Link>
-                        </Button>
-                        <Button asChild size="lg" variant="outline" className="rounded-full">
-                            <Link to="/boutique">Continuer les achats</Link>
-                        </Button>
-                    </div>
-                </div>
-            </div>
+            <CheckoutPending
+                transaction={transaction}
+                operatorLabel={operatorIconMeta.label}
+                onOpenPay={openPayWindow}
+                onManualCheck={manualCheck}
+                checkingNow={checkingNow}
+                onCancel={() => { closePayWindow(); localStorage.removeItem(PENDING_TX_KEY); setTransaction(null); }}
+            />
         );
     }
 
@@ -163,32 +498,25 @@ export default function Checkout() {
     if (items.length === 0) {
         return (
             <div className="container mx-auto px-5 py-24 text-center">
-                <h1 className="font-display text-4xl mb-3">Panier vide</h1>
-                <p className="text-muted-foreground mb-6">Ajoutez des produits avant de commander.</p>
-                <Button asChild className="rounded-full"><Link to="/boutique">Voir la boutique</Link></Button>
+                <h1 className="font-display text-4xl mb-3">{t("Panier vide")}</h1>
+                <p className="text-muted-foreground mb-6">{t("Ajoutez des produits avant de commander.")}</p>
+                <Button asChild className="rounded-full"><Link to="/boutique">{t("Voir la boutique")}</Link></Button>
             </div>
         );
     }
 
     const steps = [
-        { n: 1, label: "Adresse" },
-        { n: 2, label: "Livraison" },
-        { n: 3, label: "Paiement" },
+        { n: 1, label: t("Adresse") },
+        { n: 2, label: t("Livraison") },
+        { n: 3, label: t("Paiement") },
     ];
-
-    const submitLabel =
-        payment === "livraison"
-            ? `Confirmer la commande · ${formatPrice(total)}`
-            : payment === "carte"
-                ? `Payer ${formatMoney(total, cardCurrency, rates)} par carte`
-                : `Payer ${formatPrice(total)}`;
 
     return (
         <div className="container mx-auto px-5 py-10 md:py-14">
             <Link to="/panier" className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground mb-6">
-                <ArrowLeft className="h-4 w-4" /> Retour au panier
+                <ArrowLeft className="h-4 w-4" /> {t("Retour au panier")}
             </Link>
-            <h1 className="font-display text-4xl sm:text-5xl font-medium tracking-tight mb-8">Commande</h1>
+            <h1 className="font-display text-4xl sm:text-5xl font-medium tracking-tight mb-8">{t("Commande")}</h1>
 
             {/* Stepper */}
             <div className="flex items-center gap-2 sm:gap-4 mb-10">
@@ -204,193 +532,96 @@ export default function Checkout() {
             </div>
 
             <div className="grid lg:grid-cols-[1fr_380px] gap-10">
-                <div className="space-y-8">
+                <div className="space-y-8 order-2 lg:order-1">
                     {step === 1 && (
-                        <div className="space-y-5 bg-card p-6 md:p-8 rounded-2xl shadow-card">
-                            <h2 className="font-display text-2xl">Adresse de livraison</h2>
-                            <div className="grid sm:grid-cols-2 gap-4">
-                                <div className="space-y-1.5"><Label>Prénom</Label><Input required placeholder="Marie" value={buyer.firstName} onChange={(e) => setBuyer({ ...buyer, firstName: e.target.value })} /></div>
-                                <div className="space-y-1.5"><Label>Nom</Label><Input required placeholder="Dupont" value={buyer.lastName} onChange={(e) => setBuyer({ ...buyer, lastName: e.target.value })} /></div>
-                                <div className="space-y-1.5 sm:col-span-2"><Label>Email</Label><Input required type="email" placeholder="marie@exemple.com" value={buyer.email} onChange={(e) => setBuyer({ ...buyer, email: e.target.value })} /></div>
-                                <div className="space-y-1.5 sm:col-span-2"><Label>Adresse</Label><Input required placeholder="Rue, quartier…" value={buyer.address} onChange={(e) => setBuyer({ ...buyer, address: e.target.value })} /></div>
-                                <div className="space-y-1.5"><Label>Code postal</Label><Input placeholder="10000" value={buyer.zip} onChange={(e) => setBuyer({ ...buyer, zip: e.target.value })} /></div>
-                                <div className="space-y-1.5"><Label>Ville</Label><Input required placeholder="Dakar" value={buyer.city} onChange={(e) => setBuyer({ ...buyer, city: e.target.value })} /></div>
-                                <div className="space-y-1.5">
-                                    <Label>Pays</Label>
-                                    <Select value={buyer.country} onValueChange={(country) => setBuyer({ ...buyer, country })}>
-                                        <SelectTrigger aria-label="Pays"><SelectValue /></SelectTrigger>
-                                        <SelectContent>
-                                            {COUNTRIES.map((c) => <SelectItem key={c.code} value={c.code}>{c.label}</SelectItem>)}
-                                        </SelectContent>
-                                    </Select>
-                                </div>
-                                <div className="space-y-1.5"><Label>Téléphone</Label><Input required type="tel" placeholder="77 XXX XX XX" value={buyer.phone} onChange={(e) => setBuyer({ ...buyer, phone: e.target.value })} /></div>
-                            </div>
-                            <Button
-                                type="button"
-                                onClick={() => {
-                                    if (!buyerValid()) { toast.error("Veuillez remplir tous les champs requis"); return; }
-                                    setStep(2);
-                                }}
-                                className="w-full sm:w-auto bg-ink text-ink-foreground hover:bg-ink/90 rounded-full h-11 px-8"
-                            >
-                                Continuer
-                            </Button>
-                        </div>
+                        <AddressStep
+                            buyer={buyer}
+                            setBuyer={setBuyer}
+                            prefix={prefix}
+                            selectedCountry={selectedCountry}
+                            onCountryChange={changeCountry}
+                            onContinue={() => {
+                                if (!buyerValid()) { toast.error(t("Veuillez remplir tous les champs requis")); return; }
+                                goToStep(2);
+                            }}
+                        />
                     )}
 
                     {step === 2 && (
                         <div className="space-y-5 bg-card p-6 md:p-8 rounded-2xl shadow-card">
-                            <h2 className="font-display text-2xl">Mode de livraison</h2>
-                            <RadioGroup value={shippingMethod} onValueChange={setShippingMethod} className="space-y-3">
-                                {SHIPPING_METHODS.map((m) => {
-                                    const fee = shippingFee(m.id, subtotal);
-                                    return (
-                                        <label key={m.id} className="flex items-center gap-4 p-4 border rounded-xl cursor-pointer hover:border-primary transition-colors">
-                                            <RadioGroupItem value={m.id} />
-                                            <i className={`fa-solid ${m.icon} text-primary w-5 text-center`} />
-                                            <div className="flex-1">
-                                                <p className="font-medium">{m.label}</p>
-                                                <p className="text-xs text-muted-foreground">{m.delay}</p>
-                                            </div>
-                                            <span className={`font-medium ${fee === 0 ? "text-success" : ""}`}>{fee === 0 ? "Offerte" : formatPrice(fee)}</span>
-                                        </label>
-                                    );
-                                })}
-                            </RadioGroup>
+                            <h2 className="font-display text-2xl">{t("Mode de livraison")}</h2>
+                            <DeliveryOptions value={deliveryMode} onChange={setDeliveryMode} />
                             <div className="flex gap-2 pt-2">
-                                <Button type="button" variant="outline" onClick={() => setStep(1)} className="rounded-full h-11 px-6">Retour</Button>
-                                <Button type="button" onClick={() => setStep(3)} className="bg-ink text-ink-foreground hover:bg-ink/90 rounded-full h-11 px-8">Continuer</Button>
+                                <Button type="button" variant="outline" onClick={goBackStep} className="rounded-full h-11 px-6">{t("Retour")}</Button>
+                                <Button type="button" onClick={() => goToStep(3)} className="bg-ink text-ink-foreground hover:bg-ink/90 rounded-full h-11 px-8">{t("Continuer")}</Button>
                             </div>
                         </div>
                     )}
 
-                    {step === 3 && pendingOrder && (
-                        <div ref={paymentBox} className="space-y-5 bg-card p-6 md:p-8 rounded-2xl shadow-card scroll-mt-28">
-                            <div className="flex items-baseline justify-between gap-4">
-                                <h2 className="font-display text-2xl">Paiement sécurisé</h2>
-                                <span className="font-display text-xl font-semibold">
-                                    {formatMinor(pendingOrder.amount_minor, pendingOrder.payment_currency)}
-                                </span>
-                            </div>
-                            <p className="text-xs text-muted-foreground">Commande {pendingOrder.id} · paiement traité par Paxity</p>
-                            <PaxityWidget order={pendingOrder} orgId={paxity.org_id} {...paxityHandlers} />
-                            <Button type="button" variant="outline" onClick={() => setPendingOrder(null)} className="rounded-full h-11 px-6">
-                                Choisir un autre moyen de paiement
-                            </Button>
-                        </div>
-                    )}
-
-                    {step === 3 && !pendingOrder && (
+                    {step === 3 && (
                         <div className="space-y-5 bg-card p-6 md:p-8 rounded-2xl shadow-card">
-                            <h2 className="font-display text-2xl">Paiement</h2>
-
-                            <RadioGroup value={payment} onValueChange={setPaymentChoice} className="space-y-3">
-                                {paymentOptions.map((o) => (
-                                    <label key={o.id} className={`block p-4 border rounded-xl cursor-pointer transition-colors ${payment === o.id ? "border-primary bg-primary/5" : "hover:border-primary"}`}>
-                                        <div className="flex items-center gap-4">
-                                            <RadioGroupItem value={o.id} />
-                                            <o.icon className="h-5 w-5 text-primary" />
-                                            <div className="flex-1">
-                                                <p className="font-medium">{o.label}</p>
-                                                <p className="text-xs text-muted-foreground">{o.hint}</p>
-                                            </div>
-                                        </div>
-                                        {o.id === "carte" && payment === "carte" && (
-                                            <div className="mt-3 ml-9 flex flex-wrap items-center gap-2">
-                                                {CARD_CURRENCIES.map((c) => (
-                                                    <button
-                                                        key={c.code}
-                                                        type="button"
-                                                        onClick={() => setCardCurrency(c.code)}
-                                                        className={`h-8 px-3 rounded-full border text-xs font-medium ${cardCurrency === c.code ? "bg-ink text-ink-foreground border-ink" : "border-border hover:border-foreground"}`}
-                                                    >
-                                                        {c.label}
-                                                    </button>
-                                                ))}
-                                                <span className="text-xs text-muted-foreground">
-                                                    soit {formatMoney(total, cardCurrency, rates)} pour {formatPrice(total)}
-                                                </span>
-                                            </div>
-                                        )}
-                                    </label>
-                                ))}
-                            </RadioGroup>
-
-                            <div className="p-4 rounded-xl border text-sm space-y-1">
-                                <div className="flex items-center justify-between">
-                                    <p className="font-medium flex items-center gap-2"><MapPin className="h-4 w-4 text-primary" /> Livraison à</p>
-                                    <button type="button" onClick={() => setStep(1)} className="text-xs text-muted-foreground hover:text-foreground underline">Modifier</button>
-                                </div>
-                                <p>{buyer.firstName} {buyer.lastName}</p>
-                                <p className="text-muted-foreground">
-                                    {buyer.address}{buyer.zip ? `, ${buyer.zip}` : ""} {buyer.city} · {COUNTRIES.find((c) => c.code === buyer.country)?.label}
-                                </p>
-                                <p className="text-muted-foreground">{buyer.phone} · {buyer.email}</p>
+                            <div className="flex items-center justify-between">
+                                <h2 className="font-display text-2xl">{t("Paiement")}</h2>
                             </div>
 
-                            {payment !== "livraison" && (
-                                <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                                    <ShieldCheck className="h-4 w-4 text-success" />
-                                    Paiement sécurisé par Paxity
+                            {paxityConfig && !paxityConfig.configured && (
+                                <div className="flex gap-3 p-4 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-sm">
+                                    <AlertTriangle className="h-5 w-5 shrink-0 mt-0.5" />
+                                    <div>
+                                        <p className="font-medium">{t("Paiement momentanément indisponible")}</p>
+                                        <p className="text-xs mt-1 opacity-90">
+                                            {t("Le paiement en ligne est en cours de maintenance. Veuillez réessayer dans quelques instants.")}
+                                        </p>
+                                    </div>
                                 </div>
                             )}
 
-                            <div className="flex gap-2 pt-2">
-                                <Button type="button" variant="outline" onClick={() => setStep(2)} className="rounded-full h-11 px-6">Retour</Button>
-                                <Button
-                                    type="button"
-                                    onClick={handleSubmit}
-                                    disabled={processing}
-                                    className="bg-primary hover:bg-primary/90 text-primary-foreground rounded-full h-11 px-8 flex-1 sm:flex-none shadow-warm"
-                                >
-                                    {processing ? (
-                                        <>
-                                            <Loader2 className="h-4 w-4 animate-spin" />
-                                            Enregistrement…
-                                        </>
-                                    ) : (
-                                        submitLabel
-                                    )}
-                                </Button>
-                            </div>
+                            {paxityError && (
+                                <div data-testid="paxity-error-banner" className="flex gap-3 p-4 rounded-xl bg-destructive/10 border border-destructive/20 text-destructive text-sm">
+                                    <XCircle className="h-5 w-5 shrink-0 mt-0.5" />
+                                    <div className="flex-1">{paxityError}</div>
+                                </div>
+                            )}
+
+                            <PaymentMethodPicker
+                                methods={paxityConfig?.methods}
+                                value={paymentMethod}
+                                onSelect={(m) => {
+                                    setPaymentMethod(m.code);
+                                    if (m.prefix !== "*") setPrefix(m.prefix);
+                                }}
+                                onSelectCard={paxityConfig?.card_enabled ? () => setPaymentMethod("CARD") : undefined}
+                            />
+
+                            {paymentMethod === "CARD" && (
+                                <PaxityCardPanel
+                                    total={cardChargeAmount}
+                                    currency={cardChargeCurrency}
+                                    localizedTotal={localizedCartTotal}
+                                    processing={processing}
+                                    onBack={goBackStep}
+                                    onPay={handleCardPayment}
+                                />
+                            )}
+
+                            {selectedMethod && (
+                                <PaxityPhoneForm
+                                    buyer={buyer}
+                                    setBuyer={setBuyer}
+                                    prefix={prefix}
+                                    setPrefix={setPrefix}
+                                    processing={processing}
+                                    disabled={!paxityConfig?.configured}
+                                    total={total}
+                                    onSubmit={handlePayment}
+                                    onBack={goBackStep}
+                                />
+                            )}
                         </div>
                     )}
                 </div>
 
-                <aside>
-                    <div className="sticky top-24 bg-secondary/40 rounded-2xl p-6 space-y-4">
-                        <h3 className="font-display text-xl">Votre commande</h3>
-                        <div className="space-y-3 max-h-[280px] overflow-y-auto">
-                            {items.map((it) => (
-                                <div key={it.id} className="flex gap-3">
-                                    <div className="relative h-14 w-14 rounded-lg overflow-hidden bg-muted shrink-0">
-                                        <img src={it.image} alt="" className="h-full w-full object-cover" />
-                                        <span className="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-ink text-ink-foreground text-[10px] font-medium flex items-center justify-center">{it.qty}</span>
-                                    </div>
-                                    <div className="flex-1 min-w-0">
-                                        <p className="text-sm font-medium truncate">{it.name}</p>
-                                        <p className="text-xs text-muted-foreground">Taille M</p>
-                                    </div>
-                                    <span className="text-sm font-medium">{formatPrice(it.price * it.qty)}</span>
-                                </div>
-                            ))}
-                        </div>
-                        <Separator />
-                        <div className="space-y-2 text-sm">
-                            <div className="flex justify-between"><span className="text-muted-foreground">Sous-total</span><span>{formatPrice(subtotal)}</span></div>
-                            <div className="flex justify-between"><span className="text-muted-foreground">Livraison</span><span>{shipping === 0 ? <span className="text-success">Offerte</span> : formatPrice(shipping)}</span></div>
-                        </div>
-                        <Separator />
-                        <div className="flex justify-between items-baseline">
-                            <span className="font-medium">Total</span>
-                            <span className="font-display text-2xl font-semibold">{formatPrice(total)}</span>
-                        </div>
-                        {step === 3 && payment === "carte" && (
-                            <p className="text-xs text-muted-foreground text-right">Payé par carte : {formatMoney(total, cardCurrency, rates)}</p>
-                        )}
-                    </div>
-                </aside>
+                <CheckoutSummary items={items} />
             </div>
         </div>
     );

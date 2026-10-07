@@ -1,59 +1,81 @@
-import { createContext, useCallback, useContext, useEffect, useState } from "react";
-import { adminAPI, apiErrorMessage } from "@/lib/api";
-
-const AuthContext = createContext(null);
-const AUTH_KEY = "sec_seller_auth_v2";
+import { createContext, useContext, useEffect, useState } from "react";
+import { authAPI, setSellerToken, getSellerToken } from "@/lib/api";
+import { toast } from "sonner";
 
 /*
- * Seller login, checked by the server (POST /api/admin/login). The email and
- * password live only in the server's environment (ADMIN_EMAIL / ADMIN_PASSWORD).
- * The session token is kept in localStorage; the server stops accepting it after
- * 7 days or when the password changes.
+ * Seller authentication — now backed by the server (JWT + bcrypt).
+ * Credentials are verified by POST /api/auth/login; the token is attached
+ * to every API call (see lib/api.js) to protect product management routes.
  */
+const AuthContext = createContext(null);
+const USER_KEY = "sec_seller_user_v2";
+
 export const SellerAuthProvider = ({ children }) => {
     const [user, setUser] = useState(() => {
         try {
-            localStorage.removeItem("sec_seller_auth_v1"); // pre-server-login session
-            const raw = localStorage.getItem(AUTH_KEY);
-            return raw ? JSON.parse(raw) : null;
+            const raw = localStorage.getItem(USER_KEY);
+            return raw && getSellerToken() ? JSON.parse(raw) : null;
         } catch {
             return null;
         }
     });
 
+    // Validate the stored session against the server on mount
     useEffect(() => {
-        try {
-            if (user) localStorage.setItem(AUTH_KEY, JSON.stringify(user));
-            else localStorage.removeItem(AUTH_KEY);
-        } catch {
-            // storage unavailable: the session lasts for this visit
-        }
+        if (!getSellerToken()) return;
+        authAPI.me()
+            .then((u) => {
+                setUser((prev) => ({ ...prev, ...u }));
+            })
+            .catch(() => {
+                setSellerToken(null);
+                localStorage.removeItem(USER_KEY);
+                setUser(null);
+            });
+    }, []);
+
+    useEffect(() => {
+        if (user) localStorage.setItem(USER_KEY, JSON.stringify(user));
+        else localStorage.removeItem(USER_KEY);
     }, [user]);
 
-    const token = user?.token ?? null;
-
-    // Drop a saved session the server no longer accepts.
+    // Token expiré (401 renvoyé par l'API) → déconnexion + message clair.
+    // ProtectedSellerRoute redirige alors automatiquement vers la page de connexion.
     useEffect(() => {
-        if (!token) return;
-        adminAPI.me(token).catch((err) => {
-            if (err.response?.status === 401) setUser(null);
-        });
-    }, [token]);
+        const onExpired = () => {
+            setSellerToken(null);
+            localStorage.removeItem(USER_KEY);
+            setUser(null);
+            const path = window.location.pathname;
+            if (path.startsWith("/vendeur") || path.startsWith("/admin")) {
+                toast.error("Session expirée", { description: "Veuillez vous reconnecter pour continuer." });
+            }
+        };
+        window.addEventListener("seller-session-expired", onExpired);
+        return () => window.removeEventListener("seller-session-expired", onExpired);
+    }, []);
 
     const login = async (email, password) => {
         try {
-            const session = await adminAPI.login(email, password);
-            setUser({ ...session, role: "Administrateur" });
+            const res = await authAPI.login(email, password);
+            setSellerToken(res.token);
+            const session = { ...res.user, loggedAt: Date.now() };
+            setUser(session);
             return session;
         } catch (err) {
-            throw new Error(apiErrorMessage(err));
+            const msg = err.response?.data?.detail || "Email ou mot de passe incorrect";
+            throw new Error(msg);
         }
     };
 
-    const logout = useCallback(() => setUser(null), []);
+    const logout = () => {
+        setSellerToken(null);
+        setUser(null);
+        authAPI.logout().catch(() => {});
+    };
 
     return (
-        <AuthContext.Provider value={{ user, token, login, logout, isAuthenticated: !!user }}>
+        <AuthContext.Provider value={{ user, login, logout, isAuthenticated: !!user }}>
             {children}
         </AuthContext.Provider>
     );

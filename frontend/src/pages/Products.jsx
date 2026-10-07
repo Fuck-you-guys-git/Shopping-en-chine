@@ -9,56 +9,96 @@ import { Label } from "@/components/ui/label";
 import { Sheet, SheetContent, SheetTrigger, SheetTitle, SheetHeader } from "@/components/ui/sheet";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ProductCard } from "@/components/ProductCard";
-import { CatalogFallback } from "@/components/CatalogFallback";
+import { categories, subcategoriesByCategory } from "@/data/products";
 import { useCatalog } from "@/context/CatalogContext";
-import { useCurrency } from "@/context/CurrencyContext";
-import { categories } from "@/data/products";
+import { SkeletonGrid } from "@/components/SkeletonCard";
+import { EmptyState } from "@/components/EmptyState";
+import { usePageTitle } from "@/hooks/usePageTitle";
+import { productMatchesQuery } from "@/lib/search";
+import { t, fmtAmount, unitAmount } from "@/lib/locale";
 
 export default function Products() {
     const { categoryId } = useParams();
+    const { products, loaded } = useCatalog();
     const [searchParams] = useSearchParams();
     const searchQuery = searchParams.get("q") || "";
-    const { status, products } = useCatalog();
-    const { format } = useCurrency();
+    const subId = searchParams.get("sub") || "";
+    const categorySubs = subcategoriesByCategory[categoryId] || [];
+    const activeSub = categorySubs.find((s) => s.id === subId);
 
-    const [priceRange, setPriceRange] = useState([0, 200000]);
+    const [priceRange, setPriceRange] = useState(null); // null = aucun filtre prix
     const [selectedCats, setSelectedCats] = useState(categoryId ? [categoryId] : []);
     const [sortBy, setSortBy] = useState("pertinence");
 
     const activeCategory = categories.find((c) => c.id === categoryId);
+    usePageTitle(
+        activeSub ? activeSub.name : activeCategory ? activeCategory.name : "Boutique",
+        "Livraison de la Chine vers le monde entier en 10 à 20 jours. Paiement Mobile Money et carte bancaire.",
+    );
 
     const toggleCat = (id) =>
         setSelectedCats((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
 
+    // Compteurs RÉELS par catégorie (jamais de valeur inventée)
+    const catCounts = useMemo(() => {
+        const acc = {};
+        products.forEach((p) => { acc[p.category] = (acc[p.category] || 0) + 1; });
+        return acc;
+    }, [products]);
+
+    // Filtre prix exprimé dans la devise RÉELLEMENT affichée (aucune conversion) :
+    // les bornes sont dérivées du catalogue courant.
+    const displayPrice = (p) => {
+        const u = unitAmount(p);
+        return u != null ? u : Number(p?.price) || 0;
+    };
+    const maxPrice = useMemo(() => {
+        const vals = products.map(displayPrice).filter((v) => v > 0);
+        return vals.length ? Math.ceil(Math.max(...vals)) : 0;
+    }, [products]);
+    const range = priceRange ?? [0, maxPrice];
+    const priceActive = priceRange !== null && maxPrice > 0 && (range[0] > 0 || range[1] < maxPrice);
+    const resetFilters = () => { setSelectedCats([]); setPriceRange(null); };
+
     const filtered = useMemo(() => {
-        let list = products.filter(
-            (p) => p.price >= priceRange[0] && p.price <= priceRange[1],
-        );
+        let list = products;
+        if (priceActive) {
+            list = list.filter((p) => {
+                const v = displayPrice(p);
+                return v >= range[0] && v <= range[1];
+            });
+        }
         if (selectedCats.length) {
             list = list.filter((p) => selectedCats.includes(p.category));
         } else if (categoryId) {
             list = list.filter((p) => p.category === categoryId);
         }
+        if (activeSub) {
+            list = list.filter((p) =>
+                p.subcategory === activeSub.id ||
+                activeSub.keywords.some((k) => (p.name || "").toLowerCase().includes(k)),
+            );
+        }
         if (searchQuery) {
-            const q = searchQuery.toLowerCase();
-            list = list.filter((p) => p.name.toLowerCase().includes(q));
+            list = list.filter((p) => productMatchesQuery(p, searchQuery));
         }
         switch (sortBy) {
             case "prix-asc":
-                list = [...list].sort((a, b) => a.price - b.price); break;
+                list = [...list].sort((a, b) => displayPrice(a) - displayPrice(b)); break;
             case "prix-desc":
-                list = [...list].sort((a, b) => b.price - a.price); break;
-            case "note":
-                list = [...list].sort((a, b) => b.rating - a.rating); break;
+                list = [...list].sort((a, b) => displayPrice(b) - displayPrice(a)); break;
+            case "nouveautes":
+                break; // l'API renvoie déjà les produits du plus récent au plus ancien
             default: break;
         }
         return list;
-    }, [products, priceRange, selectedCats, categoryId, sortBy, searchQuery]);
+    }, [products, priceRange, maxPrice, selectedCats, categoryId, sortBy, searchQuery, activeSub]);
 
-    const FiltersPanel = () => (
+    // JSX simple (pas un composant imbriqué : évite le re-montage à chaque rendu)
+    const filtersPanel = (
         <div className="space-y-8">
             <div>
-                <h4 className="font-display text-lg mb-4">Catégories</h4>
+                <h4 className="font-display text-lg mb-4">{t("Catégories")}</h4>
                 <div className="space-y-3">
                     {categories.map((c) => (
                         <div key={c.id} className="flex items-center gap-3">
@@ -70,47 +110,33 @@ export default function Products() {
                             <Label htmlFor={`c-${c.id}`} className="flex-1 flex items-center justify-between cursor-pointer font-normal">
                                 <span className="flex items-center gap-2">
                                     <i className={`fa-solid ${c.icon} text-primary text-xs w-4`} />
-                                    {c.name}
+                                    {t(c.name)}
                                 </span>
-                                <span className="text-xs text-muted-foreground">{c.count.toLocaleString("fr-FR")}</span>
+                                <span className="text-xs text-muted-foreground">{catCounts[c.id] > 0 ? catCounts[c.id] : ""}</span>
                             </Label>
                         </div>
                     ))}
                 </div>
             </div>
 
-            <div>
-                <h4 className="font-display text-lg mb-4">Prix</h4>
-                <Slider
-                    value={priceRange}
-                    onValueChange={setPriceRange}
-                    min={0}
-                    max={200000}
-                    step={1000}
-                    className="mb-3"
-                />
-                <div className="flex justify-between text-sm text-muted-foreground">
-                    <span>{format(priceRange[0])}</span>
-                    <span>{format(priceRange[1])}</span>
+            {maxPrice > 0 && (
+                <div>
+                    <h4 className="mb-4 text-base font-bold">{t("Prix")}</h4>
+                    <Slider
+                        value={range}
+                        onValueChange={setPriceRange}
+                        min={0}
+                        max={maxPrice}
+                        step={Math.max(1, Math.round(maxPrice / 100))}
+                        className="mb-3"
+                        data-testid="price-filter-slider"
+                    />
+                    <div className="flex justify-between text-sm text-muted-foreground">
+                        <span data-testid="price-filter-min">{fmtAmount(range[0])}</span>
+                        <span data-testid="price-filter-max">{fmtAmount(range[1])}</span>
+                    </div>
                 </div>
-            </div>
-
-            <div>
-                <h4 className="font-display text-lg mb-4">Notes</h4>
-                <div className="space-y-3">
-                    {[4, 3, 2].map((r) => (
-                        <div key={r} className="flex items-center gap-3">
-                            <Checkbox id={`r-${r}`} />
-                            <Label htmlFor={`r-${r}`} className="flex items-center gap-1 font-normal cursor-pointer">
-                                {[...Array(5)].map((_, i) => (
-                                    <i key={i} className={`fa-solid fa-star text-xs ${i < r ? "text-primary" : "text-muted"}`} />
-                                ))}
-                                <span className="ml-1 text-xs text-muted-foreground">& plus</span>
-                            </Label>
-                        </div>
-                    ))}
-                </div>
-            </div>
+            )}
         </div>
     );
 
@@ -119,71 +145,95 @@ export default function Products() {
             {/* Breadcrumb + Title */}
             <div className="mb-8 md:mb-12">
                 <nav className="text-xs text-muted-foreground mb-3">
-                    <Link to="/" className="hover:text-foreground">Accueil</Link>
+                    <Link to="/" className="hover:text-foreground">{t("Accueil")}</Link>
                     <span className="mx-2">/</span>
-                    <Link to="/boutique" className="hover:text-foreground">Boutique</Link>
+                    <Link to="/boutique" className="hover:text-foreground">{t("Boutique")}</Link>
                     {activeCategory && (
                         <>
                             <span className="mx-2">/</span>
-                            <span className="text-foreground">{activeCategory.name}</span>
+                            <span className="text-foreground">{t(activeCategory.name)}</span>
                         </>
                     )}
                 </nav>
                 <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
                     <div>
-                        <h1 className="font-display text-4xl sm:text-5xl lg:text-6xl font-medium tracking-tight">
-                            {activeCategory ? activeCategory.name : searchQuery ? `« ${searchQuery} »` : "Toute la boutique"}
+                        <h1 className="font-display text-2xl sm:text-3xl lg:text-4xl font-medium tracking-tight">
+                            {activeSub ? t(activeSub.name) : activeCategory ? t(activeCategory.name) : searchQuery ? `« ${searchQuery} »` : t("Toute la boutique")}
                         </h1>
-                        <p className="text-muted-foreground mt-2">
-                            {status === "ready"
-                                ? `${filtered.length} produit${filtered.length > 1 ? "s" : ""} · trié${filtered.length > 1 ? "s" : ""} pour vous`
-                                : "Chargement des produits…"}
+                        <p className="text-muted-foreground mt-2" data-testid="products-count">
+                            {filtered.length} {filtered.length > 1 ? t("produits") : t("produit")}
                         </p>
                     </div>
                     <div className="flex items-center gap-2">
                         <Sheet>
                             <SheetTrigger asChild>
                                 <Button variant="outline" className="lg:hidden rounded-full">
-                                    <SlidersHorizontal className="h-4 w-4 mr-2" /> Filtres
+                                    <SlidersHorizontal className="h-4 w-4 mr-2" /> {t("Filtres")}
                                 </Button>
                             </SheetTrigger>
                             <SheetContent side="left" className="w-[300px] overflow-y-auto">
-                                <SheetHeader><SheetTitle>Filtres</SheetTitle></SheetHeader>
-                                <div className="mt-6"><FiltersPanel /></div>
+                                <SheetHeader><SheetTitle>{t("Filtres")}</SheetTitle></SheetHeader>
+                                <div className="mt-6">{filtersPanel}</div>
                             </SheetContent>
                         </Sheet>
                         <Select value={sortBy} onValueChange={setSortBy}>
                             <SelectTrigger className="w-[200px] rounded-full">
-                                <SelectValue placeholder="Trier par" />
+                                <SelectValue placeholder={t("Trier par")} />
                             </SelectTrigger>
                             <SelectContent>
-                                <SelectItem value="pertinence">Pertinence</SelectItem>
-                                <SelectItem value="prix-asc">Prix croissant</SelectItem>
-                                <SelectItem value="prix-desc">Prix décroissant</SelectItem>
-                                <SelectItem value="note">Meilleures notes</SelectItem>
+                                <SelectItem value="pertinence">{t("Pertinence")}</SelectItem>
+                                <SelectItem value="nouveautes">{t("Nouveautés")}</SelectItem>
+                                <SelectItem value="prix-asc">{t("Prix croissant")}</SelectItem>
+                                <SelectItem value="prix-desc">{t("Prix décroissant")}</SelectItem>
                             </SelectContent>
                         </Select>
                     </div>
                 </div>
 
-                {(selectedCats.length > 0 || priceRange[0] > 0 || priceRange[1] < 200000) && (
-                    <div className="flex flex-wrap items-center gap-2 mt-4">
+                {/* Sous-catégories */}
+                {categorySubs.length > 0 && (
+                    <div className="flex flex-wrap items-center gap-2 mt-5" data-testid="subcategory-pills">
+                        <Link
+                            to={`/boutique/${categoryId}`}
+                            className={`px-3.5 py-1.5 rounded-full text-xs font-medium border transition-colors ${
+                                !activeSub ? "bg-primary text-primary-foreground border-primary" : "bg-card border-border text-foreground/70 hover:border-primary/40 hover:text-foreground"
+                            }`}
+                        >
+                            {t("Tout")}
+                        </Link>
+                        {categorySubs.map((s) => (
+                            <Link
+                                key={s.id}
+                                to={`/boutique/${categoryId}?sub=${s.id}`}
+                                data-testid={`sub-pill-${s.id}`}
+                                className={`px-3.5 py-1.5 rounded-full text-xs font-medium border transition-colors ${
+                                    activeSub?.id === s.id ? "bg-primary text-primary-foreground border-primary" : "bg-card border-border text-foreground/70 hover:border-primary/40 hover:text-foreground"
+                                }`}
+                            >
+                                {t(s.name)}
+                            </Link>
+                        ))}
+                    </div>
+                )}
+
+                {(selectedCats.length > 0 || priceActive) && (
+                    <div className="flex flex-wrap items-center gap-2 mt-4" data-testid="active-filters">
                         {selectedCats.map((id) => {
                             const c = categories.find((x) => x.id === id);
                             return (
                                 <Badge key={id} variant="secondary" className="rounded-full px-3 py-1 gap-1">
-                                    {c?.name}
-                                    <button onClick={() => toggleCat(id)}><X className="h-3 w-3" /></button>
+                                    {t(c?.name)}
+                                    <button onClick={() => toggleCat(id)} aria-label={t("Retirer ce filtre")}><X className="h-3 w-3" /></button>
                                 </Badge>
                             );
                         })}
-                        {(priceRange[0] > 0 || priceRange[1] < 200000) && (
+                        {priceActive && (
                             <Badge variant="secondary" className="rounded-full px-3 py-1 gap-1">
-                                {format(priceRange[0])}–{format(priceRange[1])}
-                                <button onClick={() => setPriceRange([0, 200000])}><X className="h-3 w-3" /></button>
+                                {fmtAmount(range[0])}–{fmtAmount(range[1])}
+                                <button onClick={() => setPriceRange(null)} aria-label={t("Retirer ce filtre")}><X className="h-3 w-3" /></button>
                             </Badge>
                         )}
-                        <button onClick={() => { setSelectedCats([]); setPriceRange([0, 200000]); }} className="text-xs text-primary hover:underline ml-2">Effacer tout</button>
+                        <button onClick={resetFilters} data-testid="clear-filters-btn" className="text-xs text-primary hover:underline ml-2">{t("Effacer tout")}</button>
                     </div>
                 )}
             </div>
@@ -194,24 +244,24 @@ export default function Products() {
                     <div className="sticky top-24">
                         <div className="flex items-center gap-2 mb-6">
                             <Filter className="h-4 w-4" />
-                            <h3 className="font-medium">Filtres</h3>
+                            <h3 className="font-medium">{t("Filtres")}</h3>
                         </div>
-                        <FiltersPanel />
+                        {filtersPanel}
                     </div>
                 </aside>
 
                 <div>
-                    {status !== "ready" ? (
-                        <CatalogFallback count={8} className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-x-4 gap-y-10 md:gap-x-6 md:gap-y-12" />
+                    {!loaded ? (
+                        <SkeletonGrid count={8} className="lg:grid-cols-3 xl:grid-cols-4" />
                     ) : filtered.length === 0 ? (
-                        <div className="text-center py-24 border-2 border-dashed border-border rounded-2xl">
-                            <div className="text-5xl mb-4 opacity-40">🌿</div>
-                            <h3 className="font-display text-xl mb-2">Aucun produit trouvé</h3>
-                            <p className="text-muted-foreground text-sm mb-6">Essayez d'ajuster vos filtres.</p>
-                            <Button onClick={() => { setSelectedCats([]); setPriceRange([0, 200000]); }} variant="outline" className="rounded-full">
-                                Réinitialiser les filtres
-                            </Button>
-                        </div>
+                        <EmptyState
+                            icon="fa-magnifying-glass"
+                            title={t("Aucun produit trouvé")}
+                            description={t("Essayez d'ajuster vos filtres ou de modifier votre recherche.")}
+                            ctaLabel={t("Réinitialiser les filtres")}
+                            onCta={resetFilters}
+                            testId="products-empty"
+                        />
                     ) : (
                         <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-x-4 gap-y-10 md:gap-x-6 md:gap-y-12">
                             {filtered.map((p, i) => (
