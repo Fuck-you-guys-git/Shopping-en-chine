@@ -1,0 +1,28 @@
+{
+  "summary": "Iteration 29 — Verified the email confirmation fix (Resend fallback when shoppingenchine.com domain is not verified). Seeded order qa_email_1 + tx qa_paxid_email_1, triggered POST /api/paxity/webhook with SUCCESS, and confirmed both merchant and customer emails were accepted by Resend, DB flags flipped, and the 2nd identical webhook was idempotent (no duplicate sends). Direct unit call of email_service._send_raw() also returned a Resend id via the onboarding@resend.dev fallback. Cleanup executed. 5/5 pytest cases passed.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "email_service._send_raw", "issue": "Le repli sandbox onboarding@resend.dev livre exclusivement au propriétaire du compte Resend — les clients externes ne recevront rien tant que shoppingenchine.com n'est pas vérifié sur https://resend.com/domains. Comportement attendu et documenté, mais reste à finaliser côté user (hors code)."}
+    ]
+  },
+  "frontend_issues": {"ui_bugs": [], "integration_issues": [], "design_issues": []},
+  "test_report_links": [
+    "/app/backend/tests/test_email_fallback.py",
+    "/app/test_reports/pytest/iter29_email.xml"
+  ],
+  "action_items": [
+    "Vérifier le domaine shoppingenchine.com dans le dashboard Resend (https://resend.com/domains) pour que les clients externes reçoivent réellement le mail. Aucun changement de code requis — le fallback bascule automatiquement sur l'expéditeur officiel dès que la vérification est effective."
+  ],
+  "critical_code_review_comments": [
+    "email_service._send_raw détecte 'not verified' sur str(e).lower() — robuste au format d'erreur Resend actuel, mais dépend d'un message textuel. Envisager un catch plus explicite (ex. resend.exceptions ou code) pour éviter une régression si Resend change le libellé.",
+    "En cas d'échec de _send pour customer-confirm après avoir claim customer_email_sent=true, le flag est bien remis à false dans maybe_send_customer_confirmation — OK. Idem côté merchant. Anti-doublon validé."
+  ],
+  "updated_files": ["/app/backend/tests/test_email_fallback.py"],
+  "success_rate": {"backend": "100%", "frontend": "N/A (skipped per request)"},
+  "seed_data_creation": "orders.qa_email_1 + paxity_transactions.tx_qa_email_1 (paxity_transaction_id=qa_paxid_email_1) — supprimés après le test",
+  "should_call_test_agent_after_fix": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Fix email de confirmation validé end-to-end. Logs backend confirment: '[Email:merchant] Domaine ... NON VÉRIFIÉ → repli sur onboarding@resend.dev', '[Email] Order confirmation sent for qa_email_1 (id=...)', '[Email:customer-confirm] sent to commands@shoppingenchine.com (id=...)'. Flags DB: confirmation_email_sent=true, customer_email_sent=true. Le 2e webhook SUCCESS n'a produit AUCUNE nouvelle ligne 'sent' (idempotence OK). L'unit test direct _send_raw() a retourné {id: '...'} sans exception. Prochain jalon : vérification DNS du domaine chez Resend par le user — aucun retest code nécessaire.",
+  "rca_of_the_issue": "Le bug initial était double : (a) SENDER_EMAIL=onboarding@resend.dev (sandbox → livre uniquement au propriétaire du compte Resend), (b) le domaine shoppingenchine.com n'est pas vérifié → l'envoi depuis serviceclients@shoppingenchine.com est rejeté par Resend ('domain is not verified'). Le fix dans _send_raw tente D'ABORD l'expéditeur officiel puis, sur 'not verified', bascule automatiquement sur onboarding@resend.dev avec un WARNING explicite. L'API Resend accepte donc systématiquement l'envoi (id retourné), plus d'échec silencieux. Dès que le user vérifie shoppingenchine.com chez Resend, le fallback n'est plus déclenché et les clients reçoivent réellement — sans redéploiement."
+}

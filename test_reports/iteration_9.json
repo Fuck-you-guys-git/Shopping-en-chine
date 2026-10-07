@@ -1,0 +1,33 @@
+{
+  "summary": "Iteration 9 — CARD/MOOVCI removal + OTP-optional verified end-to-end. Backend: 30/30 pytest pass (29 offline + 1 live). GET /api/paxity/config returns exactly 5 methods {OMSN, OMCI, WAVESN, WAVECI, MTNCI}, all requires_otp=false, no CARD, no MOOVCI. POST /api/paxity/payin correctly returns 400 'Méthode de paiement inconnue' for CARD/MOOVCI/FOOBAR and 400 'Montant invalide' for amount=0. ONE live OMSN payin with NO otp_code succeeded: HTTP 200, status=pending, payment_link contains 'orange-sonatel', qr_code non-empty, requires_otp=false. Frontend (/commande): method grid shows exactly 5 tiles with no 'Carte bancaire'/'Moov Money' tile; OTP input labeled 'Code OTP (facultatif)' with NO required attribute; submitting OMSN with empty OTP goes straight to pending screen (paxity-payment-link-btn + paxity-qr-code visible, 'Paiement en cours…' + 'Payer maintenant' shown, NO 'Code OTP requis' toast). Payin POST body confirmed to omit otp_code entirely.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Footer (global)", "issues": ["Copy still mentions 'Paiement Mobile Money, Carte, PayPal' — 'Carte' is no longer offered by Paxity. Cosmetic only, not blocking, but should be updated for consistency."]}
+    ]
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_paxity_card_removal.py",
+    "/app/backend/tests/test_paxity_parsing.py",
+    "/app/backend/tests/test_tracking.py",
+    "/app/backend/tests/test_paxity_diagnostic_preview.py",
+    "/app/test_reports/pytest/iter9_validation.xml"
+  ],
+  "action_items": [
+    "(Non-blocking, cosmetic) Update footer marketing copy in /app/frontend/src/components/Footer.jsx (or equivalent) to remove 'Carte' from 'Paiement Mobile Money, Carte, PayPal' since card is no longer supported."
+  ],
+  "critical_code_review_comments": [
+    "paxity_router.py is 666+ lines — consider splitting models/service/routes for maintainability (non-blocking, flagged in prior iterations).",
+    "OTP guard at line ~438 (if method_meta.get('requires_otp') and not otp...) is dead code now that all 5 methods have requires_otp=false. Safe to keep as future-proofing if a future method needs OTP."
+  ],
+  "updated_files": ["/app/backend/tests/test_paxity_card_removal.py (new)"],
+  "success_rate": {"backend": "100% (30/30)", "frontend": "100% (all acceptance criteria)"},
+  "test_credentials": "Paxity live keys in /app/backend/.env — not modified.",
+  "seed_data_creation": "One real 100 XOF OMSN pending transaction created on the live Paxity account (RUN_LIVE_OMSN=1 gated, ran exactly once as instructed). Frontend submission intercepted with page.route to avoid creating a second real transaction.",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Backend fully covered by 30 tests split across test_paxity_card_removal.py (config + validation + live OMSN gated by RUN_LIVE_OMSN=1), test_paxity_parsing.py, test_tracking.py, test_paxity_diagnostic_preview.py. To rerun the live OMSN payin: `cd /app/backend && RUN_LIVE_OMSN=1 pytest tests/test_paxity_card_removal.py::TestLiveOMSNNoOTP -v` — creates a real 100 XOF pending tx, use sparingly. Frontend flow: seed sec_cart_v1 in localStorage, /commande → step1 form (placeholders 'Marie','Dupont','marie@exemple.com','Rue, quartier…','Dakar','77 XXX XX XX') → Continuer → Continuer → click 'Orange Money Sénégal' → click submit button matching regex ^Payer\\s → intercept /api/paxity/payin with page.route.",
+  "rca of the issue": "Original user bug (CARD → 400) was actually correct behavior from an infrastructure standpoint (Paxity merchant does not support cards). Fix applied in iteration 9: removed CARD+MOOVCI from PAYMENT_METHODS so the frontend never offers them; flipped requires_otp=false on OMSN/OMCI since Paxity live API is CODE_QR (link/QR pay flow) — OTP is genuinely optional. Testing confirms both branches: the two removed methods now yield 400 'unknown method' if forced, and OMSN succeeds without any OTP."
+}

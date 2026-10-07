@@ -1,0 +1,23 @@
+{
+  "summary": "Validated the new Paxity self-heal guard and full backend health (preview). Self-heal overrides stale legacy hosts (api.paxity.io / api.paxity.com) to https://transaction.paxity.io/api/v1 at import time; live host is kept as-is with no warning; default (unset) uses live host. Diagnostic returns 200 with SHOPPING EN CHINE balance. Config returns configured=true, 7 methods, XOF. All 3 validation paths return correct 400 French errors. 18/18 regression pytest pass.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {"ui_bugs": [], "integration_issues": [], "design_issues": []},
+  "test_report_links": [
+    "/app/backend/tests/test_paxity_parsing.py",
+    "/app/backend/tests/test_tracking.py",
+    "/app/test_reports/pytest/pytest_iteration_8.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "Self-heal guard in paxity_router.py (lines 58-70) is correct and idempotent — safe to keep permanently as a safety net.",
+    "paxity_router.py is 666 lines — consider splitting models/service/routes for maintainability (non-blocking)."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "100%", "frontend": "n/a (skipped per request)"},
+  "test_credentials": "Paxity keys from /app/backend/.env (unchanged, not modified).",
+  "seed_data_creation": "None. No real transactions initiated (all payin calls hit 400 validation short-circuit).",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Self-heal guard verified across 4 scenarios: (a) PAXITY_BASE_URL=https://api.paxity.io/v1 -> overridden to transaction.paxity.io/api/v1 with warning, (b) https://api.paxity.com/v1 -> overridden with warning, (c) https://transaction.paxity.io/api/v1 -> kept unchanged, no warning, (d) unset -> defaults to transaction.paxity.io/api/v1. Diagnostic + config + validation errors + 18 regression tests all green. Production issue on shopenchine.com can only be resolved by user redeploying — the guard now ensures the next redeploy self-corrects even if the prod env var still points to a stale host.",
+  "rca of the issue": "Production (shopenchine.com) was still configured with PAXITY_BASE_URL=https://api.paxity.io/v1 (legacy host that returns 401 for all requests). Live working host is https://transaction.paxity.io/api/v1. Self-heal guard added at module import time in paxity_router.py detects the two legacy substrings ('api.paxity.com', 'api.paxity.io') and forces the working live base URL, logging a warning. This guarantees production self-corrects on next redeploy without requiring the user to change env vars in the production env store."
+}

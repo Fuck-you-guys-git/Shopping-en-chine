@@ -1,0 +1,33 @@
+{
+  "summary": "Full regression after Paxity v1/Stripe removal and v2-only migration. Backend 12/12 pass: /api/paxity/config returns configured=true, environment=live, currency=XOF, 4 methods (WAVESN/WAVECI/OMSN/OMCI); legacy endpoints /paxity/v2/config, /payments/stripe/checkout, /paxity/card/init all return 404; payin validation rejects CARD/amount=0/short phone with 400; status/unknown returns 404; webhook accepts fake payload with 200 {received:true} without confirming; /paxity/orders/tmp_f2621d3fc3 returns provider=paxity-v2, currency=XOF, status=pending; /paxity/reconcile requires auth (401) and returns {checked,confirmed,failed,unverifiable} when authenticated. Frontend: Home shows F CFA prices, trust bar & footer only show Wave + Orange Money (no Visa/Mastercard, no 'carte bancaire' in visible text); ?devise=USD and ?devise=EUR overrides never render $ or € in visible text — only F CFA. Cart page shows 'Checkout' button + Wave/Orange Money badges. Checkout step 3 shows exactly 4 payment buttons with data-testid paxity-method-btn-{WAVESN,WAVECI,OMSN,OMCI}, no stripe-card-method-btn, WAVESN pre-selected, selecting WAVECI switches prefix to 225, pay button label 'Pay 1 500 F' (no 'F F' duplication). Pay button NOT clicked (per instruction). Seller dashboard loads, reconcile-payments-btn triggers POST /api/paxity/reconcile returning 200. Add-product form (/vendeur/ajouter) shows only price-input (F CFA) — price-eur-input / price-usd-input absent as required.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Checkout step 1 (address)", "issues": ["Default country is US (+1) which requires a State; the task note already recommends Sénégal — consider auto-defaulting to a Paxity-supported country (SN/CI) since checkout only accepts XOF/Wave/OM payments."]},
+      {"screen": "Cart summary", "issues": ["Minor: formatting of 1 500 F uses a non-breaking thin space while cart list item shows '1500 F' without the space — inconsistency between locales/components. Not blocking."]}
+    ]
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_paxity_v2.py",
+    "/app/test_reports/pytest/paxity_v2.xml"
+  ],
+  "action_items": [
+    "(Optional) Verify CSV export button on seller orders page — not found by test selectors on /vendeur/commandes list view; may be behind a bulk-select action, worth adding data-testid='csv-export-btn' for easier regression.",
+    "(Optional) Consider auto-selecting Sénégal (or user's geo country when SN/CI) as default on checkout address step, since all payments are XOF only."
+  ],
+  "critical_code_review_comments": [
+    "paxity_router.py cleanly removes v1 & Stripe paths; webhook correctly re-verifies with Paxity instead of trusting unsigned payload (good).",
+    "tmp_* order id lifecycle (persist→payin→finalize number on success) is idempotent and safe.",
+    "_watch_pending_tx + reconciliation_loop provide good resilience for pending payments.",
+    "Legacy endpoints removed server-side — confirmed by 404 responses."
+  ],
+  "updated_files": ["/app/backend/tests/test_paxity_v2.py"],
+  "success_rate": {"backend": "100%", "frontend": "100%"},
+  "test_credentials": "Seller: Modou.ba.568@gmail.com / 40881215.Com (from /app/memory/test_credentials.md)",
+  "seed_data_creation": "Cart seeded via localStorage key sec_cart_v1 with 1x 1500 F item. No new backend data created (pay button intentionally NOT clicked to avoid live Paxity tx).",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Backend regression file is /app/backend/tests/test_paxity_v2.py. Set env TEST_SELLER_EMAIL/TEST_SELLER_PASSWORD (or backend/.env) for reconcile auth test, otherwise it skips. Do NOT click the paxity-pay-btn in UI tests — it creates real live Paxity transactions."
+}

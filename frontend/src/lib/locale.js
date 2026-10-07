@@ -1,0 +1,595 @@
+/*
+ * Langue + devise du site — AUCUNE CONVERSION AUTOMATIQUE (demande du marchand).
+ * Chaque produit porte ses prix saisis manuellement par le vendeur :
+ *   price (F CFA · Afrique), priceEur (€ · Europe), priceUsd ($ · USA/Canada).
+ * Le site affiche et débite EXACTEMENT ces montants — jamais de calcul au taux fixe.
+ * - t(fr) : renvoie la traduction anglaise si la langue est "en".
+ */
+
+export const LOCALE_PRESETS = [
+    { id: "sn", flag: "🇸🇳", lang: "fr", currency: "XOF", label: "Afrique · FCFA", short: "FR · F CFA" },
+    { id: "eu", flag: "🇪🇺", lang: "fr", currency: "EUR", label: "Europe · EUR", short: "FR · €" },
+    { id: "us", flag: "🇺🇸", lang: "en", currency: "USD", label: "USA · USD", short: "EN · $" },
+    { id: "en-xof", flag: "🌍", lang: "en", currency: "XOF", label: "English · FCFA", short: "EN · F CFA" },
+];
+
+// État module (mis à jour par LocaleContext AVANT chaque re-render)
+let current = { lang: "fr", currency: "XOF", country: null };
+export const getLocale = () => current;
+export const setLocaleValues = (lang, currency, country = null) => {
+    current = { lang, currency, country };
+};
+
+/** Formate un montant dans une devise donnée (aucune conversion). */
+const fmtCurrency = (value, locale, currency) => {
+    // Montant entier -> "20 €" ; sinon toujours 2 décimales -> "12,50 €"
+    const isWhole = Math.abs(value - Math.round(value)) < 0.005;
+    return new Intl.NumberFormat(locale, {
+        style: "currency",
+        currency,
+        minimumFractionDigits: isWhole ? 0 : 2,
+        maximumFractionDigits: isWhole ? 0 : 2,
+    }).format(value);
+};
+
+/** Montant F CFA formaté « X F » — toujours tel quel, sans conversion. */
+export const formatMoney = (xof) =>
+    `${new Intl.NumberFormat("fr-FR", { maximumFractionDigits: 0 }).format(Math.round(Number(xof) || 0))} F`;
+
+/** Montant payé dans SA devise d'origine (EUR/USD tels quels, XOF en « X F »). */
+export const formatPaid = (v, currency) => {
+    const n = Number(v) || 0;
+    if (currency === "EUR") return fmtCurrency(n, "fr-FR", "EUR");
+    if (currency === "USD") return fmtCurrency(n, "en-US", "USD");
+    return formatMoney(n);
+};
+
+/** Toujours en F CFA, quel que soit le choix du visiteur (dashboard vendeur). */
+export const formatCfa = (xof) =>
+    `${new Intl.NumberFormat("fr-FR", { maximumFractionDigits: 0 }).format(Math.round(Number(xof) || 0))} F`;
+
+/**
+ * Prix unitaire d'un produit/article dans la devise d'affichage courante.
+ * UNIQUEMENT le prix EUR/USD saisi par le vendeur — AUCUNE conversion.
+ * Retourne null si le vendeur n'a pas saisi de prix dans cette devise.
+ */
+export const unitAmount = (p) => {
+    if (current.currency === "EUR") {
+        const e = Number(p?.priceEur);
+        return e > 0 ? e : null;
+    }
+    if (current.currency === "USD") {
+        const u = Number(p?.priceUsd);
+        return u > 0 ? u : null;
+    }
+    return Number(p?.price) || 0;
+};
+
+/** Formate un montant déjà exprimé dans la devise d'affichage courante. */
+export const fmtAmount = (v) => {
+    if (current.currency === "EUR") return fmtCurrency(v, "fr-FR", "EUR");
+    if (current.currency === "USD") return fmtCurrency(v, "en-US", "USD");
+    return `${new Intl.NumberFormat("fr-FR", { maximumFractionDigits: 0 }).format(Math.round(v))} F`;
+};
+
+/** Prix d'un produit formaté : prix vendeur EUR/USD, sinon F CFA tel quel. */
+export const formatProductMoney = (p) => {
+    const v = unitAmount(p);
+    return v != null ? fmtAmount(v) : formatMoney(p?.price);
+};
+
+/**
+ * Total du panier dans la devise d'affichage (prix vendeur uniquement).
+ * Retourne null si un article n'a pas de prix saisi dans cette devise
+ * (le paiement bascule alors sur le montant F CFA tel quel).
+ */
+export const cartDisplayTotal = (items) => {
+    let sum = 0;
+    for (const i of items || []) {
+        const u = unitAmount(i);
+        if (u == null) return null;
+        sum += u * (i.qty || 1);
+    }
+    return sum;
+};
+
+/** Total F CFA brut d'un panier (fallback sans conversion). */
+export const cartXofTotal = (items) =>
+    (items || []).reduce((s, i) => s + (Number(i.price) || 0) * (i.qty || 1), 0);
+
+/** Ligne d'article formatée : prix vendeur localisé, sinon F CFA tel quel. */
+export const itemTotalLabel = (it) => {
+    const u = unitAmount(it);
+    const qty = it?.qty || 1;
+    return u != null ? fmtAmount(u * qty) : formatMoney((Number(it?.price) || 0) * qty);
+};
+
+/** Total panier formaté : devise d'affichage si possible, sinon F CFA. */
+export const cartTotalLabel = (items) => {
+    const sum = cartDisplayTotal(items);
+    return sum != null ? fmtAmount(sum) : formatMoney(cartXofTotal(items));
+};
+
+// ---------------------------------------------------------------------------
+// Dictionnaire FR -> EN (la clé est le texte français affiché)
+// ---------------------------------------------------------------------------
+const EN = {
+    // Navbar / topbar
+    "Livraison de la Chine vers le monde entier · 10–20 jours": "Worldwide delivery from China · 10–20 days",
+    "Service client 7j/7": "Customer service 7/7",
+    "Espace vendeur": "Seller area",
+    "Accueil": "Home",
+    "Boutique": "Shop",
+    "Achat en gros": "Wholesale",
+    "Suivi de colis": "Track package",
+    "Suivi de commande": "Order tracking",
+    "Rechercher...": "Search...",
+    "Que cherchez-vous ?": "What are you looking for?",
+    "Menu de navigation": "Navigation menu",
+    // Catégories
+    "Mode": "Fashion",
+    "Électronique": "Electronics",
+    "Maison": "Home & Living",
+    "Beauté": "Beauty",
+    "Enfants": "Kids",
+    "Cuisine": "Kitchen",
+    // Sous-catégories
+    "Vêtements": "Clothing",
+    "Chaussures": "Shoes",
+    "Sacs": "Bags",
+    "Lunettes": "Glasses",
+    "Accessoires": "Accessories",
+    "Bijoux": "Jewelry",
+    "Montres": "Watches",
+    "Smartphones": "Smartphones",
+    "Tablettes": "Tablets",
+    "Ordinateurs": "Computers",
+    "Caméras": "Cameras",
+    "Montres connectées": "Smartwatches",
+    "Écouteurs & Casques": "Earbuds & Headphones",
+    "Chargeurs & Câbles": "Chargers & Cables",
+    "Éclairage LED": "LED Lighting",
+    "Jeux & Gaming": "Games & Gaming",
+    "Chambre à coucher": "Bedroom",
+    "Salon": "Living room",
+    "Salle de bain": "Bathroom",
+    "Décoration": "Decoration",
+    "Meubles": "Furniture",
+    "Tapis": "Rugs",
+    "Rideaux": "Curtains",
+    "Éclairage": "Lighting",
+    "Rangement & Organisation": "Storage & Organization",
+    "Jardin & Extérieur": "Garden & Outdoor",
+    "Soins": "Skincare",
+    "Maquillage": "Makeup",
+    "Parfums": "Perfumes",
+    "Appareils de beauté": "Beauty devices",
+    "Vêtements pour filles": "Girls' clothing",
+    "Vêtements pour garçons": "Boys' clothing",
+    "Jouets": "Toys",
+    "Accessoires enfants": "Kids' accessories",
+    "Fournitures scolaires": "School supplies",
+    // ProductCard
+    "Ajouter au panier": "Add to cart",
+    "Ajouté au panier": "Added to cart",
+    "Ajouté aux favoris ♥": "Added to favorites ♥",
+    // Footer
+    "Livraison de la Chine vers le monde entier en 10–20 jours · Paiement Mobile Money (Wave, Orange Money, MTN) et carte bancaire. Tout ce dont vous avez besoin, simple à trouver.":
+        "Worldwide delivery from China in 10–20 days · Mobile Money (Wave, Orange Money, MTN) and card payment. Everything you need, easy to find.",
+    "votre@email.com": "your@email.com",
+    "−10% offert": "Get −10%",
+    "Bienvenue chez Shopping en Chine ✦": "Welcome to Shopping en Chine ✦",
+    "Nous avons envoyé un code de -10% à": "We sent a −10% code to",
+    "Tous les produits": "All products",
+    "Nouveautés": "New arrivals",
+    "Aide": "Help",
+    "Livraison": "Shipping",
+    "Retours": "Returns",
+    "À propos": "About",
+    "FAQ": "FAQ",
+    "Contact": "Contact",
+    "Notre histoire": "Our story",
+    "Vendeurs": "Sellers",
+    "Carrières": "Careers",
+    "Presse": "Press",
+    "Blog": "Blog",
+    "Tous droits réservés.": "All rights reserved.",
+    "Confidentialité": "Privacy",
+    "Conditions": "Terms",
+    "Cookies": "Cookies",
+    // Panier / CartDrawer
+    "Votre panier": "Your cart",
+    "Votre panier est vide": "Your cart is empty",
+    "Découvrez notre sélection et ajoutez vos coups de cœur.": "Discover our selection and add your favorites.",
+    "Explorer la boutique": "Explore the shop",
+    "Taille": "Size",
+    "Sous-total": "Subtotal",
+    "Livraison Chine → Monde entier": "China → Worldwide delivery",
+    "10–20 jours": "10–20 days",
+    "Total": "Total",
+    "Passer commande": "Checkout",
+    "Paiement 100% sécurisé": "100% secure payment",
+    // Page panier
+    "Continuer mes achats": "Continue shopping",
+    "Mon panier": "My cart",
+    "Rien encore ? Laissez-vous inspirer par nos coups de cœur.": "Nothing yet? Get inspired by our favorites.",
+    "article": "item",
+    "articles": "items",
+    "prêts à partir chez vous": "ready to ship to you",
+    "Code promo": "Promo code",
+    "Appliquer": "Apply",
+    "Essayez": "Try",
+    "Code appliqué · −10%": "Code applied · −10%",
+    "Code invalide": "Invalid code",
+    "Réduction (−10%)": "Discount (−10%)",
+    "Total TTC": "Total",
+    "Vider le panier": "Empty cart",
+    "En stock": "In stock",
+    "Rupture de stock": "Out of stock",
+    "Ce produit est actuellement épuisé.": "This product is currently sold out.",
+    "Choisir la couleur": "Choose a color",
+    "choisissez une couleur": "choose a color",
+    "Veuillez choisir une couleur": "Please choose a color",
+    "Sélectionnez une couleur avant d'ajouter au panier.": "Select a color before adding to cart.",
+    "Récapitulatif": "Summary",
+    // Home
+    "Tout, plus simple.": "Everything, made simple.",
+    "Livraison de la Chine vers le monde entier en 10–20 jours · Paiement 100 % sécurisé": "Worldwide delivery from China in 10–20 days · 100% secure payment",
+    "Chercher": "Search",
+    "Tout voir": "View all",
+    "Produits populaires": "Popular products",
+    "Voir tout": "See all",
+    "⭐ Offre limitée": "⭐ Limited offer",
+    "−30% sur l'Électronique": "−30% on Electronics",
+    "jusqu'à dimanche": "until Sunday",
+    "Casques, gadgets, accessoires connectés.": "Headphones, gadgets, connected accessories.",
+    "Profiter": "Shop now",
+    "Toutes les catégories": "All categories",
+    "Nouveautés de la semaine": "New this week",
+    "Paiement sécurisé": "Secure payment",
+    "Mobile Money (Wave, Orange, MTN)": "Mobile Money (Wave, Orange, MTN)",
+    "Service client": "Customer service",
+    "7 jours / 7, en français": "7 days a week",
+    "En 10–20 jours": "In 10–20 days",
+    // Boutique
+    "Catégories": "Categories",
+    "Prix": "Price",
+    "et +": "and up",
+    "Toute la boutique": "All products",
+    "produit": "product",
+    "produits": "products",
+    "trié pour vous": "sorted for you",
+    "triés pour vous": "sorted for you",
+    "Filtres": "Filters",
+    "Trier par": "Sort by",
+    "Pertinence": "Relevance",
+    "Prix croissant": "Price: low to high",
+    "Prix décroissant": "Price: high to low",
+    "Tout": "All",
+    "Effacer tout": "Clear all",
+    "Voir tous les résultats": "See all results",
+    "Pays": "Country",
+    "Choisissez votre pays": "Choose your country",
+    "Après validation, revenez sur cette page : votre confirmation s'affichera automatiquement et vous recevrez un email. Vous pouvez fermer la page de paiement.": "After confirming, come back to this page: your confirmation will appear automatically and you will receive an email. You can close the payment page.",
+    "État": "State",
+    "Province": "Province",
+    "Choisissez votre état": "Choose your state",
+    "Choisissez votre province": "Choose your province",
+    "Aucun produit trouvé": "No products found",
+    "Essayez d'ajuster vos filtres.": "Try adjusting your filters.",
+    "Réinitialiser les filtres": "Reset filters",
+    // Fiche produit
+    "Chargement du produit…": "Loading product…",
+    "Produit introuvable": "Product not found",
+    "Retour à la boutique": "Back to shop",
+    "Retour": "Back",
+    "Couleur :": "Color:",
+    "Sélectionnée": "Selected",
+    "(optionnel)": "(optional)",
+    "Acheter maintenant →": "Buy now →",
+    "Livré en 10–20 jours": "Delivered in 10–20 days",
+    "Description": "Description",
+    "Caractéristiques": "Specifications",
+    "Référence": "Reference",
+    "Catégorie": "Category",
+    "Poids": "Weight",
+    "Origine": "Origin",
+    "Chine · Contrôle qualité UE": "China · EU quality control",
+    "Matériaux": "Materials",
+    "Premium, hypoallergéniques": "Premium, hypoallergenic",
+    "Conçu pour durer et vivre avec vous, ce produit combine matériaux nobles et savoir-faire moderne. Chaque détail a été pensé pour une expérience quotidienne agréable et sans friction.":
+        "Designed to last and live with you, this product combines premium materials and modern craftsmanship. Every detail is thought out for a pleasant, friction-free daily experience.",
+    "en 10–20 jours.": "in 10–20 days.",
+    "Vous aimerez aussi": "You may also like",
+    // Suivi
+    "Où est mon colis ?": "Where is my package?",
+    "Entrez votre numéro de commande (reçu après le paiement) pour suivre votre colis de la Chine jusqu'à Dakar.":
+        "Enter your order number (received after payment) to track your package from China to your door.",
+    "Suivre": "Track",
+    "Commande introuvable. Vérifiez votre numéro de commande.": "Order not found. Please check your order number.",
+    "Le numéro figure sur l'écran de confirmation et commence par « ord_ ».": "The number is shown on the confirmation screen.",
+    "Commande": "Order",
+    "Paiement confirmé": "Payment confirmed",
+    "Paiement en attente": "Payment pending",
+    "Paiement échoué": "Payment failed",
+    "Passée le": "Placed on",
+    "Livraison estimée :": "Estimated delivery:",
+    "entre le": "between",
+    "et le": "and",
+    "Suivi du colis": "Package tracking",
+    "En cours": "In progress",
+    "Articles": "Items",
+    "Vous n'avez pas encore commandé ?": "Haven't ordered yet?",
+    "Découvrir la boutique": "Discover the shop",
+    "Paiement annulé": "Payment cancelled",
+    "Aucun montant n'a été débité. Vos articles sont toujours dans votre panier.": "No amount was charged. Your items are still in your cart.",
+    "Reprendre le paiement": "Resume payment",
+    // Étapes de suivi (labels backend)
+    "Commandé": "Ordered",
+    "Expédié de Chine": "Shipped from China",
+    "En douane": "In customs",
+    "En livraison à Dakar": "Out for delivery",
+    "En livraison": "Out for delivery",
+    "Livré": "Delivered",
+    // Checkout
+    "Retour au panier": "Back to cart",
+    "Adresse": "Address",
+    "Paiement": "Payment",
+    "Adresse de livraison": "Shipping address",
+    "Prénom": "First name",
+    "Nom": "Last name",
+    "Email": "Email",
+    "Code postal": "ZIP code",
+    "Ville": "City",
+    "Téléphone": "Phone",
+    "Continuer": "Continue",
+    "Veuillez remplir tous les champs requis": "Please fill in all required fields",
+    "Mode de livraison": "Shipping method",
+    // Options de livraison (étape 2)
+    "Livraison économique Chine-Dakar": "Economy shipping China-Dakar",
+    "Livraison express Chine-Dakar": "Express shipping China-Dakar",
+    "15 à 20 jours ouvrés": "15 to 20 business days",
+    "5 à 7 jours ouvrés": "5 to 7 business days",
+    "Une option plus économique, spécialement conçue pour les clients ayant des colis de poids important, afin de bénéficier de frais de livraison plus avantageux.":
+        "A more economical option, specially designed for customers with heavy packages, to benefit from lower shipping costs.",
+    "Pour recevoir votre commande plus rapidement, choisissez cette option express.":
+        "To receive your order faster, choose this express option.",
+    "Le délai estimatif est de 15 à 20 jours ouvrés.": "The estimated delivery time is 15 to 20 business days.",
+    "Le délai estimatif est de 5 à 7 jours ouvrés après l'expédition.": "The estimated delivery time is 5 to 7 business days after shipment.",
+    "Après votre commande, votre colis est pesé afin de déterminer vos frais de livraison.":
+        "After your order, your package is weighed to determine your shipping costs.",
+    "Le calcul est simple :": "The calculation is simple:",
+    "Poids du colis (en kg)": "Package weight (in kg)",
+    "Le montant obtenu correspond à vos frais de livraison jusqu'à Dakar.": "The resulting amount is your shipping cost to Dakar.",
+    "Une fois votre colis prêt à être expédié, nous vous communiquerons le montant exact de vos frais de livraison.":
+        "Once your package is ready to ship, we will let you know the exact amount of your shipping costs.",
+    "Vous avez le choix :": "You can choose to:",
+    "payer vos frais de livraison avant l'expédition, ou": "pay your shipping costs before shipment, or",
+    "payer à l'arrivée de votre colis à Dakar.": "pay when your package arrives in Dakar.",
+    "Les frais de livraison sont calculés uniquement lorsque le colis est pesé et prêt à être expédié.":
+        "Shipping costs are calculated only when the package is weighed and ready to ship.",
+    "Et une fois à Dakar le livreur vous contactera pour la réception de votre colis.":
+        "Once in Dakar, the courier will contact you to deliver your package.",
+    "Les frais de livraison à domicile sont à la charge du client. Ils sont fixés à":
+        "Home delivery fees are paid by the customer. They are fixed at",
+    "quel que soit le lieu de livraison à Dakar.": "regardless of the delivery location in Dakar.",
+    // Option internationale (Europe/USA)
+    "Livraison Chine-Europe": "China-Europe shipping",
+    "Livraison Chine-USA": "China-USA shipping",
+    "Livraison Chine-Canada": "China-Canada shipping",
+    "Voir les détails": "See details",
+    "Le montant obtenu correspond à vos frais de livraison jusqu'à New York.": "The resulting amount is your shipping cost to New York.",
+    "Dès l'arrivée de votre colis à New York, notre assistante vous contactera pour organiser sa réception, soit par livraison (ces frais restent à votre charge), soit par remise en main propre.":
+        "As soon as your package arrives in New York, our assistant will contact you to arrange its reception, either by delivery (these costs remain at your expense) or by hand delivery.",
+    "Une option pensée pour vous permettre de recevoir votre commande en toute sérénité.":
+        "An option designed so you can receive your order with complete peace of mind.",
+    "En cas de perte du colis ou de retenue par les services douaniers, vous bénéficiez d'un remboursement intégral, conformément aux conditions de cette option.":
+        "In case of package loss or customs retention, you benefit from a full refund, in accordance with the terms of this option.",
+    "Délai estimatif : 15 à 20 jours ouvrés.": "Estimated delivery time: 15 to 20 business days.",
+    "Le montant obtenu correspond à vos frais de livraison.": "The resulting amount is your shipping cost.",
+    "Une fois votre colis prêt à être expédié, nous vous communiquerons le montant exact de vos frais de livraison afin de finaliser votre paiement via un lien sécurisé que vous recevrez.":
+        "Once your package is ready to ship, we will let you know the exact amount of your shipping costs so you can complete the payment via a secure link that you will receive.",
+    "payer vos frais de livraison avant l'expédition": "pay your shipping costs before shipment",
+    "Dès l'arrivée de votre colis dans votre pays, notre assistante vous contactera pour organiser sa réception, soit par livraison (ces frais restent à votre charge), soit par remise en main propre.":
+        "As soon as your package arrives in your country, our assistant will contact you to arrange its reception, either by delivery (these costs remain at your expense) or by hand delivery.",
+    "Livraison standard · Chine → Dakar": "Standard delivery · China → Dakar",
+    "Choisissez votre moyen de paiement": "Choose your payment method",
+    "Carte bancaire": "Card",
+    "Paiement par carte sécurisé (Visa, Mastercard)": "Secure card payment (Visa, Mastercard)",
+    "Payez directement sur le site, sans redirection.": "Pay directly on the site, no redirect.",
+    "Paiement sécurisé via Paxity · Chiffrement bout-en-bout": "Secure payment via Paxity · End-to-end encryption",
+    "Payer par carte": "Pay by card",
+    "Chargement…": "Loading…",
+    "Indicatif": "Code",
+    "Numéro de téléphone": "Phone number",
+    "Code OTP": "OTP code",
+    "(facultatif)": "(optional)",
+    "Laissez vide si non requis": "Leave empty if not required",
+    "Après validation, vous recevrez un lien de paiement à confirmer. Si votre opérateur vous a déjà fourni un code, saisissez-le ici.":
+        "After validation you will receive a payment link to confirm. If your operator already gave you a code, enter it here.",
+    "Payer": "Pay",
+    "Après validation, vous recevrez une demande de paiement à confirmer dans votre application.": "After validation, you will receive a payment request to confirm in your app.",
+    "Paiement refusé": "Payment declined",
+    "Wave et Orange Money encaissent uniquement en F CFA.": "Wave and Orange Money only accept F CFA.",
+    "Vous paierez": "You will pay",
+    "(total affiché :": "(displayed total:",
+    "Votre banque applique le taux de change.": "Your bank applies the exchange rate.",
+    "Réessayez ou changez de moyen.": "Try again or choose another method.",
+    "Validez la transaction sur votre téléphone.": "Approve the transaction on your phone.",
+    "Traitement…": "Processing…",
+    "attendu :": "expected:",
+    "saisi :": "entered:",
+    "chiffres": "digits",
+    "Paiement momentanément indisponible": "Payment temporarily unavailable",
+    "Numéro de téléphone invalide": "Invalid phone number",
+    "Pour l'indicatif": "For country code",
+    "le numéro doit contenir": "the number must contain",
+    "Vous avez saisi": "You entered",
+    "Code OTP requis": "OTP code required",
+    "exige un code OTP avant de valider le paiement.": "requires an OTP code before confirming the payment.",
+    "Le paiement en ligne est en cours de maintenance. Veuillez réessayer dans quelques instants.":
+        "Online payment is under maintenance. Please try again in a few moments.",
+    "Panier vide": "Empty cart",
+    "Ajoutez des produits avant de commander.": "Add products before checking out.",
+    "Voir la boutique": "View shop",
+    "Votre commande": "Your order",
+    "Le montant est débité en F CFA :": "The amount is charged in F CFA:",
+    "Vous payez par carte dans votre devise :": "You pay by card in your currency:",
+    "Mobile Money : le montant est débité en F CFA :": "Mobile Money: the amount is charged in F CFA:",
+    "Retour au récapitulatif": "Back to summary",
+    // Écrans de statut paiement
+    "Votre commande est confirmée 🎉": "Your order is confirmed 🎉",
+    "Merci ! Votre paiement de": "Thank you! Your payment of",
+    "a bien été reçu. Nous préparons votre commande pour l'expédition depuis la Chine.":
+        "has been received. We are preparing your order for shipment from China.",
+    "Suivre ma commande": "Track my order",
+    "Retour à l'accueil": "Back to home",
+    "Continuer les achats": "Continue shopping",
+    "Paiement en cours…": "Payment in progress…",
+    "Ouvrez l'application": "Open the",
+    "sur votre téléphone et validez la transaction.": "app on your phone and confirm the transaction.",
+    "Payer maintenant": "Pay now",
+    "Après le paiement,": "After paying,",
+    "revenez sur cet onglet": "come back to this tab",
+    ": votre confirmation s'affichera ici automatiquement.": ": your confirmation will appear here automatically.",
+    "J'ai payé — Vérifier": "I paid — Verify",
+    "Vérification…": "Verifying…",
+    "En attente de confirmation Paxity": "Waiting for Paxity confirmation",
+    "Annuler et choisir un autre moyen de paiement": "Cancel and choose another payment method",
+    "Paiement confirmé ✦": "Payment confirmed ✦",
+    "Paiement toujours en attente": "Payment still pending",
+    "Validez la transaction sur votre téléphone, puis revérifiez.": "Confirm the transaction on your phone, then verify again.",
+    "Vérification impossible": "Verification failed",
+    "Vérifiez votre connexion et réessayez.": "Check your connection and try again.",
+    "Veuillez réessayer": "Please try again",
+    "Validez la transaction sur votre téléphone.": "Confirm the transaction on your phone.",
+    "Paiement refusé": "Payment declined",
+    "Wave et Orange Money encaissent uniquement en F CFA.": "Wave and Orange Money only accept F CFA.",
+    "Vous paierez": "You will pay",
+    "(total affiché :": "(displayed total:",
+    "Votre banque applique le taux de change.": "Your bank applies the exchange rate.",
+    "Réessayez ou changez de moyen.": "Try again or change method.",
+    "Erreur de paiement": "Payment error",
+    "Paiement carte indisponible": "Card payment unavailable",
+    "Réessayez ou utilisez Mobile Money.": "Try again or use Mobile Money.",
+    // PaymentSuccess
+    "Vérification du paiement…": "Verifying payment…",
+    "Un instant, nous confirmons votre transaction.": "One moment, we are confirming your transaction.",
+    "Merci pour votre achat ! Livraison de la Chine vers le monde entier sous 10 à 20 jours.": "Thank you for your purchase! Worldwide delivery from China in 10–20 days.",
+    "N° de commande :": "Order no.:",
+    "Vérification en cours": "Verification in progress",
+    "Paiement non confirmé": "Payment not confirmed",
+    "Votre paiement est peut-être encore en traitement. Vérifiez vos emails ou réessayez.":
+        "Your payment may still be processing. Check your emails or try again.",
+    "Le paiement n'a pas abouti. Vos articles sont toujours dans votre panier.": "The payment did not go through. Your items are still in your cart.",
+    "Réessayer le paiement": "Retry payment",
+    // OrderSummary
+    "Détails de la commande": "Order details",
+    "Livraison à": "Deliver to",
+    // Achat en gros
+    "Lancez votre business avec un fournisseur de confiance": "Launch your business with a trusted supplier",
+    "Vous souhaitez créer votre propre boutique ou développer votre activité ? Nous sommes ravis de vous accompagner en tant que fournisseur pour vos achats en gros. Découvrez une large sélection de produits adaptés aux professionnels, avec des solutions pensées pour les revendeurs, boutiques et entrepreneurs.":
+        "Want to start your own shop or grow your business? We are delighted to support you as a supplier for your wholesale purchases. Discover a wide selection of products for professionals, with solutions designed for resellers, shops and entrepreneurs.",
+    "Pour toute demande de tarifs en gros, disponibilité des produits ou informations commerciales, contactez notre service commercial dès maintenant. Nous serons heureux de vous accompagner dans la réussite de votre projet.":
+        "For any wholesale pricing request, product availability or business information, contact our sales team now. We will be happy to help make your project a success.",
+    "📲 Contact commercial :": "📲 Sales contact:",
+    "Appeler": "Call",
+    "🌍 Nous expédions partout dans le monde": "🌍 We ship worldwide",
+    "Chine → Afrique, Europe, Amérique… votre commande vous suit où que vous soyez.": "China → Africa, Europe, America… your order follows you wherever you are.",
+    // À propos
+    "Qui sommes-nous": "Who we are",
+    "La Chine à portée de main,": "China within reach,",
+    "depuis Dakar": "from Dakar",
+    "Shopping en Chine est née d'une idée simple : permettre à chacun au Sénégal et en Afrique de l'Ouest de commander des produits de qualité directement de Chine, sans se soucier de la logistique, de la douane ou du paiement. Vous choisissez, nous nous occupons de tout le reste.":
+        "Shopping en Chine was born from a simple idea: allowing everyone to order quality products directly from China, without worrying about logistics, customs or payment. You choose, we take care of everything else.",
+    "Import direct de Chine": "Direct import from China",
+    "Nous sélectionnons et importons vos produits directement depuis les meilleurs fournisseurs chinois, sans intermédiaire.":
+        "We select and import your products directly from the best Chinese suppliers, with no middleman.",
+    "Livraison mondiale en 10–20 jours": "Worldwide delivery in 10–20 days",
+    "Suivi de colis en temps réel, de la commande jusqu'à votre porte : Commandé → Expédié → Douane → Livré.":
+        "Real-time package tracking, from order to your door: Ordered → Shipped → Customs → Delivered.",
+    "Paiement 100 % sécurisé": "100% secure payment",
+    "Wave, Orange Money, MTN ou carte bancaire. Votre argent est protégé, vous êtes notifié à chaque étape.":
+        "Wave, Orange Money, MTN or card. Your money is protected and you are notified at every step.",
+    "Une équipe basée à Dakar, disponible en français, qui répond à toutes vos questions avant et après l'achat.":
+        "A dedicated team, available 7 days a week, answering all your questions before and after purchase.",
+    // --- Avis clients vérifiés ---
+    "Avis clients": "Customer reviews",
+    "avis vérifiés": "verified reviews",
+    "Achat vérifié": "Verified purchase",
+    "Aucun avis pour le moment — soyez le premier !": "No reviews yet — be the first!",
+    "Donner mon avis": "Write a review",
+    "Annuler": "Cancel",
+    "Seuls les clients ayant acheté ce produit peuvent laisser un avis.":
+        "Only customers who purchased this product can leave a review.",
+    "N° de commande (ex : 1024)": "Order number (e.g. 1024)",
+    "Email utilisé pour la commande": "Email used for the order",
+    "Votre note": "Your rating",
+    "Votre commentaire (facultatif)": "Your comment (optional)",
+    "Publier mon avis": "Publish my review",
+    "Envoi…": "Sending…",
+    "Merci pour votre avis !": "Thank you for your review!",
+    "Il est maintenant visible sous le produit.": "It is now visible under the product.",
+    "Avis impossible": "Review not accepted",
+    "Réessayez plus tard.": "Please try again later.",
+    "Champs requis": "Required fields",
+    "N° de commande, email et note sont obligatoires.": "Order number, email and rating are required.",
+    "Avis supprimé": "Review deleted",
+    "Suppression impossible": "Could not delete",
+    // Refonte UI — header / recherche
+    "Rechercher un produit": "Search for a product",
+    "Rechercher parmi des milliers de produits…": "Search thousands of products…",
+    "Panier": "Cart",
+    "Ouvrir le menu": "Open menu",
+    "Tous les produits": "All products",
+    // Barre de confiance
+    "Nos engagements": "Our commitments",
+    "Livraison internationale": "Worldwide delivery",
+    "Chine → monde, 10–20 jours": "China → worldwide, 10–20 days",
+    "Mobile Money & carte bancaire": "Mobile Money & bank card",
+    "Assistance client": "Customer support",
+    "7 jours / 7, en français": "7 days a week",
+    "Depuis votre n° de commande": "With your order number",
+    // Hero
+    "Livraison 10–20 jours · Paiement sécurisé": "10–20 day delivery · Secure payment",
+    "Tout ce que vous cherchez.": "Everything you're looking for.",
+    "Directement depuis la Chine.": "Straight from China.",
+    "Mode, électronique, maison, beauté et bien plus encore — livrés directement chez vous.":
+        "Fashion, electronics, home, beauty and much more — delivered straight to your door.",
+    "Découvrir les produits": "Browse products",
+    "Voir les nouveautés": "See new arrivals",
+    // Sections homepage
+    "Explorez nos catégories": "Explore our categories",
+    "Trouvez rapidement ce dont vous avez besoin": "Quickly find what you need",
+    "Les derniers produits ajoutés": "The latest products added",
+    "Aucun produit disponible pour le moment": "No products available right now",
+    "Notre catalogue est en cours de mise à jour. Revenez très bientôt.":
+        "Our catalogue is being updated. Please check back soon.",
+    "Offres du moment": "Current deals",
+    "Prix réduits sur une sélection": "Reduced prices on selected items",
+    "Les plus appréciés": "Most loved",
+    "Notés par nos clients vérifiés": "Rated by our verified customers",
+    "Vous pourriez aussi aimer": "You might also like",
+    "Voir tous les produits": "View all products",
+    "Tous nos produits": "All our products",
+    // Footer
+    "Mode, électronique, maison, beauté et bien plus encore — commandés en Chine et livrés directement chez vous en 10 à 20 jours.":
+        "Fashion, electronics, home, beauty and much more — ordered in China and delivered to your door in 10 to 20 days.",
+    "Paiement sécurisé (Mobile Money & carte bancaire)": "Secure payment (Mobile Money & bank card)",
+    "Suivi de commande disponible": "Order tracking available",
+    "Assistance client 7 jours / 7": "Customer support 7 days a week",
+    "Se connecter": "Sign in",
+    "Moyens de paiement acceptés": "Accepted payment methods",
+    "Suivre ma commande": "Track my order",
+    "Acheter maintenant": "Buy now",
+    "Retirer du panier": "Remove from cart",
+    "Diminuer la quantité": "Decrease quantity",
+    "Augmenter la quantité": "Increase quantity",
+    "Retirer ce filtre": "Remove this filter",
+    "Essayez d'ajuster vos filtres ou de modifier votre recherche.":
+        "Try adjusting your filters or changing your search.",
+    "Aucune description détaillée n'est disponible pour ce produit.":
+        "No detailed description is available for this product.",
+};
+
+export const t = (fr) => (current.lang === "en" ? (EN[fr] ?? fr) : fr);

@@ -1,0 +1,26 @@
+{
+  "summary": "Tested 5 UI/UX changes + live status refresh. All pass EXCEPT confirmation page shows 'paiement de 0 F' instead of the actual amount (100 F). Backend regression 23/23 passed. Backend live status refresh works (verified via GET /api/paxity/status/tx_46be2c7da52a46a6 -> 200 pending; unknown_tx -> 404). Mobile menu, product cards, checkout mobile ordering, Retours removal, and payment confirmation title/track button all verified.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "Checkout confirmation screen", "issue": "Displays 'Votre paiement de 0 F a bien été reçu' instead of '100 F'. Root cause: pages/Checkout.jsx L67-68 poll only merges {status}, so transaction.amount stays undefined; then clear() empties cart making total=0; the fallback `transaction?.amount ?? total` therefore renders 0. Fix: (a) merge full response `setTransaction(prev => ({...prev, ...res}))` and/or (b) capture `paidAmount` before clear() and use it in the copy.", "selector": "[data-testid=\"order-confirmed-title\"] + p", "priority": "HIGH"}
+    ],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": ["/app/backend/tests/test_paxity_parsing.py","/app/backend/tests/test_tracking.py","/app/backend/tests/test_paxity_diagnostic_preview.py"],
+  "action_items": [
+    "Fix Checkout.jsx polling to merge full status response (include amount) OR read amount from cart total captured before clear() so confirmation shows correct amount instead of 0 F."
+  ],
+  "critical_code_review_comments": [
+    "Checkout.jsx L67-68 only merges {status} on poll — drops amount/order_id/etc. Should spread full res.",
+    "clear() called on success before rendering completed screen means fallback `?? total` evaluates to 0."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "100%", "frontend": "~90% (1 amount display bug)"},
+  "seed_data_creation": "localStorage sec_cart_v1 seeded on-the-fly during checkout tests; no persistent seed",
+  "retest_needed": true,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Payment flow tested with route interception on /api/paxity/payin and /api/paxity/status/tx_mockc1. Confirmation title (data-testid=order-confirmed-title) and track button (data-testid=track-order-btn) both render. Only amount rendering is broken. Backend live refresh endpoint works and safely returns pending status via Paxity live check without crashes.",
+  "rca of the issue": "Frontend Checkout.jsx polling handler (line 67-68) only merges {status} on status change; other fields from paxity /status response (amount, currency, order_id) are discarded. Simultaneously clear() empties the cart before the completed UI renders, making the fallback `transaction?.amount ?? total` evaluate to `undefined ?? 0 => 0`. Repro: complete checkout via Wave with mocked status returning amount=100; confirmation copy shows '0 F'. Mitigation: `setTransaction((prev) => ({ ...prev, ...res }))` OR snapshot `const paidAmount = total;` before clear() and use it in the confirmation copy."
+}
