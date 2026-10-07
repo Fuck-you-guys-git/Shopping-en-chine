@@ -5,14 +5,16 @@ import { Separator } from "@/components/ui/separator";
 import { Input } from "@/components/ui/input";
 import { useState } from "react";
 import { useCart } from "@/context/CartContext";
-import { formatPrice } from "@/components/ProductCard";
+import { useCurrency } from "@/context/CurrencyContext";
+import { estimateShipping } from "@/lib/shipping";
 import { toast } from "sonner";
 
 export default function Cart() {
     const { items, updateQty, removeItem, subtotal, clear } = useCart();
     const [promo, setPromo] = useState("");
     const [discount, setDiscount] = useState(0);
-    const shipping = subtotal > 30000 || subtotal === 0 ? 0 : 3000;
+    const { format: formatPrice } = useCurrency();
+    const shipping = estimateShipping(subtotal);
     const total = Math.max(0, subtotal + shipping - discount);
 
     const applyPromo = (e) => {
@@ -123,12 +125,9 @@ export default function Cart() {
                         <Button asChild size="lg" className="w-full bg-ink text-ink-foreground hover:bg-ink/90 rounded-full h-12">
                             <Link to="/commande">Passer commande</Link>
                         </Button>
-                        <div className="flex items-center justify-center gap-4 text-muted-foreground opacity-70">
-                            <i className="fa-brands fa-cc-visa text-2xl" />
-                            <i className="fa-brands fa-cc-mastercard text-2xl" />
-                            <i className="fa-brands fa-cc-paypal text-2xl" />
-                            <i className="fa-brands fa-cc-apple-pay text-2xl" />
-                        </div>
+                        <p className="text-xs text-center text-muted-foreground">
+                            <i className="fa-solid fa-truck mr-1" /> Paiement à la livraison
+                        </p>
                     </div>
                 </aside>
             </div>

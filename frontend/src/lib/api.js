@@ -20,11 +20,28 @@ api.interceptors.response.use((response) => {
     return Promise.reject(err);
 });
 
-// --------- Paxity ---------
-export const paxityAPI = {
-    getConfig: () => api.get("/paxity/config").then((r) => r.data),
-    getDiagnostic: () => api.get("/paxity/diagnostic").then((r) => r.data),
-    createPayin: (payload) => api.post("/paxity/payin", payload).then((r) => r.data),
-    getStatus: (transactionId) => api.get(`/paxity/status/${transactionId}`).then((r) => r.data),
-    getOrder: (orderId) => api.get(`/paxity/orders/${orderId}`).then((r) => r.data),
+/** A French message for a failed API call, suitable for a toast. */
+export const apiErrorMessage = (err) => {
+    const detail = err.response?.data?.detail;
+    if (typeof detail === "string") return detail;
+    if (err.response?.status === 422) return "Vérifiez les informations saisies.";
+    if (!err.response) return "Serveur injoignable. Vérifiez votre connexion puis réessayez.";
+    return "Une erreur est survenue. Réessayez dans un instant.";
+};
+
+// --------- Catalogue ---------
+export const catalogAPI = {
+    list: () => api.get("/products").then((r) => r.data),
+};
+
+// --------- Commandes ---------
+export const ordersAPI = {
+    create: (payload) => api.post("/orders", payload).then((r) => r.data),
+    get: (orderId) => api.get(`/orders/${orderId}`).then((r) => r.data),
+};
+
+// --------- Paiement ---------
+export const paymentsAPI = {
+    config: () => api.get("/payments/config").then((r) => r.data),
+    reportPaxity: (orderId) => api.post(`/payments/paxity/${orderId}/reported`).then((r) => r.data),
 };

@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Logo } from "@/components/Logo";
 import { useCart } from "@/context/CartContext";
+import { CURRENCIES, useCurrency } from "@/context/CurrencyContext";
 import { categories } from "@/data/products";
 
 const navLinks = [
@@ -18,6 +19,7 @@ const navLinks = [
 
 export const Navbar = () => {
     const { count, setDrawerOpen } = useCart();
+    const { currency, setCurrency } = useCurrency();
     const [scrolled, setScrolled] = useState(false);
     const [query, setQuery] = useState("");
     const [searchOpen, setSearchOpen] = useState(false);
@@ -46,7 +48,19 @@ export const Navbar = () => {
                         Livraison offerte dès 30 000 F · Retours 30 jours
                     </p>
                     <div className="flex items-center gap-4 opacity-80 mx-auto sm:mx-0">
-                        <span>FR · F CFA</span>
+                        <label className="inline-flex items-center gap-1">
+                            FR ·
+                            <span className="sr-only">Devise</span>
+                            <select
+                                value={currency}
+                                onChange={(e) => setCurrency(e.target.value)}
+                                className="bg-transparent cursor-pointer focus:outline-none [&>option]:text-foreground"
+                            >
+                                {CURRENCIES.map((c) => (
+                                    <option key={c.code} value={c.code}>{c.label}</option>
+                                ))}
+                            </select>
+                        </label>
                         <span className="hidden sm:inline">Service client 7j/7</span>
                         <Link to="/admin" className="hidden sm:inline-flex items-center gap-1.5 text-ink-foreground hover:text-primary transition-colors font-medium">
                             <i className="fa-solid fa-store text-[10px]" />

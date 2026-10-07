@@ -4,11 +4,13 @@ import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { Minus, Plus, Trash2, ShoppingBag } from "lucide-react";
 import { useCart } from "@/context/CartContext";
-import { formatPrice } from "@/components/ProductCard";
+import { useCurrency } from "@/context/CurrencyContext";
+import { estimateShipping } from "@/lib/shipping";
 
 export const CartDrawer = () => {
     const { items, drawerOpen, setDrawerOpen, updateQty, removeItem, subtotal, count } = useCart();
-    const shipping = subtotal > 30000 || subtotal === 0 ? 0 : 3000;
+    const { format: formatPrice } = useCurrency();
+    const shipping = estimateShipping(subtotal);
     const total = subtotal + shipping;
 
     return (
@@ -81,7 +83,7 @@ export const CartDrawer = () => {
                                 <Link to="/commande" onClick={() => setDrawerOpen(false)}>Passer commande</Link>
                             </Button>
                             <p className="text-[11px] text-center text-muted-foreground">
-                                <i className="fa-solid fa-lock mr-1" /> Paiement 100% sécurisé
+                                <i className="fa-solid fa-truck mr-1" /> Paiement à la livraison
                             </p>
                         </div>
                     </>

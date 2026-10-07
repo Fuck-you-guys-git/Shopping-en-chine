@@ -4,20 +4,23 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { ProductCard } from "@/components/ProductCard";
-import { categories, products, testimonials } from "@/data/products";
+import { CatalogFallback } from "@/components/CatalogFallback";
+import { useCatalog } from "@/context/CatalogContext";
+import { categories, testimonials } from "@/data/products";
 import { useNavigate } from "react-router-dom";
 import { useState } from "react";
 
 const benefits = [
     { icon: Truck, title: "Livraison rapide", desc: "En 2–5 jours partout" },
     { icon: RotateCcw, title: "Retours 30 jours", desc: "Sans question, sans stress" },
-    { icon: ShieldCheck, title: "Paiement sécurisé", desc: "Mobile Money, Carte, PayPal" },
+    { icon: ShieldCheck, title: "Paiement à la livraison", desc: "Réglez à la réception du colis" },
     { icon: HeadphonesIcon, title: "Service client", desc: "7 jours / 7, en français" },
 ];
 
 export default function Home() {
     const navigate = useNavigate();
     const [query, setQuery] = useState("");
+    const { status, products } = useCatalog();
 
     const onSearch = (e) => {
         e.preventDefault();
@@ -36,7 +39,7 @@ export default function Home() {
                                 <span className="block italic text-primary text-2xl sm:text-3xl md:text-4xl mt-1">Tout, plus simple.</span>
                             </h1>
                             <p className="mt-2 text-sm md:text-base text-muted-foreground">
-                                Livraison partout · Paiement Mobile Money · Retours 30 jours
+                                Livraison partout · Paiement à la livraison · Retours 30 jours
                             </p>
                         </div>
                         <form onSubmit={onSearch} className="relative w-full md:w-96 shrink-0">
@@ -85,11 +88,15 @@ export default function Home() {
                         <Link to="/boutique">Voir tout <ArrowRight className="ml-1 h-4 w-4" /></Link>
                     </Button>
                 </div>
-                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-x-4 gap-y-8 md:gap-x-6 md:gap-y-10">
-                    {products.slice(0, 8).map((p, i) => (
-                        <ProductCard key={p.id} product={p} index={i} />
-                    ))}
-                </div>
+                {status === "ready" ? (
+                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-x-4 gap-y-8 md:gap-x-6 md:gap-y-10">
+                        {products.slice(0, 8).map((p, i) => (
+                            <ProductCard key={p.id} product={p} index={i} />
+                        ))}
+                    </div>
+                ) : (
+                    <CatalogFallback count={8} />
+                )}
             </section>
 
             {/* PROMO STRIP */}
@@ -156,11 +163,15 @@ export default function Home() {
                         <Link to="/boutique">Voir tout <ArrowRight className="ml-1 h-4 w-4" /></Link>
                     </Button>
                 </div>
-                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-x-4 gap-y-8 md:gap-x-6 md:gap-y-10">
-                    {products.slice(2, 8).reverse().map((p, i) => (
-                        <ProductCard key={p.id} product={p} index={i} />
-                    ))}
-                </div>
+                {status === "ready" ? (
+                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-x-4 gap-y-8 md:gap-x-6 md:gap-y-10">
+                        {products.slice(2, 8).reverse().map((p, i) => (
+                            <ProductCard key={p.id} product={p} index={i} />
+                        ))}
+                    </div>
+                ) : (
+                    <CatalogFallback count={4} />
+                )}
             </section>
 
             {/* BENEFITS */}

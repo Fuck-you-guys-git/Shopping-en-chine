@@ -25,7 +25,7 @@ export const Footer = () => {
                             <Logo />
                         </div>
                         <p className="mt-6 text-sm text-ink-foreground/70 max-w-md leading-relaxed">
-                            Livraison rapide · Paiement Mobile Money, Carte, PayPal · Retours 30 jours. Tout ce dont vous avez besoin, simple à trouver.
+                            Livraison rapide · Paiement à la livraison · Retours 30 jours. Tout ce dont vous avez besoin, simple à trouver.
                         </p>
                         <form onSubmit={onNewsletter} className="mt-8 flex gap-2 max-w-md">
                             <Input
@@ -89,12 +89,9 @@ export const Footer = () => {
                         <a href="#" className="hover:text-ink-foreground">Conditions</a>
                         <a href="#" className="hover:text-ink-foreground">Cookies</a>
                     </div>
-                    <div className="flex items-center gap-3 opacity-70">
-                        <i className="fa-brands fa-cc-visa text-2xl" />
-                        <i className="fa-brands fa-cc-mastercard text-2xl" />
-                        <i className="fa-brands fa-cc-paypal text-2xl" />
-                        <i className="fa-brands fa-cc-apple-pay text-2xl" />
-                    </div>
+                    <p className="text-sm opacity-70">
+                        <i className="fa-solid fa-truck mr-1" /> Paiement à la livraison
+                    </p>
                 </div>
             </div>
         </footer>

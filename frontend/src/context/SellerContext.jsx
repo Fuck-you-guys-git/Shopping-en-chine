@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useMemo, useRef, useState } from "react";
-import { products as seedProducts, categories } from "@/data/products";
+import { categories } from "@/data/products";
 
 const SellerContext = createContext(null);
 const PRODUCTS_KEY = "sec_seller_products_v1";
@@ -49,7 +49,7 @@ const generateSeedOrders = (availableProducts) => {
     return orders.sort((a, b) => b.createdAt - a.createdAt);
 };
 
-export const SellerProvider = ({ children }) => {
+export const SellerProvider = ({ children, seedProducts }) => {
     const [products, setProducts] = useState(() => {
         try {
             const raw = localStorage.getItem(PRODUCTS_KEY);

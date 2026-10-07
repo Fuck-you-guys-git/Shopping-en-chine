@@ -5,8 +5,11 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ProductCard, formatPrice } from "@/components/ProductCard";
-import { products, categories } from "@/data/products";
+import { ProductCard } from "@/components/ProductCard";
+import { CatalogFallback } from "@/components/CatalogFallback";
+import { useCatalog } from "@/context/CatalogContext";
+import { useCurrency } from "@/context/CurrencyContext";
+import { categories } from "@/data/products";
 import { useCart } from "@/context/CartContext";
 import { toast } from "sonner";
 
@@ -14,10 +17,21 @@ export default function ProductDetail() {
     const { id } = useParams();
     const navigate = useNavigate();
     const { addItem, setDrawerOpen } = useCart();
+    const { status, products } = useCatalog();
+    const { format: formatPrice } = useCurrency();
     const product = products.find((p) => p.id === id);
     const [qty, setQty] = useState(1);
-    const [color, setColor] = useState(product?.colors?.[0]);
+    const [pickedColor, setColor] = useState();
     const [size, setSize] = useState("M");
+    const color = pickedColor ?? product?.colors?.[0];
+
+    if (status !== "ready") {
+        return (
+            <div className="container mx-auto px-5 py-16">
+                <CatalogFallback count={4} />
+            </div>
+        );
+    }
 
     if (!product) {
         return (

@@ -6,6 +6,8 @@ import { Input } from "@/components/ui/input";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Menu } from "lucide-react";
 import { SellerProvider, useSeller } from "@/context/SellerContext";
+import { useCatalog } from "@/context/CatalogContext";
+import { CatalogFallback } from "@/components/CatalogFallback";
 import { useSellerAuth } from "@/context/SellerAuthContext";
 import { toast } from "sonner";
 
@@ -210,8 +212,16 @@ const LayoutInner = () => {
 };
 
 export default function SellerLayout() {
+    const { status, products } = useCatalog();
+    if (status !== "ready") {
+        return (
+            <div className="container mx-auto px-5 py-16">
+                <CatalogFallback count={4} />
+            </div>
+        );
+    }
     return (
-        <SellerProvider>
+        <SellerProvider seedProducts={products}>
             <LayoutInner />
         </SellerProvider>
     );

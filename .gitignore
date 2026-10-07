@@ -93,3 +93,6 @@ frontend/node_modules/.cache/default-development/2.pack
 credentials.json
 *.key
 .credentials
+
+# Keep the documented example env files (the real .env files above stay ignored)
+!.env.example
