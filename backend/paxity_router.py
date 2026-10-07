@@ -274,6 +274,45 @@ async def get_config() -> dict:
         "methods": [{"code": code, **meta} for code, meta in PAYMENT_METHODS.items()],
     }
 
+@router.get("/diag")
+async def get_diag() -> dict:
+    """Diagnostic : vérifie quelle clé est chargée (empreinte seule) et si Paxity l'accepte."""
+    key = V2_API_KEY
+    ping: dict = {}
+    try:
+        async with httpx.AsyncClient(timeout=httpx.Timeout(15.0, connect=5.0)) as client:
+            r = await client.post(
+                f"{V2_BASE_URL}/v2/external/transactions",
+                headers={
+                    "X-Api-Key": key,
+                    "organizationId": V2_ORG_ID,
+                    "Idempotency-Key": str(uuid.uuid4()),
+                    "Content-Type": "application/json",
+                },
+                json={
+                    "amount_minor": 1,
+                    "currency": CURRENCY,
+                    "country": "SN",
+                    "method": "WAVE",
+                    "description": "diag",
+                    "customer": {"phone": "+221770000000", "email": "diag@example.com", "name": "Diag"},
+                },
+            )
+        ping = {"status": r.status_code, "detail": (r.json() or {}).get("detail") if r.status_code >= 400 else "ok"}
+    except Exception as exc:
+        ping = {"status": "network_error", "detail": str(exc)[:200]}
+    return {
+        "base_url": V2_BASE_URL,
+        "org_id_suffix": V2_ORG_ID[-6:] if V2_ORG_ID else None,
+        "key_source": "PAXITY_V2_LIVE_KEY" if os.environ.get("PAXITY_V2_LIVE_KEY", "").strip() else "PAXITY_V2_API_KEY",
+        "key_prefix": key[:9] if key else None,
+        "key_suffix": key[-6:] if key else None,
+        "key_length": len(key),
+        "paxity_ping": ping,
+    }
+
+
+
 
 async def _persist_order(db: AsyncIOMotorDatabase, order_id: str, payload, tx: PaxityTransaction,
                          is_test: bool, *, payment_method: str, currency: str = CURRENCY,
