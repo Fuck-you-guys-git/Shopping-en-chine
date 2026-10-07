@@ -1,0 +1,38 @@
+{
+  "summary": "Frontend E2E testing of seller dashboard quick-actions bar and 'Ajouter une photo depuis votre téléphone' feature on /vendeur/ajouter. Login, dashboard visibility (desktop 1920x800 + mobile 390x844), quick-action navigation, photo upload (PIL-generated 1200x900 PNG via set_input_files), client-side canvas resize to data:image/jpeg preview, live preview img src, publish flow, seller products list update, and public /boutique verification. All items PASS except one: the newly-created product does NOT appear on public /boutique (SellerContext products are NOT merged into the public Products.jsx page which still imports the static seedProducts from @/data/products).",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [
+      {
+        "flow": "Public boutique should show seller-created products",
+        "issue": "New product 'Produit Photo Test' created via /vendeur/ajouter is saved in SellerContext (visible on /vendeur/produits with data:image/jpeg preview) BUT does NOT appear on /boutique. Root cause: /app/frontend/src/pages/Products.jsx imports the static `products` array from `@/data/products` directly (line 12: `import { products, categories } from \"@/data/products\";`) and never consumes SellerContext. The review request explicitly states 'SellerContext merges custom products' onto the public shop — this is not implemented.",
+        "affected_selectors": ["/boutique product grid"]
+      }
+    ],
+    "design_issues": [
+      {
+        "screen": "Seller Dashboard (recharts)",
+        "issues": ["Non-blocking console warning repeated: 'The width(-1) and height(-1) of chart should be greater than 0' — ResponsiveContainer initial layout warning from recharts; cosmetic only."]
+      }
+    ]
+  },
+  "test_report_links": [],
+  "action_items": [
+    "Fix public shop integration: /app/frontend/src/pages/Products.jsx must merge SellerContext products with seedProducts (e.g. `const { products: sellerProducts } = useSeller();` then `const allProducts = useMemo(() => [...sellerProducts, ...seedProducts].filter(unique by id), ...)`). Currently it only reads static seed data, so no user-added products (including ones with uploaded photos) will ever show on /boutique.",
+    "Optional: silence recharts ResponsiveContainer warnings by giving parent container an explicit min height on initial mount."
+  ],
+  "critical_code_review_comments": [
+    "Products.jsx does not use SellerContext — breaks the promised end-to-end flow of publishing a product visible in the public boutique.",
+    "AddProduct.jsx stores full-size base64 JPEGs in localStorage (~ a few hundred KB each). Multiple uploads could exceed localStorage quota (~5MB) and silently break persistence. Consider IndexedDB or a hard cap on saved custom products.",
+    "SellerAuthContext credentials are hard-coded client-side (prototype only) — acceptable per notes but should be flagged for backend migration before production."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "N/A (skipped)", "frontend": "95% (20/21 checks pass)"},
+  "test_credentials": "Seller: Modou.ba.568@gmail.com / 40881215.Com (client-side auth, working)",
+  "seed_data_creation": "Created one test product 'Produit Photo Test' (Électrique, 2500 F) with uploaded photo. Persisted in browser localStorage under key 'sec_seller_products_v1'. Not cleaned up (no delete step attempted); harmless as it is per-browser-profile.",
+  "retest_needed": true,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "All quick-action data-testids (dashboard-add-product-btn / dashboard-view-orders-btn / dashboard-view-products-btn / dashboard-see-all-orders-btn) are visible without scrolling on both desktop 1920x800 and mobile 390x844 and navigate correctly. upload-photo-btn + product-photo-input + photo-uploaded-hint all work: file upload triggers client-side canvas resize and produces data:image/jpeg in <img> preview and in localStorage. Publish redirects to /vendeur/produits and shows the new product with its data image. ONLY failing check: public /boutique does not surface the new product because Products.jsx uses static seed import instead of merging SellerContext.",
+  "rca of the issue": "Reproduction: 1) Login /vendeur (Modou.ba.568@gmail.com/40881215.Com). 2) Go to /vendeur/ajouter. 3) Click 'Ajouter une photo depuis votre téléphone' and upload any image → preview switches to data:image/jpeg (works). 4) Fill Nom='Produit Photo Test', Catégorie=Électrique, Prix=2500, click 'Publier le produit'. 5) Redirected to /vendeur/produits — product appears at top with data image ✔. 6) Navigate to /boutique — product is ABSENT and image count is unchanged. RCA: /app/frontend/src/pages/Products.jsx (line 12) imports `products` directly from `@/data/products` and derives its list from that static array only; it never calls `useSeller()`. SellerContext addProduct correctly writes to localStorage under 'sec_seller_products_v1' and the seller-side pages read from it, but the public shop is disconnected. Mitigation: import useSeller in Products.jsx and merge `[...sellerProducts, ...seedProducts]` (dedup by id) before filtering. Also propagate the same merge to ProductDetail.jsx and any recommendation carousels so links from /boutique to /produit/:id work for custom products."
+}

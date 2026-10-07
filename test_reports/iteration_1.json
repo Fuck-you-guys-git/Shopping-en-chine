@@ -1,0 +1,29 @@
+{
+  "summary": "Backend-only regression for Paxity Phases 1-4. Wrote pytest suite (/app/backend/tests/test_paxity.py) covering config shape (7 methods + requires_otp), diagnostic without hardcoded host, diagnostic reporting configured bogus host, unconfigured 503 with missing keys listed, OTP validation for OMSN, unknown method / invalid amount rejections, status-not-found 404, WAVESN transport failure surfacing real ConnectError (Phase 1+4), and webhook status='processing' mapping to 'pending' (Phase 2). All 11 tests PASS.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "/api/paxity/payin (502 path via public URL)", "issue": "Cloudflare in front of the preview URL replaces backend 5xx JSON bodies with its own HTML error page, so clients hitting the public URL will lose the French transport-error detail. Backend itself returns the correct JSON+detail (verified via localhost:8001). Consider mapping transport failures to HTTP 200 with a payment-status envelope, or 424/409, so the frontend receives the real message through Cloudflare."}
+    ]
+  },
+  "frontend_issues": {"ui_bugs": [], "integration_issues": [], "design_issues": []},
+  "test_report_links": ["/app/backend/tests/test_paxity.py", "/app/test_reports/pytest/pytest_results.xml"],
+  "action_items": [
+    "Optional: change transport-failure status code from 502 to something Cloudflare will pass through (e.g. 200 with status='failed', or 424) so the frontend can display the real French transport error to the user."
+  ],
+  "critical_code_review_comments": [
+    "PAYMENT_METHODS static dict is fine; consider surfacing `min_amount`/`max_amount` per method later if Paxity documents limits.",
+    "_post_with_retry uses fixed backoff base 0.5s with 2^attempt — good; no jitter, but acceptable at max 3 attempts.",
+    "Diagnostic auth-test POSTs a real payin with amount=100 to a bogus phone — for a live/production key this could still create a real transaction or trip fraud rules; consider a dedicated /health or /ping endpoint on Paxity if available, or gate the auth-test behind ?deep=1.",
+    "raw_response is stored as-is on the transaction document — verify no secrets are echoed back by Paxity; if so redact before persisting.",
+    "phone_number is only stripped of spaces before send; consider stripping non-digits and validating length per country to avoid Paxity 400s."
+  ],
+  "updated_files": ["/app/backend/tests/test_paxity.py", "/app/test_reports/pytest/pytest_results.xml"],
+  "success_rate": {"backend": "100% (11/11)", "frontend": "N/A (skipped per request)"},
+  "test_credentials": "None required",
+  "seed_data_creation": "Webhook test seeds a temporary paxity_transactions + orders document with a TEST_ order_id and deletes it in the finally block. No residue.",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Run with: `cd /app && python -m pytest backend/tests/test_paxity.py -v -n 0`. The pytest.ini forces `-n 2 --dist loadscope`; override with `-n 0` so tests execute serially — this suite mutates backend/.env inside a module-scoped fixture (bogus PAXITY_BASE_URL) and restarts the backend, which races against parallel workers. Cloudflare rewrites backend 502 responses via the public REACT_APP_BACKEND_URL, so the WAVESN transport-failure test hits http://localhost:8001 directly.",
+  "rca of the issue": "N/A — no regressions found. All four phases (no hardcoded host, error/status mapping incl. `processing`->pending, OTP enforcement for OMSN/OMCI, retry-with-backoff surfacing real ConnectError) verified passing."
+}

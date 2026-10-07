@@ -1,0 +1,27 @@
+{
+  "summary": "Iteration 33 regression after massive refactor (Checkout.jsx split, AddProduct.jsx split, paxity/stripe helper extractions, ComingSoon password moved to REACT_APP_SITE_PASSWORD, printTickets XSS fix via Blob URL). All targeted flows PASS. Backend pytest suite (excluding paxity_live): 91 passed, 1 skipped. Additional curl-based validations for the refactored endpoints (Paxity validation, Stripe rate table, Orders auth) also pass. Full end-to-end frontend regression executed on the public preview URL.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Checkout AddressStep", "issues": ["Inputs (first-name, last-name, email, address, city, zip) lack data-testid AND their labels have no htmlFor association (get_by_label fails). Minor testability issue — country-select, phone-prefix, phone-input already have data-testid."]}
+    ]
+  },
+  "test_report_links": [
+    "/app/backend/tests/",
+    "/app/test_reports/pytest/pytest_iter33.xml"
+  ],
+  "action_items": [
+    "Optional testability improvement: add data-testid or htmlFor/id on the address form inputs (first-name-input, last-name-input, email-input, address-input, city-input, zip-input) in components/checkout/AddressStep.jsx to make automated regression scripts more robust. Not blocking."
+  ],
+  "critical_code_review_comments": [],
+  "updated_files": [],
+  "success_rate": {"backend": "100% (91/91 pytest + all curl checks)", "frontend": "100% for the reviewed regression scope"},
+  "seed_data_creation": "Created and deleted a TEST_QA rate 9000 product via authenticated seller API (used to validate the RATES_XOF 9000F→19 USD / 9000F→17 EUR barème). No residual data. Two Stripe checkout sessions were created (cs_live_* order_id 1043 and 1044) but no payment was completed.",
+  "should_call_test_agent_after_fix": false,
+  "should_main_agent_self_test": true,
+  "test_credentials": "Seller: modou.ba.568@gmail.com / 40881215.Com (from /app/memory/test_credentials.md). Site gate password: alarba2026 (loaded from REACT_APP_SITE_PASSWORD).",
+  "context_for_next_testing_agent": "Detailed regression walkthrough validated (all data-testids referenced in the review are present and functional): ComingSoon gate (coming-soon-password-input, coming-soon-submit-btn, coming-soon-error) works, wrong pw shows 'Mot de passe incorrect', alarba2026 unlocks and persists to localStorage sec_site_unlocked_v1. Boutique filters (FiltersPanel refactor) work: category checkbox filters list and adds 'Clear all' chip, no crash. Checkout step 1: country-select changes phone-prefix (US +1 → CI +225 → SN +221 verified). Address inputs need to be filled via label-lookup or index (no data-testids). Step 2: shipping method + Continue OK. Step 3: 6 payment method tiles (OM Sénégal/CI, Wave Sénégal/CI, MTN, Card via stripe-card-method-btn). Selecting Card shows stripe-card-panel + stripe-pay-btn; clicking stripe-pay-btn loads the Stripe embedded checkout (4 stripe iframes with client_secret from cs_live_*). Récap latéral shows subtotal & total. Seller /vendeur login (Modou.ba.568) → dashboard OK. /vendeur/ajouter shows all sections and 77 data-testids including product-keywords-input, price-eur-input, price-usd-input, upload-photo-btn, add-url-photo-btn, seller-size-XS..4XL, submit-product-btn, and live preview updates. /vendeur/commandes shows 2 orders; selecting a checkbox reveals the bulk bar with orders-print-tickets-btn → clicking opens a new tab with blob:https://... URL (XSS fix verified) containing 'SHOPPING EN CHINE' and 'Expédier' — no document.write used. Order detail dialog: 11 items listed, order-print-ticket-btn and order-status-select present. /suivi/ord_demo12345678 renders full 5-step timeline (Ordered→Shipped from China→In customs→Out for delivery→Delivered). Backend curl checks (BASE=https://paxity-payment-web.preview.emergentagent.com): /api/paxity/config → configured=true with 5 methods; /api/paxity/payin with payment_method='UNKNOWN_XX' → 400 'Méthode de paiement inconnue' (_validate_payin OK); amount=0 → 400 'Montant invalide' (OK); /api/auth/login returns 200 with token+user; /api/orders with Bearer returns 200 (dict with 'orders' array); /api/payments/stripe/checkout with 9000F product + currency USD → 200, order_id 1043, DB order has charged_amount=19.0; same with EUR → 17.0 (barème exact). No real Paxity payin was triggered (respecting agent-to-agent note). NOTE: response body of /api/payments/stripe/checkout does NOT include 'charged_amount' or 'currency' — only client_secret, checkout_url, session_id, order_id (they are persisted in DB and read via /api/orders). If the review request expected them in the response, that's a possible additional item (minor).",
+  "rca_of_the_issue": "No regression detected. All refactors preserved behavior: the Blob-URL print flow avoids document.write (XSS surface removed and confirmed via blob: scheme + rendered content), the ComingSoon component reads REACT_APP_SITE_PASSWORD correctly, the Paxity _validate_payin helper enforces both 400 error paths, and the Stripe RATES_XOF barème (9000/19 USD, 9000/17 EUR) produces the expected persisted charged_amounts (19.0 / 17.0)."
+}

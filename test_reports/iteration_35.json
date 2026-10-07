@@ -1,0 +1,44 @@
+{
+  "summary": "Test frontend uniquement du LOT 1 (refonte UI/UX ShoppingEnChine) sur l'URL preview. Vérifié : header desktop/mobile (logo, SearchBar centrale, bouton Panier, absence des icônes Favoris/Compte), nav catégories (9 liens, routes correctes), header sticky (h16->h14 + ombre, aucun saut de layout), recherche (suggestions >=2 car., clic suggestion -> /produit/<id>, submit -> /boutique?q=, 'Voir tous les résultats'), recherche + menu mobile (drawer 10 liens + bouton Suivi de commande), homepage (hero + CTA, TrustBar 4 items, 6 cartes catégories avec compteur uniquement si >0, sections dérivées des vraies données), ProductCard (ratio 4/5, rating si reviews>0, ajout panier + compteur header), footer (12 liens, 0 lien mort, toutes les routes internes chargent), non-régression panier/checkout (/commande), fiche produit, /boutique + filtres, /suivi, /a-propos, /achat-en-gros, espace vendeur (/admin/login + dashboard, sans header/footer public), responsive 390/768/1024/1440 sans scroll horizontal, 0 erreur console. Résultat global : LOT 1 conforme. 3 anomalies notables restent (compteurs catégories inventés dans le filtre catalogue, double lien actif dans la nav, icône Favoris toujours présente sur la fiche produit).",
+  "backend_issues": { "critical": [], "minor": [] },
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "Shop / filtres catégories (sidebar)", "issue": "DONNÉES INVENTÉES : les compteurs de la sidebar affichent Fashion 1 240, Electronics 892, Home & Living 2 103, Beauty 621, Kids 456, Kitchen 384. Ces valeurs sont hardcodées dans /app/frontend/src/data/products.js (champ `count` des catégories) alors que le catalogue réel ne contient qu'1 produit. Contredit la règle 'ne jamais inventer de données' (la Home a été corrigée mais pas le catalogue).", "selector": "sidebar filtres /boutique", "priority": "HIGH"},
+      {"component": "Navbar / category-nav", "issue": "Deux liens actifs simultanément : sur /boutique/beaute, 'All products' ET 'Beauty' sont soulignés en rouge (NavLink /boutique sans prop `end`). L'exigence est un seul lien actif souligné.", "selector": "[data-testid=\"category-nav\"] a", "priority": "MEDIUM"},
+      {"component": "ProductDetail", "issue": "Un bouton coeur (favoris/wishlist) est toujours présent sur la fiche produit alors que le user a demandé de retirer les Favoris (aucune auth client). Incohérent avec le header nettoyé. (Périmètre LOT 2 mais à signaler.)", "selector": "bouton coeur à droite de 'Add to cart'", "priority": "MEDIUM"},
+      {"component": "CartDrawer", "issue": "Les contrôles de quantité (- / +) et le bouton supprimer n'ont aucun data-testid ni aria-label (testabilité/accessibilité). Fonctionnellement OK (qty 1->2, total $3.17->$6.34, compteur header mis à jour).", "selector": "[role=\"dialog\"] button:nth(2|3)", "priority": "LOW"},
+      {"component": "AdminLogin", "issue": "Les inputs email/password et le bouton 'Se connecter' n'ont pas de data-testid (fallback sur input[type=...] nécessaire).", "selector": "/admin/login form", "priority": "LOW"}
+    ],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Catalogue /boutique (filtre Prix)", "issues": ["Le filtre prix affiche '0 F' et '200 000 F and up' (XOF) alors que la locale détectée est US/$ et que les prix produits s'affichent en $ — incohérence de devise dans les libellés du filtre."]},
+      {"screen": "Fiche produit /produit/<id>", "issues": ["Textes non traduits en locale EN : 'Retour', 'Caractéristiques', 'Livré en 10–20 jours', 'Paiement sécurisé' (mélange FR/EN sur la même page)."]},
+      {"screen": "Homepage mobile 390px", "issues": ["Deux barres de recherche visibles quasi simultanément (navbar-mobile-search-input dans le header + home-search-input dans le hero) — redondance visuelle."]},
+      {"screen": "CartDrawer", "issues": ["Le toast Sonner 'Added to cart' se superpose visuellement au bouton Checkout en bas à droite du drawer (le clic reste possible au centre, mais le CTA est partiellement masqué)."]},
+      {"screen": "Hero desktop", "issues": ["Avec un seul produit en base, l'image hero unique en ratio 4/3 occupe une très grande zone grise à droite — rendu acceptable mais très vide (comportement attendu selon le contexte fourni)."]}
+    ]
+  },
+  "test_report_links": [],
+  "action_items": [
+    "Remplacer les compteurs hardcodés (count: 1240/892/2103/621/456/384) de /app/frontend/src/data/products.js par un comptage réel sur le catalogue, et masquer le compteur si 0 (comme fait sur CategoryCard).",
+    "Ajouter `end` au NavLink '/boutique' de primaryNav (Navbar.jsx) pour éviter deux liens actifs simultanés.",
+    "Retirer (ou justifier) le bouton favoris/coeur de la page fiche produit, cohérent avec le retrait des Favoris du header.",
+    "Aligner la devise des libellés du filtre Prix sur la locale détectée (actuellement 'F' XOF alors que l'affichage est en $).",
+    "Ajouter les clés de traduction manquantes de la fiche produit (Retour, Caractéristiques, Livré en 10–20 jours, Paiement sécurisé).",
+    "Ajouter des data-testid aux contrôles de quantité/suppression du CartDrawer et aux champs de /admin/login."
+  ],
+  "critical_code_review_comments": [
+    "Navbar.jsx: primaryNav['/boutique'] n'a pas `end: true` -> double état actif sur les routes /boutique/:cat.",
+    "data/products.js: les `count` statiques par catégorie sont encore consommés par les filtres du catalogue et constituent de la donnée inventée.",
+    "SearchBar.jsx: onBlur avec setTimeout(120ms) pour fermer les suggestions — fonctionne mais reste fragile ; SearchSuggestions compense déjà via onMouseDown preventDefault (OK).",
+    "SearchSuggestions.jsx: `categoryLabel` et CATEGORY_LABELS déclarés après utilisation (hoisting OK en runtime, mais lisibilité) et la table dupliquerait les labels déjà présents dans data/products.js (DRY)."
+  ],
+  "updated_files": [],
+  "success_rate": { "backend": "not tested", "frontend": "94%" },
+  "seed_data_creation": "Aucune donnée créée. Panier local uniquement (produit p_4853be43d7). Connexion vendeur effectuée avec les identifiants de /app/memory/test_credentials.md.",
+  "should_call_test_agent_after_fix": false,
+  "should_main_agent_self_test": true,
+  "test_credentials": "/app/memory/test_credentials.md — Modou.ba.568@gmail.com (login vendeur OK, redirection /admin, dashboard affiché, aucun header/footer public)",
+  "context_for_next_testing_agent": "LOT 1 validé fonctionnellement : header/nav/recherche/footer/homepage OK, 0 erreur console sur /, /boutique, /produit/<id>, aucun overflow horizontal en 390/768/1024/1440. La base preview ne contient qu'1 produit ('Embedded test', catégorie mode, reviews=2 -> section 'Most loved' légitimement affichée ; 'deals-grid' et 'more-grid' absentes = comportement attendu). Aucune section vide détectée. Pour le LOT 2 (catalogue/fiche produit) : vérifier en priorité les compteurs de catégories inventés dans la sidebar, la devise du filtre prix, les textes FR non traduits sur la PDP et le bouton favoris résiduel.",
+  "rca_of_the_issue": "Compteurs faux : Home.jsx calcule catMeta.count depuis products (réel) et masque si 0, mais la page catalogue lit toujours categories[].count statique de data/products.js (valeurs de démo 1240/892/...). Double lien actif : react-router NavLink sans `end` considère /boutique actif pour toute sous-route /boutique/:cat, en plus du NavLink de la catégorie."
+}

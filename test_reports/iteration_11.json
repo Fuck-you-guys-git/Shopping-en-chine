@@ -1,0 +1,15 @@
+{
+  "summary": "Retest of confirmation-amount bug. FIX VERIFIED. With payin response intentionally missing 'amount' and status returning amount=100, confirmation now shows 'paiement de 100 F' (not '0 F'). data-testid 'order-confirmed-title' resolves to 'Votre commande est confirmée 🎉'. Toast 'Paiement confirmé — Commande ord_mockr1' also displayed. Route intercepts on /api/paxity/payin and /api/paxity/status/tx_mockr1 both fired as expected.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {"ui_bugs": [], "integration_issues": [], "design_issues": []},
+  "test_report_links": [],
+  "action_items": [],
+  "critical_code_review_comments": ["Checkout.jsx L67-70 merge with prev state is correct and defensively covers the case where payin omits amount — good fix."],
+  "updated_files": [],
+  "success_rate": {"backend": "n/a", "frontend": "100%"},
+  "seed_data_creation": "localStorage sec_cart_v1 seeded with single Casque item (price 100)",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Only the amount-display bug was in scope for iteration_11 and is now fixed. Full checkout happy-path via mocked Paxity payin/status works end-to-end.",
+  "rca of the issue": "Previously the poll handler only set setTransaction with the status response snapshot in a way that lost previously-set fields when cart.clear() reset context; the new merge setTransaction((prev) => ({...prev, ...res})) preserves amount/order_id regardless of whether payin response included amount."
+}

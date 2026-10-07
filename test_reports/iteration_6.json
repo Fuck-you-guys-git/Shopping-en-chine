@@ -1,0 +1,15 @@
+{
+  "summary": "Preview backend confirmed to have the Paxity fix. Diagnostic returns base_url=https://transaction.paxity.io/api/v1, host=transaction.paxity.io, http_status=200, auth_test_status=200, response_preview contains 'SHOPPING EN CHINE'. Config returns configured=true, currency=XOF, 7 methods. All 3 validation error paths (unknown method / amount=0 / OMSN missing OTP) return 400 with French messages, without touching Paxity. NO live payin was executed.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {"ui_bugs": [], "integration_issues": [], "design_issues": []},
+  "test_report_links": ["/app/backend/tests/test_paxity_diagnostic_preview.py", "/app/test_reports/pytest/iter6_results.xml"],
+  "action_items": ["Preview is correct — user can safely redeploy production to resolve the 401 'Identifiants refusés' issue on shopenchine.com."],
+  "critical_code_review_comments": [],
+  "updated_files": ["/app/backend/tests/test_paxity_diagnostic_preview.py"],
+  "success_rate": {"backend": "100% (5/5)", "frontend": "n/a"},
+  "seed_data_creation": "None. All tests are read-only or validation-only (rejected before reaching Paxity).",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Preview backend (paxity-payment-web.preview.emergentagent.com) is confirmed to run the fixed code with PAXITY_BASE_URL=https://transaction.paxity.io/api/v1 and returns 200 on /api/paxity/diagnostic. Production (shopenchine.com) still lags with old base URL until redeploy. Do NOT run any successful payin — each creates a real live transaction. iteration_5 already validated full happy path.",
+  "rca of the issue": "Production 401 = deployment lag. Old prod code used PAXITY_BASE_URL=https://api.paxity.io/v1 (returns 401). Fix already in preview code+env: PAXITY_BASE_URL=https://transaction.paxity.io/api/v1 (returns 200 with valid live keys). Mitigation: redeploy preview to production."
+}

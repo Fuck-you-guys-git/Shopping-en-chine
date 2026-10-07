@@ -1,0 +1,16 @@
+{
+  "summary": "Non-regression backend test for MD5->SHA-256 image versioning change in /app/backend/products_router.py::_process_images. All checks pass.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {"ui_bugs": [], "integration_issues": [], "design_issues": []},
+  "test_report_links": ["/app/backend/tests/test_product_images.py", "/app/test_reports/pytest/pytest_iter32.xml"],
+  "action_items": [],
+  "critical_code_review_comments": [],
+  "updated_files": ["/app/backend/tests/test_product_images.py"],
+  "success_rate": {"backend": "100%", "frontend": "not tested (skipped per request)"},
+  "seed_data_creation": "Created and deleted one TEST_sha256_img product (with 1x1 PNG data URL). No lingering seed data.",
+  "should_call_test_agent_after_fix": false,
+  "should_main_agent_self_test": true,
+  "test_credentials": "Seller Modou.ba.568@gmail.com (from /app/memory/test_credentials.md)",
+  "context_for_next_testing_agent": "Test file /app/backend/tests/test_product_images.py covers: JWT login, POST /api/products with data-URL PNG, verifies image URL format /api/products/{id}/img/{image_id}?v=<8hex>, GET thumb (/api/products/{id}/thumb/...) and full image both return 200 with image/* content-type, GET /api/products list includes created product, existing products (including any 'Embedded test' if present) images still 200, DELETE cleanup. SHA-256 truncated to 8 hex chars is verified explicitly.",
+  "rca_of_the_issue": "N/A - change is a non-cryptographic hash swap for cache-busting suffix. Same output shape (8 hex chars). No regression observed across upload, retrieval, listing, or cleanup paths."
+}

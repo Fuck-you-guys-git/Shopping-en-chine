@@ -1,0 +1,35 @@
+{
+  "summary": "Iteration 18 — full E2E validation of MongoDB-backed seller auth (JWT) + products CRUD and the public catalog wired through CatalogContext. Backend: 9/9 pytest passing (login/me/products CRUD + auth guards). Frontend E2E: seller login → add product ('TEST_E2E_Produit_...') → visible in /vendeur/produits AND public /boutique → product detail /produit/:id opens → add-to-cart works → cleanup delete succeeded. Mobile Sheet menu confirmed with 4 RED nav buttons on dark bg + logout btn (screenshot verified). Protected route redirect + logout regressions OK.",
+  "backend_issues": { "critical": [], "minor": [] },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Seller Dashboard (mobile)", "issues": ["Recharts warning: chart container width/height=-1 — recurring console warnings on Dashboard.jsx. Cosmetic only, chart still renders once viewport measures. Consider setting explicit min-height on ResponsiveContainer wrapper."]}
+    ]
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_auth_products.py",
+    "/app/test_reports/pytest/iter18_auth_products.xml"
+  ],
+  "action_items": [
+    "Optional: silence recharts width=-1 warnings by setting minHeight on the chart container wrapper (Dashboard.jsx)."
+  ],
+  "critical_code_review_comments": [
+    "auth_router.set_cookie uses samesite='none' + secure=True — correct for cross-origin preview URL. Good.",
+    "products_router.seed_products uses tombstones (deleted_seed_products) to prevent resurrection of deleted seeds — well designed.",
+    "SellerLayout.jsx: mobile Sheet nav buttons correctly use bg-red-600 / text-white; contrast good against bg-ink dark background. seller-nav-* and seller-logout-btn data-testids present.",
+    "products_router: POST returns doc with _id popped, GET excludes _id — no ObjectId serialization issues.",
+    "Brute-force lockout logic present (5 attempts/15min) but not exercised in tests to avoid locking prod seller account."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_auth_products.py (new)"
+  ],
+  "success_rate": { "backend": "100% (9/9)", "frontend": "100% on critical flows (login, add product, visible on boutique, detail, cart, mobile menu, logout, protected redirect)" },
+  "test_credentials": "modou.ba.568@gmail.com / 40881215.Com (from /app/memory/test_credentials.md and backend/.env SELLER_*)",
+  "seed_data_creation": "Test product created with name 'TEST_E2E_Produit_<timestamp>' then deleted via seller dashboard as cleanup. Backend pytest also creates+deletes 'TEST_E2E_backend_product'.",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Backend auth (JWT bearer + httpOnly cookie) and products CRUD are stable. When testing UI, use email 'modou.ba.568@gmail.com' password '40881215.Com'. To test mobile menu do a fresh login in 390x844 viewport (viewport change mid-session can drop the cookie in Playwright context). Do NOT hit Paxity payin endpoints (real transactions). Do NOT re-test tracking/emails — iter 17. Seed products live in MongoDB with tombstones — deleting seed product 'p1' etc will be persisted across restarts.",
+  "rca of the issue": "N/A — no bugs found this iteration. Migration from localStorage to MongoDB (auth + catalog) verified end-to-end: product added from dashboard appears immediately on public /boutique and /produit/:id, confirming CatalogContext refresh works and API is the source of truth for all customers."
+}
