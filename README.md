@@ -7,6 +7,20 @@ React (CRA + craco, Tailwind, shadcn/ui) côté frontend, FastAPI + MongoDB côt
 
 Voir **[DEMARRAGE-PC.md](DEMARRAGE-PC.md)** — ou, sous Windows, double-cliquez sur `start-pc.bat`.
 
+## Déployer sur Railway
+
+Railway détecte `Dockerfile` et `railway.json` à la racine : **un seul service** construit le site React
+et le sert avec l'API (`/api`), sur la même adresse.
+
+À faire une seule fois dans Railway :
+1. **+ New → Database → MongoDB** (la base est créée par Railway).
+2. Service du site → **Settings** : Root Directory **vide**, branche **main**.
+3. Service du site → **Variables** : `MONGO_URL` = `${{MongoDB.MONGO_URL}}` et `PAXITY_ORG_ID` = votre identifiant Paxity.
+
+Ensuite, chaque push sur `main` redéploie automatiquement. Le service n'est mis en ligne que si
+`/api/` répond : un déploiement raté ne remplace pas la version en ligne. Les produits sont créés
+automatiquement dans une base vide au premier démarrage.
+
 ## Structure
 
 - `frontend/` — application React. Port 3000. Lit `REACT_APP_BACKEND_URL` pour joindre l'API.

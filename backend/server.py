@@ -3,10 +3,12 @@ import os
 import uuid
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
+from pathlib import Path
 from typing import List
 
-from fastapi import APIRouter, Depends, FastAPI
-from fastapi.responses import JSONResponse
+from fastapi import APIRouter, Depends, FastAPI, HTTPException
+from fastapi.responses import FileResponse, JSONResponse
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, ConfigDict, Field
 from starlette.middleware.cors import CORSMiddleware
 
@@ -88,6 +90,27 @@ api_router.include_router(payments_router)
 
 # Include the api router in the main app
 app.include_router(api_router)
+
+
+def mount_frontend(build_dir: Path) -> None:
+    """Serve the built React site (production image): static assets, and
+    index.html for every other path so client-side routes like /boutique work."""
+    build_dir = build_dir.resolve()
+    app.mount("/static", StaticFiles(directory=build_dir / "static"), name="static")
+
+    @app.get("/{path:path}", include_in_schema=False)
+    async def frontend(path: str):
+        if path == "api" or path.startswith("api/"):
+            raise HTTPException(status_code=404, detail="Not Found")
+        file = (build_dir / path).resolve()
+        if path and file.is_file() and build_dir in file.parents:
+            return FileResponse(file)
+        return FileResponse(build_dir / "index.html")
+
+
+# Set by the Dockerfile; unset in local development (the React dev server runs separately).
+if os.environ.get("FRONTEND_BUILD_DIR") and Path(os.environ["FRONTEND_BUILD_DIR"]).is_dir():
+    mount_frontend(Path(os.environ["FRONTEND_BUILD_DIR"]))
 
 app.add_middleware(
     CORSMiddleware,

@@ -1,0 +1,13 @@
+.git
+**/node_modules
+**/build
+**/__pycache__
+**/venv
+**/.venv
+# Secrets stay out of the image: Railway provides them as variables.
+**/.env
+**/.env.*
+!**/.env.example
+test_reports
+memory
+tests
