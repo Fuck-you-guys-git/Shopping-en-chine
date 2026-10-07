@@ -264,7 +264,7 @@ def _db(request: Request) -> AsyncIOMotorDatabase:
 async def get_config() -> dict:
     return {
         "configured": PAXITY_CONFIGURED,
-        "card_enabled": await card_available(),
+        "card_enabled": CARD_CONFIGURED,
         "environment": V2_ENV,
         "currency": CURRENCY,
         "default_prefix": DEFAULT_PREFIX,
@@ -554,7 +554,7 @@ async def init_card_payment(payload: PaxityCardInitRequest, request: Request) ->
     """Carte via le widget hébergé Paxity v2. On crée la commande et la session
     de paiement (token) côté serveur ; le widget encaisse côté navigateur et la
     confirmation revient par le callback `onSuccess` du widget (/card/confirm)."""
-    if not CARD_CONFIGURED or not await card_available():
+    if not CARD_CONFIGURED:
         raise HTTPException(status_code=503, detail="Le paiement par carte est momentanément indisponible.")
     if payload.amount <= 0:
         raise HTTPException(status_code=400, detail="Montant invalide.")
