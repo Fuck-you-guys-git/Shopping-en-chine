@@ -13,6 +13,7 @@ from pydantic import BaseModel, ConfigDict, Field
 from starlette.middleware.cors import CORSMiddleware
 
 import database
+from admin import router as admin_router
 from catalog import router as catalog_router, seed_catalog
 from database import get_db
 from orders import router as orders_router
@@ -87,6 +88,7 @@ async def get_status_checks(db=Depends(get_db)):
 api_router.include_router(catalog_router)
 api_router.include_router(orders_router)
 api_router.include_router(payments_router)
+api_router.include_router(admin_router)
 
 # Include the api router in the main app
 app.include_router(api_router)

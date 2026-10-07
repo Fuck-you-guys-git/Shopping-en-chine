@@ -2,9 +2,8 @@ import { Link } from "react-router-dom";
 import { ArrowUpRight, ArrowRight, TrendingUp, TrendingDown, ShoppingBag, Package, DollarSign, Users } from "lucide-react";
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from "recharts";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { useSeller } from "@/context/SellerContext";
-import { formatPrice } from "@/components/ProductCard";
+import { getStatus, useSeller } from "@/context/SellerContext";
+import { formatPrice } from "@/lib/money";
 
 const PIE_COLORS = ["hsl(8 72% 52%)", "hsl(22 62% 60%)", "hsl(40 70% 60%)", "hsl(152 30% 42%)", "hsl(210 30% 40%)", "hsl(280 30% 50%)"];
 
@@ -30,17 +29,23 @@ const StatCard = ({ label, value, trend, icon: Icon, positive = true, suffix }) 
 );
 
 export default function Dashboard() {
-    const { metrics, orders, STATUS_LABELS } = useSeller();
+    const { metrics, orders } = useSeller();
     const recent = orders.slice(0, 6);
 
     return (
         <div className="space-y-6">
             {/* KPIs */}
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                <StatCard label="Revenu (30j)" value={formatPrice(metrics.revenue30)} trend="+12.4%" icon={DollarSign} />
-                <StatCard label="Commandes (30j)" value={metrics.orders30} trend="+8.2%" icon={ShoppingBag} />
-                <StatCard label="Panier moyen" value={formatPrice(metrics.avgBasket)} trend="+3.1%" icon={Package} />
-                <StatCard label="Actives" value={metrics.active} trend={`${metrics.delivered} livrées`} icon={Users} positive />
+                <StatCard label="Revenu (30j)" value={formatPrice(metrics.revenue30)} icon={DollarSign} />
+                <StatCard label="Commandes (30j)" value={metrics.orders30} icon={ShoppingBag} />
+                <StatCard label="Panier moyen" value={formatPrice(metrics.avgBasket)} icon={Package} />
+                <StatCard
+                    label="À traiter"
+                    value={metrics.active}
+                    trend={metrics.toVerify ? `${metrics.toVerify} paiement${metrics.toVerify > 1 ? "s" : ""} à vérifier` : `${metrics.delivered} livrées`}
+                    positive={!metrics.toVerify}
+                    icon={Users}
+                />
             </div>
 
             {/* Chart + Pie */}
@@ -51,10 +56,6 @@ export default function Dashboard() {
                             <h3 className="font-display text-lg font-medium">Évolution du chiffre d'affaires</h3>
                             <p className="text-xs text-muted-foreground mt-0.5">14 derniers jours</p>
                         </div>
-                        <Badge className="bg-success/15 text-success hover:bg-success/15 border-0">
-                            <TrendingUp className="h-3 w-3 mr-1" />
-                            +12.4%
-                        </Badge>
                     </div>
                     <div className="h-64">
                         <ResponsiveContainer width="100%" height="100%">
@@ -117,13 +118,16 @@ export default function Dashboard() {
                     <div className="p-5 md:p-6 flex items-center justify-between">
                         <div>
                             <h3 className="font-display text-lg font-medium">Commandes récentes</h3>
-                            <p className="text-xs text-muted-foreground mt-0.5">Mises à jour en temps réel</p>
+                            <p className="text-xs text-muted-foreground mt-0.5">Actualisées toutes les 30 s</p>
                         </div>
                         <Button asChild variant="ghost" size="sm">
                             <Link to="commandes">Voir tout <ArrowRight className="ml-1 h-4 w-4" /></Link>
                         </Button>
                     </div>
                     <div className="divide-y divide-border">
+                        {recent.length === 0 && (
+                            <p className="px-6 py-10 text-sm text-muted-foreground text-center">Aucune commande pour le moment</p>
+                        )}
                         {recent.map((o) => (
                             <div key={o.id} className="flex items-center gap-4 px-5 md:px-6 py-3">
                                 <div className="h-10 w-10 rounded-full bg-secondary flex items-center justify-center text-xs font-semibold shrink-0">
@@ -133,8 +137,8 @@ export default function Dashboard() {
                                     <p className="text-sm font-medium truncate">{o.customer}</p>
                                     <p className="text-xs text-muted-foreground truncate">{o.id} · {o.city}</p>
                                 </div>
-                                <span className={`text-xs font-medium px-2.5 py-1 rounded-full ${STATUS_LABELS[o.status].color} shrink-0 hidden sm:inline-flex`}>
-                                    {STATUS_LABELS[o.status].label}
+                                <span className={`text-xs font-medium px-2.5 py-1 rounded-full ${getStatus(o.status).color} shrink-0 hidden sm:inline-flex`}>
+                                    {getStatus(o.status).label}
                                 </span>
                                 <span className="font-display font-semibold text-sm shrink-0 whitespace-nowrap">{formatPrice(o.total)}</span>
                             </div>

@@ -40,6 +40,18 @@ export const ordersAPI = {
     get: (orderId) => api.get(`/orders/${orderId}`).then((r) => r.data),
 };
 
+// --------- Espace vendeur (token from POST /admin/login) ---------
+const bearer = (token) => ({ headers: { Authorization: `Bearer ${token}` } });
+
+export const adminAPI = {
+    login: (email, password) => api.post("/admin/login", { email, password }).then((r) => r.data),
+    me: (token) => api.get("/admin/me", bearer(token)).then((r) => r.data),
+    orders: (token) => api.get("/admin/orders", bearer(token)).then((r) => r.data),
+    updateOrder: (token, orderId, status) => api.patch(`/admin/orders/${orderId}`, { status }, bearer(token)).then((r) => r.data),
+    createProduct: (token, product) => api.post("/admin/products", product, bearer(token)).then((r) => r.data),
+    deleteProduct: (token, productId) => api.delete(`/admin/products/${productId}`, bearer(token)),
+};
+
 // --------- Paiement ---------
 export const paymentsAPI = {
     config: () => api.get("/payments/config").then((r) => r.data),

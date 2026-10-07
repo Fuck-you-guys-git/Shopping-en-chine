@@ -99,3 +99,9 @@ Le taux du dollar se règle dans `backend/money.py` (ligne `"USD"`). Le taux de 
 
 **Important :** une commande payée en ligne arrive avec le statut « paiement à vérifier ».
 Vérifiez le paiement dans votre tableau de bord Paxity avant d'expédier.
+
+## Espace vendeur
+
+Dans `backend/.env`, renseignez `ADMIN_EMAIL` et `ADMIN_PASSWORD` (mot de passe long et unique),
+redémarrez le backend, puis ouvrez http://localhost:3000/admin. Vous y voyez les vraies commandes
+(avec le téléphone et l'adresse du client), changez leur statut, et ajoutez ou supprimez des produits.

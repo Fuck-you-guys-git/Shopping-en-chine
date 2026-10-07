@@ -8,11 +8,12 @@ export const CatalogProvider = ({ children }) => {
     const [state, setState] = useState({ status: "loading", products: [] });
 
     const load = useCallback(() => {
-        setState((s) => ({ ...s, status: "loading" }));
+        // A refresh keeps the current list on screen instead of showing the loader.
+        setState((s) => (s.status === "ready" ? s : { ...s, status: "loading" }));
         catalogAPI
             .list()
             .then((products) => setState({ status: "ready", products }))
-            .catch(() => setState({ status: "error", products: [] }));
+            .catch(() => setState((s) => (s.status === "ready" ? s : { status: "error", products: [] })));
     }, []);
 
     useEffect(() => {

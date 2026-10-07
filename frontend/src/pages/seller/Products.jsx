@@ -7,7 +7,8 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { useSeller } from "@/context/SellerContext";
-import { formatPrice } from "@/components/ProductCard";
+import { formatPrice } from "@/lib/money";
+import { apiErrorMessage } from "@/lib/api";
 import { categories } from "@/data/products";
 import { toast } from "sonner";
 
@@ -117,9 +118,13 @@ export default function Products() {
                                             <AlertDialogFooter>
                                                 <AlertDialogCancel>Annuler</AlertDialogCancel>
                                                 <AlertDialogAction
-                                                    onClick={() => {
-                                                        deleteProduct(p.id);
-                                                        toast.success("Produit supprimé");
+                                                    onClick={async () => {
+                                                        try {
+                                                            await deleteProduct(p.id);
+                                                            toast.success("Produit supprimé");
+                                                        } catch (err) {
+                                                            toast.error("Suppression impossible", { description: apiErrorMessage(err) });
+                                                        }
                                                     }}
                                                     className="bg-destructive hover:bg-destructive/90"
                                                 >
