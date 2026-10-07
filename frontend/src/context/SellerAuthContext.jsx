@@ -1,32 +1,19 @@
-import { createContext, useContext, useEffect, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useState } from "react";
+import { adminAPI, apiErrorMessage } from "@/lib/api";
 
 const AuthContext = createContext(null);
-const AUTH_KEY = "sec_seller_auth_v1";
+const AUTH_KEY = "sec_seller_auth_v2";
 
 /*
- * SELLER CREDENTIALS
- * ------------------------------------------------------------------
- * This is a frontend-only prototype. In real production, credentials
- * MUST live server-side with hashed passwords (bcrypt).
- *
- * ⚠️  To change the login credentials, edit the CREDENTIALS list
- *     below and redeploy the app.
- *
- * Only accounts listed here can access /admin and /vendeur.
- * No public signup is exposed anywhere in the app.
+ * Seller login, checked by the server (POST /api/admin/login). The email and
+ * password live only in the server's environment (ADMIN_EMAIL / ADMIN_PASSWORD).
+ * The session token is kept in localStorage; the server stops accepting it after
+ * 7 days or when the password changes.
  */
-const CREDENTIALS = [
-    {
-        email: "Modou.ba.568@gmail.com",
-        password: "40881215.Com",
-        name: "Modou Ba",
-        role: "Propriétaire",
-    },
-];
-
 export const SellerAuthProvider = ({ children }) => {
     const [user, setUser] = useState(() => {
         try {
+            localStorage.removeItem("sec_seller_auth_v1"); // pre-server-login session
             const raw = localStorage.getItem(AUTH_KEY);
             return raw ? JSON.parse(raw) : null;
         } catch {
@@ -35,34 +22,38 @@ export const SellerAuthProvider = ({ children }) => {
     });
 
     useEffect(() => {
-        if (user) localStorage.setItem(AUTH_KEY, JSON.stringify(user));
-        else localStorage.removeItem(AUTH_KEY);
+        try {
+            if (user) localStorage.setItem(AUTH_KEY, JSON.stringify(user));
+            else localStorage.removeItem(AUTH_KEY);
+        } catch {
+            // storage unavailable: the session lasts for this visit
+        }
     }, [user]);
 
+    const token = user?.token ?? null;
+
+    // Drop a saved session the server no longer accepts.
+    useEffect(() => {
+        if (!token) return;
+        adminAPI.me(token).catch((err) => {
+            if (err.response?.status === 401) setUser(null);
+        });
+    }, [token]);
+
     const login = async (email, password) => {
-        // Simulate a network round-trip
-        await new Promise((r) => setTimeout(r, 600));
-        const normalizedEmail = (email || "").toLowerCase().trim();
-        const match = CREDENTIALS.find(
-            (c) => c.email.toLowerCase() === normalizedEmail && c.password === password,
-        );
-        if (!match) {
-            throw new Error("Email ou mot de passe incorrect");
+        try {
+            const session = await adminAPI.login(email, password);
+            setUser({ ...session, role: "Administrateur" });
+            return session;
+        } catch (err) {
+            throw new Error(apiErrorMessage(err));
         }
-        const session = {
-            email: match.email,
-            name: match.name,
-            role: match.role || "Vendeur",
-            loggedAt: Date.now(),
-        };
-        setUser(session);
-        return session;
     };
 
-    const logout = () => setUser(null);
+    const logout = useCallback(() => setUser(null), []);
 
     return (
-        <AuthContext.Provider value={{ user, login, logout, isAuthenticated: !!user }}>
+        <AuthContext.Provider value={{ user, token, login, logout, isAuthenticated: !!user }}>
             {children}
         </AuthContext.Provider>
     );

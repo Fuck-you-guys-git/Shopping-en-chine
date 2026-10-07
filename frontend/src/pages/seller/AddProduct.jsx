@@ -7,10 +7,10 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { Switch } from "@/components/ui/switch";
 import { useSeller } from "@/context/SellerContext";
 import { categories } from "@/data/products";
-import { formatPrice } from "@/components/ProductCard";
+import { formatPrice } from "@/lib/money";
+import { apiErrorMessage } from "@/lib/api";
 import { toast } from "sonner";
 
 const SAMPLE_IMAGES = [
@@ -39,13 +39,13 @@ export default function AddProduct() {
         image: SAMPLE_IMAGES[0],
         badge: "",
         colors: [],
-        active: true,
     });
+    const [saving, setSaving] = useState(false);
 
     const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
     const toggleColor = (c) => set("colors", form.colors.includes(c) ? form.colors.filter((x) => x !== c) : [...form.colors, c]);
 
-    const submit = (e) => {
+    const submit = async (e) => {
         e.preventDefault();
         if (!form.name || !form.category || !form.price) {
             toast.error("Champs requis manquants", { description: "Nom, catégorie et prix sont obligatoires." });
@@ -59,11 +59,18 @@ export default function AddProduct() {
             description: form.description || "Description à compléter.",
             image: form.image,
             badge: form.badge || undefined,
-            colors: form.colors.length ? form.colors : undefined,
+            colors: form.colors,
         };
-        addProduct(product);
-        toast.success("Produit ajouté ✦", { description: form.name });
-        navigate(`${base}/produits`);
+        setSaving(true);
+        try {
+            await addProduct(product);
+            toast.success("Produit publié ✦", { description: form.name });
+            navigate(`${base}/produits`);
+        } catch (err) {
+            toast.error("Produit non publié", { description: apiErrorMessage(err) });
+        } finally {
+            setSaving(false);
+        }
     };
 
     const catObj = categories.find((c) => c.id === form.category);
@@ -188,13 +195,6 @@ export default function AddProduct() {
                     </div>
                 </div>
 
-                <div className="bg-card rounded-2xl p-5 md:p-6 shadow-card border border-border/50 flex items-center justify-between">
-                    <div>
-                        <p className="font-medium text-sm">Publier immédiatement</p>
-                        <p className="text-xs text-muted-foreground mt-0.5">Le produit sera visible sur la boutique dès l'enregistrement.</p>
-                    </div>
-                    <Switch checked={form.active} onCheckedChange={(v) => set("active", v)} />
-                </div>
             </div>
 
             {/* Preview */}
@@ -240,9 +240,10 @@ export default function AddProduct() {
                     </div>
 
                     <div className="flex flex-col gap-2">
-                        <Button type="submit" size="lg" className="bg-primary hover:bg-primary/90 text-primary-foreground shadow-warm rounded-full h-12">
-                            <Upload className="h-4 w-4" /> Publier le produit
+                        <Button type="submit" size="lg" disabled={saving} className="bg-primary hover:bg-primary/90 text-primary-foreground shadow-warm rounded-full h-12">
+                            <Upload className="h-4 w-4" /> {saving ? "Publication…" : "Publier le produit"}
                         </Button>
+                        <p className="text-[11px] text-muted-foreground text-center">Visible sur la boutique dès la publication.</p>
                         <Button type="button" variant="outline" size="lg" onClick={() => navigate(`${base}/produits`)} className="rounded-full">
                             Annuler
                         </Button>

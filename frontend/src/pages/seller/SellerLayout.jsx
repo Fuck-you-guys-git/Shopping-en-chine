@@ -24,12 +24,12 @@ const buildNav = (base) => [
 ];
 
 const SidebarContent = ({ onNavigate }) => {
-    const { orders, liveEvents } = useSeller();
+    const { metrics, liveEvents } = useSeller();
     const { user, logout } = useSellerAuth();
     const navigate = useNavigate();
     const base = useBase();
     const nav = useMemo(() => buildNav(base), [base]);
-    const activeCount = orders.filter((o) => o.status !== "livrée").length;
+    const activeCount = metrics.active;
 
     const handleLogout = () => {
         logout();
@@ -83,11 +83,11 @@ const SidebarContent = ({ onNavigate }) => {
                         <span className="absolute inline-flex h-full w-full rounded-full bg-success opacity-75 animate-ping" />
                         <span className="relative inline-flex h-2 w-2 rounded-full bg-success" />
                     </span>
-                    Activité en direct
+                    Activité récente
                 </div>
                 <div className="space-y-2 max-h-40 overflow-y-auto no-scrollbar">
                     {liveEvents.length === 0 && (
-                        <p className="text-xs text-ink-foreground/40 italic">En attente d'activité…</p>
+                        <p className="text-xs text-ink-foreground/40 italic">Les nouvelles commandes apparaîtront ici.</p>
                     )}
                     {liveEvents.slice(0, 4).map((e, i) => (
                         <div key={i} className="text-xs text-ink-foreground/70 leading-snug">
@@ -135,10 +135,10 @@ const LayoutInner = () => {
     const { user, logout } = useSellerAuth();
     const titles = {
         [base]: "Tableau de bord",
-        [`${base}/commandes`]: "Commandes en temps réel",
+        [`${base}/commandes`]: "Commandes",
         [`${base}/produits`]: "Mes produits",
         [`${base}/ajouter`]: "Ajouter un produit",
-        [`${base}/orders`]: "Commandes en temps réel",
+        [`${base}/orders`]: "Commandes",
         [`${base}/products`]: "Mes produits",
         [`${base}/add`]: "Ajouter un produit",
     };
@@ -176,7 +176,6 @@ const LayoutInner = () => {
                         </div>
                         <Button variant="ghost" size="icon" className="relative">
                             <Bell className="h-5 w-5" />
-                            <span className="absolute top-1.5 right-1.5 h-2 w-2 rounded-full bg-primary animate-pulse" />
                         </Button>
                         <div className="hidden sm:flex items-center gap-2 pl-3 border-l border-border">
                             <div className="h-8 w-8 rounded-full bg-gradient-accent flex items-center justify-center text-primary-foreground text-xs font-semibold">
@@ -212,7 +211,7 @@ const LayoutInner = () => {
 };
 
 export default function SellerLayout() {
-    const { status, products } = useCatalog();
+    const { status } = useCatalog();
     if (status !== "ready") {
         return (
             <div className="container mx-auto px-5 py-16">
@@ -221,7 +220,7 @@ export default function SellerLayout() {
         );
     }
     return (
-        <SellerProvider seedProducts={products}>
+        <SellerProvider>
             <LayoutInner />
         </SellerProvider>
     );

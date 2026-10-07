@@ -17,6 +17,18 @@ ShippingMethod = Literal["standard", "express", "relais"]
 # livraison = cash on delivery; mobile_money (Wave, Orange Money) and carte go through Paxity.
 PaymentMethod = Literal["livraison", "mobile_money", "carte"]
 
+# Order lifecycle. Online orders start "en attente de paiement" and become
+# "paiement à vérifier" when the widget reports success; the seller confirms them.
+ORDER_STATUSES = (
+    "en attente de paiement",
+    "paiement à vérifier",
+    "confirmée",
+    "en préparation",
+    "expédiée",
+    "livrée",
+    "annulée",
+)
+
 # Authoritative shipping table. frontend/src/lib/shipping.js mirrors it for display.
 SHIPPING_METHODS = {
     "standard": {"fee": 3000, "free_from": 30000},

@@ -1,13 +1,13 @@
 import { useEffect, useRef, useState } from "react";
-import { RadioTower, Search, Filter, MapPin, Clock } from "lucide-react";
+import { Search, MapPin, Clock, Phone, Mail, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { useSeller } from "@/context/SellerContext";
-import { formatPrice } from "@/components/ProductCard";
+import { FULFILMENT_STEPS, PAYMENT_LABELS, getStatus, useSeller } from "@/context/SellerContext";
+import { formatMinor, formatPrice } from "@/lib/money";
+import { apiErrorMessage } from "@/lib/api";
 import { toast } from "sonner";
 
 const timeAgo = (ts) => {
@@ -19,23 +19,35 @@ const timeAgo = (ts) => {
 };
 
 export default function Orders() {
-    const { orders, updateOrderStatus, STATUS_LABELS, STATUSES } = useSeller();
+    const { orders, ordersStatus, refreshOrders, updateOrderStatus, STATUSES } = useSeller();
     const [tab, setTab] = useState("toutes");
     const [query, setQuery] = useState("");
-    const [selected, setSelected] = useState(null);
-    const [tick, setTick] = useState(0);
+    const [selectedId, setSelectedId] = useState(null);
+    const selected = orders.find((o) => o.id === selectedId) || null;
+    const [, setTick] = useState(0);
 
-    // Force re-render every 30s to update "il y a Xmin" labels
+    // Re-render every 30s to update "il y a Xmin" labels
     useEffect(() => {
         const t = setInterval(() => setTick((x) => x + 1), 30000);
         return () => clearInterval(t);
     }, []);
 
-    const prevOrderIds = useRef(new Set(orders.map((o) => o.id)));
+    const changeStatus = async (status) => {
+        try {
+            await updateOrderStatus(selected.id, status);
+            toast.success(`Statut mis à jour → ${getStatus(status).label}`);
+        } catch (err) {
+            toast.error("Statut non modifié", { description: apiErrorMessage(err) });
+        }
+    };
+
+    // Toast orders that arrive while the page is open (not the ones already there).
+    const prevOrderIds = useRef(null);
     useEffect(() => {
+        if (ordersStatus !== "ready") return;
         const currentIds = new Set(orders.map((o) => o.id));
         for (const id of currentIds) {
-            if (!prevOrderIds.current.has(id)) {
+            if (prevOrderIds.current && !prevOrderIds.current.has(id)) {
                 const o = orders.find((x) => x.id === id);
                 if (o) {
                     toast.success("Nouvelle commande ✦", {
@@ -45,7 +57,7 @@ export default function Orders() {
             }
         }
         prevOrderIds.current = currentIds;
-    }, [orders]);
+    }, [orders, ordersStatus]);
 
     const filtered = orders.filter((o) => {
         if (tab !== "toutes" && o.status !== tab) return false;
@@ -53,14 +65,8 @@ export default function Orders() {
         return true;
     });
 
-    const counts = {
-        toutes: orders.length,
-        nouvelle: orders.filter((o) => o.status === "nouvelle").length,
-        confirmée: orders.filter((o) => o.status === "confirmée").length,
-        préparation: orders.filter((o) => o.status === "préparation").length,
-        expédiée: orders.filter((o) => o.status === "expédiée").length,
-        livrée: orders.filter((o) => o.status === "livrée").length,
-    };
+    const tabs = [{ k: "toutes", l: "Toutes" }, ...STATUSES.map((s) => ({ k: s, l: getStatus(s).label }))];
+    const counts = Object.fromEntries(tabs.map(({ k }) => [k, k === "toutes" ? orders.length : orders.filter((o) => o.status === k).length]));
 
     return (
         <div className="space-y-5">
@@ -72,9 +78,9 @@ export default function Orders() {
                             <span className="absolute inline-flex h-full w-full rounded-full bg-success opacity-75 animate-ping" />
                             <span className="relative inline-flex h-2 w-2 rounded-full bg-success" />
                         </span>
-                        Suivi en temps réel actif
+                        Actualisation automatique
                     </div>
-                    <span className="text-xs text-muted-foreground hidden sm:inline">Mise à jour toutes les 6s</span>
+                    <span className="text-xs text-muted-foreground hidden sm:inline">toutes les 30 s</span>
                 </div>
                 <div className="relative w-full md:w-72">
                     <Search className="h-4 w-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
@@ -85,14 +91,7 @@ export default function Orders() {
             {/* Status tabs */}
             <Tabs value={tab} onValueChange={setTab}>
                 <TabsList className="bg-muted/50 h-auto flex-wrap justify-start p-1">
-                    {[
-                        { k: "toutes", l: "Toutes" },
-                        { k: "nouvelle", l: "Nouvelles" },
-                        { k: "confirmée", l: "Confirmées" },
-                        { k: "préparation", l: "En préparation" },
-                        { k: "expédiée", l: "Expédiées" },
-                        { k: "livrée", l: "Livrées" },
-                    ].map((s) => (
+                    {tabs.map((s) => (
                         <TabsTrigger key={s.k} value={s.k} className="data-[state=active]:bg-background data-[state=active]:shadow-soft gap-2">
                             {s.l}
                             <span className={`text-[10px] px-1.5 rounded-full ${tab === s.k ? "bg-primary text-primary-foreground" : "bg-background text-muted-foreground"}`}>
@@ -114,15 +113,24 @@ export default function Orders() {
                     <div className="col-span-2 text-right">Total</div>
                 </div>
                 <div className="divide-y divide-border max-h-[70vh] overflow-y-auto">
-                    {filtered.length === 0 && (
+                    {ordersStatus === "loading" && (
+                        <div className="px-6 py-16 text-center text-sm text-muted-foreground">Chargement des commandes…</div>
+                    )}
+                    {ordersStatus === "error" && (
+                        <div className="px-6 py-16 text-center text-sm text-muted-foreground space-y-3">
+                            <p>Impossible de charger les commandes.</p>
+                            <Button variant="outline" size="sm" onClick={refreshOrders}>Réessayer</Button>
+                        </div>
+                    )}
+                    {ordersStatus === "ready" && filtered.length === 0 && (
                         <div className="px-6 py-16 text-center text-sm text-muted-foreground">
-                            Aucune commande dans cet onglet
+                            {orders.length === 0 ? "Aucune commande pour le moment" : "Aucune commande dans cet onglet"}
                         </div>
                     )}
                     {filtered.map((o) => (
                         <button
                             key={o.id}
-                            onClick={() => setSelected(o)}
+                            onClick={() => setSelectedId(o.id)}
                             className={`w-full grid grid-cols-12 gap-4 px-4 md:px-6 py-4 items-center text-left hover:bg-muted/30 transition-colors ${o.fresh ? "bg-primary/5" : ""}`}
                         >
                             <div className="col-span-4 md:col-span-3 flex items-center gap-3 min-w-0">
@@ -149,9 +157,9 @@ export default function Orders() {
                                 {o.items.length > 3 && <span className="text-xs text-muted-foreground ml-3 self-center">+{o.items.length - 3}</span>}
                             </div>
                             <div className="col-span-3 md:col-span-2">
-                                <span className={`inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full ${STATUS_LABELS[o.status].color}`}>
-                                    <span className={`h-1.5 w-1.5 rounded-full ${STATUS_LABELS[o.status].dot}`} />
-                                    {STATUS_LABELS[o.status].label}
+                                <span className={`inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full ${getStatus(o.status).color}`}>
+                                    <span className={`h-1.5 w-1.5 rounded-full ${getStatus(o.status).dot}`} />
+                                    {getStatus(o.status).label}
                                 </span>
                             </div>
                             <div className="hidden md:block col-span-1 text-xs text-muted-foreground">
@@ -168,7 +176,7 @@ export default function Orders() {
             </div>
 
             {/* Order detail dialog */}
-            <Dialog open={!!selected} onOpenChange={(o) => !o && setSelected(null)}>
+            <Dialog open={!!selected} onOpenChange={(o) => !o && setSelectedId(null)}>
                 <DialogContent className="max-w-lg">
                     {selected && (
                         <>
@@ -190,24 +198,51 @@ export default function Orders() {
                                     </div>
                                 </div>
 
-                                {/* Progress */}
-                                <div>
-                                    <p className="text-xs uppercase tracking-widest text-muted-foreground mb-3">Suivi</p>
-                                    <div className="flex items-center gap-1">
-                                        {STATUSES.map((s, i) => {
-                                            const currentIdx = STATUSES.indexOf(selected.status);
-                                            const done = i <= currentIdx;
-                                            return (
-                                                <div key={s} className="flex-1">
-                                                    <div className={`h-1.5 rounded-full ${done ? "bg-primary" : "bg-muted"}`} />
-                                                    <p className={`text-[10px] mt-1.5 text-center ${done ? "text-foreground font-medium" : "text-muted-foreground"}`}>
-                                                        {STATUS_LABELS[s].label}
-                                                    </p>
-                                                </div>
-                                            );
-                                        })}
-                                    </div>
+                                {/* Contact */}
+                                <div className="text-sm space-y-1">
+                                    <p className="flex items-center gap-2"><Phone className="h-3.5 w-3.5 text-muted-foreground" /><a href={`tel:${selected.contact.phone}`} className="hover:underline">{selected.contact.phone}</a></p>
+                                    <p className="flex items-center gap-2"><Mail className="h-3.5 w-3.5 text-muted-foreground" /><a href={`mailto:${selected.contact.email}`} className="hover:underline">{selected.contact.email}</a></p>
+                                    <p className="flex items-start gap-2 text-muted-foreground">
+                                        <MapPin className="h-3.5 w-3.5 mt-0.5" />
+                                        {selected.contact.address}{selected.contact.zip ? `, ${selected.contact.zip}` : ""} {selected.contact.city} ({selected.contact.country})
+                                    </p>
                                 </div>
+
+                                {/* Payment */}
+                                <div className="p-3 rounded-xl border text-sm space-y-1">
+                                    <p className="font-medium">{PAYMENT_LABELS[selected.payment_method] || selected.payment_method}</p>
+                                    {selected.amount_minor != null && (
+                                        <p className="text-xs text-muted-foreground">
+                                            Montant Paxity : {formatMinor(selected.amount_minor, selected.payment_currency)}
+                                        </p>
+                                    )}
+                                    {selected.status === "paiement à vérifier" && (
+                                        <p className="text-xs text-amber-800 flex items-start gap-1.5 pt-1">
+                                            <AlertTriangle className="h-3.5 w-3.5 shrink-0 mt-0.5" />
+                                            Vérifiez ce paiement dans votre tableau de bord Paxity, puis passez la commande en « Confirmée ».
+                                        </p>
+                                    )}
+                                </div>
+
+                                {/* Progress */}
+                                {FULFILMENT_STEPS.includes(selected.status) && (
+                                    <div>
+                                        <p className="text-xs uppercase tracking-widest text-muted-foreground mb-3">Suivi</p>
+                                        <div className="flex items-center gap-1">
+                                            {FULFILMENT_STEPS.map((s, i) => {
+                                                const done = i <= FULFILMENT_STEPS.indexOf(selected.status);
+                                                return (
+                                                    <div key={s} className="flex-1">
+                                                        <div className={`h-1.5 rounded-full ${done ? "bg-primary" : "bg-muted"}`} />
+                                                        <p className={`text-[10px] mt-1.5 text-center ${done ? "text-foreground font-medium" : "text-muted-foreground"}`}>
+                                                            {getStatus(s).label}
+                                                        </p>
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+                                    </div>
+                                )}
 
                                 {/* Items */}
                                 <div>
@@ -228,6 +263,10 @@ export default function Orders() {
                                     </div>
                                 </div>
 
+                                <div className="flex justify-between text-sm px-1">
+                                    <span className="text-muted-foreground">Livraison ({selected.shipping_method})</span>
+                                    <span>{selected.shipping === 0 ? "Offerte" : formatPrice(selected.shipping)}</span>
+                                </div>
                                 <div className="flex justify-between items-baseline p-4 bg-secondary/50 rounded-xl">
                                     <span className="font-medium">Total</span>
                                     <span className="font-display text-2xl font-semibold">{formatPrice(selected.total)}</span>
@@ -235,24 +274,19 @@ export default function Orders() {
 
                                 {/* Actions */}
                                 <div className="flex flex-col sm:flex-row gap-2">
-                                    <Select
-                                        value={selected.status}
-                                        onValueChange={(v) => {
-                                            updateOrderStatus(selected.id, v);
-                                            setSelected({ ...selected, status: v });
-                                            toast.success(`Statut mis à jour → ${STATUS_LABELS[v].label}`);
-                                        }}
-                                    >
+                                    <Select value={selected.status} onValueChange={changeStatus}>
                                         <SelectTrigger className="flex-1">
                                             <SelectValue />
                                         </SelectTrigger>
                                         <SelectContent>
                                             {STATUSES.map((s) => (
-                                                <SelectItem key={s} value={s}>{STATUS_LABELS[s].label}</SelectItem>
+                                                <SelectItem key={s} value={s}>{getStatus(s).label}</SelectItem>
                                             ))}
                                         </SelectContent>
                                     </Select>
-                                    <Button className="bg-ink text-ink-foreground hover:bg-ink/90">Contacter le client</Button>
+                                    <Button asChild className="bg-ink text-ink-foreground hover:bg-ink/90">
+                                        <a href={`tel:${selected.contact.phone}`}>Appeler le client</a>
+                                    </Button>
                                 </div>
                             </div>
                         </>

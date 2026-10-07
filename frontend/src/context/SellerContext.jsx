@@ -1,241 +1,192 @@
-import { createContext, useContext, useEffect, useMemo, useRef, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { categories } from "@/data/products";
+import { useCatalog } from "@/context/CatalogContext";
+import { useSellerAuth } from "@/context/SellerAuthContext";
+import { adminAPI } from "@/lib/api";
 
 const SellerContext = createContext(null);
-const PRODUCTS_KEY = "sec_seller_products_v1";
-const ORDERS_KEY = "sec_seller_orders_v1";
+const POLL_MS = 30000;
+const NEW_FOR_MS = 10 * 60 * 1000; // badge "Nouveau" on orders younger than this
 
-const STATUSES = ["nouvelle", "confirmée", "préparation", "expédiée", "livrée"];
+// Mirrors ORDER_STATUSES in backend/orders.py.
+const STATUSES = [
+    "en attente de paiement",
+    "paiement à vérifier",
+    "confirmée",
+    "en préparation",
+    "expédiée",
+    "livrée",
+    "annulée",
+];
 const STATUS_LABELS = {
-    nouvelle: { label: "Nouvelle", color: "bg-primary/10 text-primary", dot: "bg-primary" },
-    confirmée: { label: "Confirmée", color: "bg-blue-100 text-blue-700", dot: "bg-blue-500" },
-    préparation: { label: "En préparation", color: "bg-amber-100 text-amber-700", dot: "bg-amber-500" },
+    "en attente de paiement": { label: "Paiement en attente", color: "bg-muted text-muted-foreground", dot: "bg-muted-foreground" },
+    "paiement à vérifier": { label: "Paiement à vérifier", color: "bg-amber-100 text-amber-800", dot: "bg-amber-500" },
+    confirmée: { label: "Confirmée", color: "bg-primary/10 text-primary", dot: "bg-primary" },
+    "en préparation": { label: "En préparation", color: "bg-blue-100 text-blue-700", dot: "bg-blue-500" },
     expédiée: { label: "Expédiée", color: "bg-purple-100 text-purple-700", dot: "bg-purple-500" },
     livrée: { label: "Livrée", color: "bg-success/15 text-success", dot: "bg-success" },
+    annulée: { label: "Annulée", color: "bg-destructive/10 text-destructive", dot: "bg-destructive" },
+};
+export const getStatus = (status) =>
+    STATUS_LABELS[status] || { label: status, color: "bg-muted text-muted-foreground", dot: "bg-muted-foreground" };
+
+// Delivery steps shown as a progress bar on an order.
+export const FULFILMENT_STEPS = ["confirmée", "en préparation", "expédiée", "livrée"];
+// Orders counted in revenue: paid, or to be paid on delivery.
+const COUNTED = new Set(["paiement à vérifier", "confirmée", "en préparation", "expédiée", "livrée"]);
+// Orders waiting on the seller.
+const TO_HANDLE = new Set(["paiement à vérifier", "confirmée", "en préparation", "expédiée"]);
+
+export const PAYMENT_LABELS = {
+    livraison: "Paiement à la livraison",
+    mobile_money: "Wave / Orange Money",
+    carte: "Carte bancaire",
 };
 
-const CUSTOMER_NAMES = [
-    "Aminata Diallo", "Kwame Mensah", "Fatou Sow", "Ibrahim Traoré", "Chen Wei",
-    "Aïcha Bamba", "Moussa Keita", "Sarah Benali", "Ousmane Ndiaye", "Marie Dupont",
-    "Kofi Asante", "Zeinab Fofana", "Amadou Camara", "Léa Konaté", "Jean-Paul Sissoko",
-];
-const CITIES = ["Dakar", "Abidjan", "Bamako", "Lomé", "Cotonou", "Ouagadougou", "Yaoundé", "Conakry"];
+const fullName = (customer) => `${customer.first_name} ${customer.last_name}`;
 
-const randomFrom = (arr) => arr[Math.floor(Math.random() * arr.length)];
-const randomId = () => `ord-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
-
-const generateSeedOrders = (availableProducts) => {
-    const orders = [];
-    for (let i = 0; i < 14; i++) {
-        const nbItems = 1 + Math.floor(Math.random() * 3);
-        const items = [];
-        for (let j = 0; j < nbItems; j++) {
-            const p = randomFrom(availableProducts);
-            items.push({ id: p.id, name: p.name, image: p.image, price: p.price, qty: 1 + Math.floor(Math.random() * 2) });
-        }
-        const total = items.reduce((s, it) => s + it.price * it.qty, 0);
-        const daysAgo = Math.floor(Math.random() * 14);
-        const statusIdx = daysAgo > 7 ? 4 : daysAgo > 4 ? 3 : daysAgo > 2 ? 2 : daysAgo > 0 ? 1 : 0;
-        orders.push({
-            id: `#SEC-${10240 - i}`,
-            customer: randomFrom(CUSTOMER_NAMES),
-            city: randomFrom(CITIES),
-            items,
-            total,
-            status: STATUSES[statusIdx],
-            createdAt: Date.now() - daysAgo * 86400000 - Math.random() * 3600000,
-        });
-    }
-    return orders.sort((a, b) => b.createdAt - a.createdAt);
+/** An API order, plus the fields the seller pages display directly. */
+const toView = (order, productsById) => {
+    const createdAt = Date.parse(order.created_at);
+    return {
+        ...order,
+        contact: order.customer,
+        customer: fullName(order.customer),
+        city: order.customer.city,
+        createdAt,
+        fresh: Date.now() - createdAt < NEW_FOR_MS,
+        items: order.items.map((it) => ({ ...it, id: it.product_id, image: productsById.get(it.product_id)?.image })),
+    };
 };
 
-export const SellerProvider = ({ children, seedProducts }) => {
-    const [products, setProducts] = useState(() => {
-        try {
-            const raw = localStorage.getItem(PRODUCTS_KEY);
-            return raw ? JSON.parse(raw) : seedProducts;
-        } catch {
-            return seedProducts;
-        }
-    });
-
-    const [orders, setOrders] = useState(() => {
-        try {
-            const raw = localStorage.getItem(ORDERS_KEY);
-            if (raw) return JSON.parse(raw);
-        } catch {}
-        return generateSeedOrders(seedProducts);
-    });
-
+/** Real orders and products for the seller area (requires a seller session). */
+export const SellerProvider = ({ children }) => {
+    const { token, logout } = useSellerAuth();
+    const catalog = useCatalog();
+    const [rawOrders, setRawOrders] = useState([]);
+    const [ordersStatus, setOrdersStatus] = useState("loading");
     const [liveEvents, setLiveEvents] = useState([]);
-    const tickRef = useRef(0);
+    const knownIds = useRef(null);
 
     useEffect(() => {
-        localStorage.setItem(PRODUCTS_KEY, JSON.stringify(products));
-    }, [products]);
-
-    useEffect(() => {
-        localStorage.setItem(ORDERS_KEY, JSON.stringify(orders));
-    }, [orders]);
-
-    // ---- Simulated real-time engine ----
-    useEffect(() => {
-        const tick = () => {
-            tickRef.current += 1;
-            const shouldCreateNew = Math.random() < 0.35;
-            const shouldAdvance = Math.random() < 0.6;
-
-            setOrders((prev) => {
-                let next = [...prev];
-
-                if (shouldCreateNew && products.length > 0) {
-                    const nbItems = 1 + Math.floor(Math.random() * 2);
-                    const items = [];
-                    for (let j = 0; j < nbItems; j++) {
-                        const p = randomFrom(products);
-                        items.push({ id: p.id, name: p.name, image: p.image, price: p.price, qty: 1 });
-                    }
-                    const total = items.reduce((s, it) => s + it.price * it.qty, 0);
-                    const customer = randomFrom(CUSTOMER_NAMES);
-                    const city = randomFrom(CITIES);
-                    const newOrder = {
-                        id: `#SEC-${10250 + tickRef.current}`,
-                        customer,
-                        city,
-                        items,
-                        total,
-                        status: "nouvelle",
-                        createdAt: Date.now(),
-                        fresh: true,
-                    };
-                    next = [newOrder, ...next];
-                    setLiveEvents((e) => [
-                        { id: newOrder.id, type: "new", customer, city, total, at: Date.now() },
-                        ...e.slice(0, 9),
-                    ]);
-                }
-
-                if (shouldAdvance) {
-                    const idxCandidates = next
-                        .map((o, i) => ({ o, i }))
-                        .filter(({ o }) => o.status !== "livrée");
-                    if (idxCandidates.length > 0) {
-                        const { i } = randomFrom(idxCandidates);
-                        const currentIdx = STATUSES.indexOf(next[i].status);
-                        if (currentIdx < STATUSES.length - 1) {
-                            const newStatus = STATUSES[currentIdx + 1];
-                            next[i] = { ...next[i], status: newStatus, fresh: false };
-                            setLiveEvents((e) => [
-                                { id: next[i].id, type: "status", status: newStatus, customer: next[i].customer, at: Date.now() },
-                                ...e.slice(0, 9),
-                            ]);
-                        }
-                    }
-                }
-
-                // clear "fresh" flag after 8s using a delayed clear
-                return next;
-            });
-        };
-
-        const interval = setInterval(tick, 6000);
-        return () => clearInterval(interval);
-    }, [products]);
-
-    // Clear fresh flag periodically
-    useEffect(() => {
-        const t = setInterval(() => {
-            setOrders((prev) => prev.map((o) => (o.fresh && Date.now() - o.createdAt > 8000 ? { ...o, fresh: false } : o)));
-        }, 4000);
-        return () => clearInterval(t);
+        // Demo data from the old browser-only seller area.
+        try {
+            localStorage.removeItem("sec_seller_products_v1");
+            localStorage.removeItem("sec_seller_orders_v1");
+        } catch {
+            // storage unavailable
+        }
     }, []);
 
-    // ---- CRUD ----
-    const addProduct = (data) => {
-        const newProduct = {
-            id: `p${Date.now()}`,
-            rating: 0,
-            reviews: 0,
-            ...data,
-        };
-        setProducts((prev) => [newProduct, ...prev]);
-        return newProduct;
+    const refreshOrders = useCallback(async () => {
+        try {
+            const list = await adminAPI.orders(token);
+            if (knownIds.current) {
+                const arrived = list.filter((o) => !knownIds.current.has(o.id));
+                if (arrived.length) {
+                    setLiveEvents((events) =>
+                        [
+                            ...arrived.map((o) => ({ id: o.id, type: "new", customer: fullName(o.customer), city: o.customer.city, total: o.total, at: Date.now() })),
+                            ...events,
+                        ].slice(0, 10),
+                    );
+                }
+            }
+            knownIds.current = new Set(list.map((o) => o.id));
+            setRawOrders(list);
+            setOrdersStatus("ready");
+        } catch (err) {
+            if (err.response?.status === 401) logout();
+            else setOrdersStatus((s) => (s === "ready" ? s : "error"));
+        }
+    }, [token, logout]);
+
+    useEffect(() => {
+        refreshOrders();
+        const timer = setInterval(refreshOrders, POLL_MS);
+        return () => clearInterval(timer);
+    }, [refreshOrders]);
+
+    const products = catalog.products;
+    const productsById = useMemo(() => new Map(products.map((p) => [p.id, p])), [products]);
+    const orders = useMemo(() => rawOrders.map((o) => toView(o, productsById)), [rawOrders, productsById]);
+
+    // ---- Actions (each throws on failure; callers show the error) ----
+    const updateOrderStatus = async (id, status) => {
+        const updated = await adminAPI.updateOrder(token, id, status);
+        setRawOrders((list) => list.map((o) => (o.id === id ? updated : o)));
+        setLiveEvents((events) =>
+            [{ id, type: "status", status: getStatus(status).label, customer: fullName(updated.customer), at: Date.now() }, ...events].slice(0, 10),
+        );
+        return updated;
     };
-    const updateProduct = (id, patch) => setProducts((prev) => prev.map((p) => (p.id === id ? { ...p, ...patch } : p)));
-    const deleteProduct = (id) => setProducts((prev) => prev.filter((p) => p.id !== id));
 
-    const updateOrderStatus = (id, status) =>
-        setOrders((prev) => prev.map((o) => (o.id === id ? { ...o, status } : o)));
+    const addProduct = async ({ oldPrice, ...product }) => {
+        const created = await adminAPI.createProduct(token, { ...product, old_price: oldPrice ?? null });
+        catalog.reload();
+        return created;
+    };
 
-    // ---- Metrics ----
+    const deleteProduct = async (id) => {
+        await adminAPI.deleteProduct(token, id);
+        catalog.reload();
+    };
+
+    // ---- Metrics (from real orders) ----
     const metrics = useMemo(() => {
         const now = Date.now();
-        const last30 = orders.filter((o) => now - o.createdAt <= 30 * 86400000);
-        const last7 = orders.filter((o) => now - o.createdAt <= 7 * 86400000);
-        const today = orders.filter((o) => now - o.createdAt <= 86400000);
-
+        const counted = orders.filter((o) => COUNTED.has(o.status));
+        const last30 = counted.filter((o) => now - o.createdAt <= 30 * 86400000);
         const revenue30 = last30.reduce((s, o) => s + o.total, 0);
-        const revenue7 = last7.reduce((s, o) => s + o.total, 0);
-        const revenueToday = today.reduce((s, o) => s + o.total, 0);
 
-        const active = orders.filter((o) => o.status !== "livrée").length;
-        const delivered = orders.filter((o) => o.status === "livrée").length;
-
-        // Daily revenue for last 14 days
         const daily = [];
         for (let i = 13; i >= 0; i--) {
-            const dayStart = now - i * 86400000;
-            const dayLabel = new Date(dayStart).toLocaleDateString("fr-FR", { day: "2-digit", month: "short" });
-            const dayRevenue = orders
-                .filter((o) => o.createdAt >= dayStart - 43200000 && o.createdAt < dayStart + 43200000)
-                .reduce((s, o) => s + o.total, 0);
-            daily.push({ day: dayLabel, revenue: dayRevenue });
+            const dayStart = new Date(now - i * 86400000).setHours(0, 0, 0, 0);
+            const dayEnd = dayStart + 86400000;
+            daily.push({
+                day: new Date(dayStart).toLocaleDateString("fr-FR", { day: "2-digit", month: "short" }),
+                revenue: counted.filter((o) => o.createdAt >= dayStart && o.createdAt < dayEnd).reduce((s, o) => s + o.total, 0),
+            });
         }
 
-        // Top products by revenue
         const productRevenue = {};
-        orders.forEach((o) => {
-            o.items.forEach((it) => {
-                productRevenue[it.id] = (productRevenue[it.id] || 0) + it.price * it.qty;
-            });
-        });
+        counted.forEach((o) => o.items.forEach((it) => {
+            productRevenue[it.id] = (productRevenue[it.id] || 0) + it.price * it.qty;
+        }));
         const topProducts = Object.entries(productRevenue)
-            .map(([id, rev]) => {
-                const p = products.find((x) => x.id === id);
-                return p ? { ...p, soldRevenue: rev } : null;
-            })
+            .map(([id, rev]) => (productsById.has(id) ? { ...productsById.get(id), soldRevenue: rev } : null))
             .filter(Boolean)
             .sort((a, b) => b.soldRevenue - a.soldRevenue)
             .slice(0, 5);
 
-        // Category distribution
-        const catDist = categories.map((c) => ({
-            name: c.name,
-            value: orders.reduce((s, o) => {
-                const catRev = o.items
-                    .filter((it) => {
-                        const p = products.find((x) => x.id === it.id);
-                        return p && p.category === c.id;
-                    })
-                    .reduce((ss, it) => ss + it.price * it.qty, 0);
-                return s + catRev;
-            }, 0),
-        })).filter((c) => c.value > 0);
+        const catDist = categories
+            .map((c) => ({
+                name: c.name,
+                value: counted.reduce(
+                    (s, o) => s + o.items.filter((it) => productsById.get(it.id)?.category === c.id).reduce((ss, it) => ss + it.price * it.qty, 0),
+                    0,
+                ),
+            }))
+            .filter((c) => c.value > 0);
 
         return {
-            revenueToday, revenue7, revenue30,
-            ordersToday: today.length, orders7: last7.length, orders30: last30.length,
-            active, delivered,
+            revenue30,
+            orders30: last30.length,
             avgBasket: last30.length ? revenue30 / last30.length : 0,
-            daily, topProducts, catDist,
+            active: orders.filter((o) => TO_HANDLE.has(o.status)).length,
+            toVerify: orders.filter((o) => o.status === "paiement à vérifier").length,
+            delivered: orders.filter((o) => o.status === "livrée").length,
+            daily,
+            topProducts,
+            catDist,
         };
-    }, [orders, products]);
+    }, [orders, productsById]);
 
     return (
         <SellerContext.Provider
             value={{
-                products, addProduct, updateProduct, deleteProduct,
-                orders, updateOrderStatus,
+                products, addProduct, deleteProduct,
+                orders, ordersStatus, refreshOrders, updateOrderStatus,
                 liveEvents,
                 metrics,
                 STATUS_LABELS, STATUSES,

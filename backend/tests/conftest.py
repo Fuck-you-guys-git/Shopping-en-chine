@@ -16,6 +16,8 @@ import server  # noqa: E402
 @pytest.fixture(autouse=True)
 def paxity_configured(monkeypatch):
     monkeypatch.setenv("PAXITY_ORG_ID", "org-test")
+    monkeypatch.setenv("ADMIN_EMAIL", "Owner@Example.com")
+    monkeypatch.setenv("ADMIN_PASSWORD", "correct horse battery staple")
 
 
 @pytest.fixture()

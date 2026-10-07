@@ -15,7 +15,10 @@ et le sert avec l'API (`/api`), sur la même adresse.
 À faire une seule fois dans Railway :
 1. **+ New → Database → MongoDB** (la base est créée par Railway).
 2. Service du site → **Settings** : Root Directory **vide**, branche **main**.
-3. Service du site → **Variables** : `MONGO_URL` = `${{MongoDB.MONGO_URL}}` et `PAXITY_ORG_ID` = votre identifiant Paxity.
+3. Service du site → **Variables** :
+   - `MONGO_URL` = `${{MongoDB.MONGO_URL}}`
+   - `PAXITY_ORG_ID` = votre identifiant d'organisation Paxity
+   - `ADMIN_EMAIL` et `ADMIN_PASSWORD` = connexion à l'espace vendeur (`/admin`) ; mot de passe long et unique
 
 Ensuite, chaque push sur `main` redéploie automatiquement. Le service n'est mis en ligne que si
 `/api/` répond : un déploiement raté ne remplace pas la version en ligne. Les produits sont créés
@@ -30,6 +33,7 @@ automatiquement dans une base vide au premier démarrage.
   - `orders.py` — commandes (`POST /api/orders`). Le serveur calcule lui-même prix, livraison et total.
   - `payments.py` — configuration du paiement (`GET /api/payments/config`) et retour du widget Paxity.
   - `money.py` — devises : F CFA, € (taux fixe légal) et $ (taux choisi, à modifier ici).
+  - `admin.py` — espace vendeur (`/api/admin/...`) : connexion, commandes réelles, produits.
 - `backend/tests/` — tests pytest de l'API (base en mémoire via `mongomock-motor`, pas de serveur MongoDB requis).
 
 ## Configuration
