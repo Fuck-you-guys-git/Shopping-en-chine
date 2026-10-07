@@ -81,7 +81,7 @@ export const CartDrawer = () => {
                                 <Link to="/commande" onClick={() => setDrawerOpen(false)}>Passer commande</Link>
                             </Button>
                             <p className="text-[11px] text-center text-muted-foreground">
-                                <i className="fa-solid fa-lock mr-1" /> Paiement 100% sécurisé
+                                <i className="fa-solid fa-truck mr-1" /> Paiement à la livraison
                             </p>
                         </div>
                     </>

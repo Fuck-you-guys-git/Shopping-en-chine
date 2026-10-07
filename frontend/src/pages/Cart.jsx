@@ -123,12 +123,9 @@ export default function Cart() {
                         <Button asChild size="lg" className="w-full bg-ink text-ink-foreground hover:bg-ink/90 rounded-full h-12">
                             <Link to="/commande">Passer commande</Link>
                         </Button>
-                        <div className="flex items-center justify-center gap-4 text-muted-foreground opacity-70">
-                            <i className="fa-brands fa-cc-visa text-2xl" />
-                            <i className="fa-brands fa-cc-mastercard text-2xl" />
-                            <i className="fa-brands fa-cc-paypal text-2xl" />
-                            <i className="fa-brands fa-cc-apple-pay text-2xl" />
-                        </div>
+                        <p className="text-xs text-center text-muted-foreground">
+                            <i className="fa-solid fa-truck mr-1" /> Paiement à la livraison
+                        </p>
                     </div>
                 </aside>
             </div>

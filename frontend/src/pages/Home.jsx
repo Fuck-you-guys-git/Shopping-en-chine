@@ -11,7 +11,7 @@ import { useState } from "react";
 const benefits = [
     { icon: Truck, title: "Livraison rapide", desc: "En 2–5 jours partout" },
     { icon: RotateCcw, title: "Retours 30 jours", desc: "Sans question, sans stress" },
-    { icon: ShieldCheck, title: "Paiement sécurisé", desc: "Mobile Money, Carte, PayPal" },
+    { icon: ShieldCheck, title: "Paiement à la livraison", desc: "Réglez à la réception du colis" },
     { icon: HeadphonesIcon, title: "Service client", desc: "7 jours / 7, en français" },
 ];
 
@@ -36,7 +36,7 @@ export default function Home() {
                                 <span className="block italic text-primary text-2xl sm:text-3xl md:text-4xl mt-1">Tout, plus simple.</span>
                             </h1>
                             <p className="mt-2 text-sm md:text-base text-muted-foreground">
-                                Livraison partout · Paiement Mobile Money · Retours 30 jours
+                                Livraison partout · Paiement à la livraison · Retours 30 jours
                             </p>
                         </div>
                         <form onSubmit={onSearch} className="relative w-full md:w-96 shrink-0">

@@ -1,4 +1,5 @@
-from fastapi import FastAPI, APIRouter
+from fastapi import FastAPI, APIRouter, HTTPException
+from fastapi.responses import JSONResponse
 from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
@@ -22,13 +23,7 @@ db = client[os.environ['DB_NAME']]
 # Create the main app without a prefix
 app = FastAPI(title="Shopping en Chine API")
 
-# Make db reachable from routers via request.app.state.db
-app.state.db = db
-
 # Global exception safety net — return JSON instead of crashing the worker
-# (prevents Cloudflare 520/521 in front of our origin)
-from fastapi.responses import JSONResponse
-
 @app.exception_handler(Exception)
 async def _unhandled_exception_handler(request, exc):
     logging.getLogger(__name__).exception("Unhandled exception")
@@ -53,6 +48,42 @@ class StatusCheckCreate(BaseModel):
     client_name: str
 
 
+class OrderCustomer(BaseModel):
+    first_name: str
+    last_name: str
+    email: str
+    phone: str
+    address: str
+    zip: str = ""
+    city: str
+
+class OrderItem(BaseModel):
+    product_id: str
+    name: str
+    price: float = Field(ge=0)
+    qty: int = Field(ge=1)
+
+class OrderCreate(BaseModel):
+    """Request body sent by the checkout page to record an order."""
+    customer: OrderCustomer
+    items: List[OrderItem] = Field(min_length=1)
+    shipping: float = Field(default=0, ge=0)
+
+class Order(BaseModel):
+    model_config = ConfigDict(extra="ignore")  # Ignore MongoDB's _id field
+
+    id: str = Field(default_factory=lambda: f"SEC-{uuid.uuid4().hex[:8].upper()}")
+    customer: OrderCustomer
+    items: List[OrderItem]
+    subtotal: float
+    shipping: float
+    total: float
+    currency: str = "XOF"
+    payment: str = "à la livraison"  # no online payment provider is wired in
+    status: str = "confirmée"  # the customer confirmed it at checkout
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+
 @api_router.get("/")
 async def root():
     return {"message": "Shopping en Chine API is up"}
@@ -75,9 +106,33 @@ async def get_status_checks():
     return status_checks
 
 
-# ---- Paxity payment gateway ---------------------------------------------
-from paxity_router import router as paxity_router
-api_router.include_router(paxity_router)
+# ---- Orders ----------------------------------------------------------------
+@api_router.post("/orders", response_model=Order, status_code=201)
+async def create_order(input: OrderCreate):
+    # Totals are derived from the line items, never taken from the client. Item
+    # prices still come from the client: the catalog lives in the frontend.
+    subtotal = sum(item.price * item.qty for item in input.items)
+    order = Order(
+        customer=input.customer,
+        items=input.items,
+        subtotal=subtotal,
+        shipping=input.shipping,
+        total=subtotal + input.shipping,
+    )
+    doc = order.model_dump()
+    doc['created_at'] = doc['created_at'].isoformat()
+    _ = await db.orders.insert_one(doc)
+    return order
+
+@api_router.get("/orders/{order_id}", response_model=Order)
+async def get_order(order_id: str):
+    order = await db.orders.find_one({"id": order_id}, {"_id": 0})
+    if not order:
+        raise HTTPException(status_code=404, detail="Commande introuvable")
+    if isinstance(order['created_at'], str):
+        order['created_at'] = datetime.fromisoformat(order['created_at'])
+    return order
+
 
 # Include the api router in the main app
 app.include_router(api_router)

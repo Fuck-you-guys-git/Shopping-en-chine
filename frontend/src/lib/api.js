@@ -20,11 +20,8 @@ api.interceptors.response.use((response) => {
     return Promise.reject(err);
 });
 
-// --------- Paxity ---------
-export const paxityAPI = {
-    getConfig: () => api.get("/paxity/config").then((r) => r.data),
-    getDiagnostic: () => api.get("/paxity/diagnostic").then((r) => r.data),
-    createPayin: (payload) => api.post("/paxity/payin", payload).then((r) => r.data),
-    getStatus: (transactionId) => api.get(`/paxity/status/${transactionId}`).then((r) => r.data),
-    getOrder: (orderId) => api.get(`/paxity/orders/${orderId}`).then((r) => r.data),
+// --------- Commandes ---------
+export const ordersAPI = {
+    create: (payload) => api.post("/orders", payload).then((r) => r.data),
+    get: (orderId) => api.get(`/orders/${orderId}`).then((r) => r.data),
 };
