@@ -77,11 +77,11 @@ export default function SellerLogin() {
                                 <Input
                                     id="email"
                                     type="email"
+                                    data-testid="seller-login-email"
                                     autoComplete="email"
                                     required
                                     value={email}
                                     onChange={(e) => setEmail(e.target.value)}
-                                    placeholder="vous@exemple.com"
                                     className="pl-10 h-11"
                                 />
                             </div>
@@ -96,6 +96,7 @@ export default function SellerLogin() {
                                 <Input
                                     id="password"
                                     type={showPassword ? "text" : "password"}
+                                    data-testid="seller-login-password"
                                     autoComplete="current-password"
                                     required
                                     value={password}
@@ -129,6 +130,7 @@ export default function SellerLogin() {
                             type="submit"
                             size="lg"
                             disabled={loading}
+                            data-testid="seller-login-submit"
                             className="w-full bg-ink text-ink-foreground hover:bg-ink/90 rounded-full h-12 shadow-lift"
                         >
                             {loading ? (
@@ -145,7 +147,7 @@ export default function SellerLogin() {
                     </form>
 
                     <p className="mt-6 text-xs text-center text-muted-foreground">
-                        L'accès à cette zone est réservé au propriétaire de la boutique.
+                        L&apos;accès à cette zone est réservé au propriétaire de la boutique.
                         <br />
                         <Link to="/" className="text-primary hover:underline">← Retour à la boutique</Link>
                     </p>
@@ -192,7 +194,7 @@ export default function SellerLogin() {
 
                     <blockquote className="max-w-md">
                         <p className="font-display italic text-lg text-ink-foreground/80 leading-snug">
-                            « Depuis que j'utilise le tableau de bord, je gagne 2h par jour. Interface fluide, prise en main immédiate. »
+                            « Depuis que j&apos;utilise le tableau de bord, je gagne 2h par jour. Interface fluide, prise en main immédiate. »
                         </p>
                         <footer className="mt-3 text-xs text-ink-foreground/50">
                             — Aminata D., Vendeuse partenaire · Dakar

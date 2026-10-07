@@ -1,47 +1,41 @@
-import logging
-import os
-import uuid
-from contextlib import asynccontextmanager
-from datetime import datetime, timezone
-from pathlib import Path
-from typing import List
-
-from fastapi import APIRouter, Depends, FastAPI, HTTPException
-from fastapi.responses import FileResponse, JSONResponse
-from fastapi.staticfiles import StaticFiles
-from pydantic import BaseModel, ConfigDict, Field
+from fastapi import FastAPI, APIRouter
+from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
-
-import database
-from admin import router as admin_router
-from catalog import router as catalog_router, seed_catalog
-from database import get_db
-from orders import router as orders_router
-from payments import router as payments_router
-
-# Configure logging
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-)
-logger = logging.getLogger(__name__)
+from starlette.middleware.gzip import GZipMiddleware
+from motor.motor_asyncio import AsyncIOMotorClient
+import os
+import logging
+from pathlib import Path
+from pydantic import BaseModel, Field, ConfigDict
+from typing import List
+import uuid
+from datetime import datetime, timezone
 
 
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    await seed_catalog(database.get_db())
-    yield
-    database.client.close()
+ROOT_DIR = Path(__file__).parent
+load_dotenv(ROOT_DIR / '.env')
 
+# MongoDB connection
+mongo_url = os.environ['MONGO_URL']
+client = AsyncIOMotorClient(mongo_url)
+db = client[os.environ['DB_NAME']]
 
 # Create the main app without a prefix
-app = FastAPI(title="Shopping en Chine API", lifespan=lifespan)
+app = FastAPI(title="Shopping en Chine API")
 
+# Compression des réponses (catalogue avec images base64 → chargement bien plus rapide)
+app.add_middleware(GZipMiddleware, minimum_size=1024)
+
+# Make db reachable from routers via request.app.state.db
+app.state.db = db
 
 # Global exception safety net — return JSON instead of crashing the worker
+# (prevents Cloudflare 520/521 in front of our origin)
+from fastapi.responses import JSONResponse
+
 @app.exception_handler(Exception)
 async def _unhandled_exception_handler(request, exc):
-    logger.exception("Unhandled exception")
+    logging.getLogger(__name__).exception("Unhandled exception")
     return JSONResponse(
         status_code=500,
         content={"detail": f"Erreur serveur : {type(exc).__name__}"},
@@ -68,7 +62,7 @@ async def root():
     return {"message": "Shopping en Chine API is up"}
 
 @api_router.post("/status", response_model=StatusCheck)
-async def create_status_check(input: StatusCheckCreate, db=Depends(get_db)):
+async def create_status_check(input: StatusCheckCreate):
     status_dict = input.model_dump()
     status_obj = StatusCheck(**status_dict)
     doc = status_obj.model_dump()
@@ -77,7 +71,7 @@ async def create_status_check(input: StatusCheckCreate, db=Depends(get_db)):
     return status_obj
 
 @api_router.get("/status", response_model=List[StatusCheck])
-async def get_status_checks(db=Depends(get_db)):
+async def get_status_checks():
     status_checks = await db.status_checks.find({}, {"_id": 0}).to_list(1000)
     for check in status_checks:
         if isinstance(check['timestamp'], str):
@@ -85,34 +79,64 @@ async def get_status_checks(db=Depends(get_db)):
     return status_checks
 
 
-api_router.include_router(catalog_router)
+# ---- Paxity payment gateway ---------------------------------------------
+from paxity_router import router as paxity_router
+api_router.include_router(paxity_router)
+
+# ---- Order tracking (Où est mon colis ?) ---------------------------------
+from tracking_router import router as tracking_router
+api_router.include_router(tracking_router)
+
+# Géolocalisation IP -> langue + devise (Europe EUR, Afrique FCFA, USA USD)
+from geo_router import router as geo_router
+api_router.include_router(geo_router)
+
+# ---- Seller orders (real customer orders) ---------------------------------
+from orders_router import router as orders_router
 api_router.include_router(orders_router)
-api_router.include_router(payments_router)
-api_router.include_router(admin_router)
+
+# ---- Seller auth + product catalog ---------------------------------------
+from auth_router import router as auth_router, seed_seller
+from products_router import router as products_router, seed_products, migrate_base64_images, freeze_localized_prices
+api_router.include_router(auth_router)
+api_router.include_router(products_router)
+
+# ---- Journal des emails + webhook de livraison Resend ---------------------
+from emails_router import router as emails_router
+api_router.include_router(emails_router)
+
+# ---- Avis clients vérifiés -------------------------------------------------
+from reviews_router import router as reviews_router
+api_router.include_router(reviews_router)
 
 # Include the api router in the main app
 app.include_router(api_router)
 
 
-def mount_frontend(build_dir: Path) -> None:
-    """Serve the built React site (production image): static assets, and
-    index.html for every other path so client-side routes like /boutique work."""
+# ---- Production image (Railway): serve the built React site ----------------
+# FRONTEND_BUILD_DIR is set by the Dockerfile; unset on Emergent and in local
+# development, where the React dev server runs separately.
+def _mount_frontend(build_dir: Path) -> None:
+    from fastapi import HTTPException
+    from fastapi.responses import FileResponse
+    from fastapi.staticfiles import StaticFiles
+
     build_dir = build_dir.resolve()
     app.mount("/static", StaticFiles(directory=build_dir / "static"), name="static")
 
     @app.get("/{path:path}", include_in_schema=False)
-    async def frontend(path: str):
+    async def _frontend(path: str):
         if path == "api" or path.startswith("api/"):
             raise HTTPException(status_code=404, detail="Not Found")
         file = (build_dir / path).resolve()
         if path and file.is_file() and build_dir in file.parents:
             return FileResponse(file)
+        # Client-side routes (/boutique, /admin, ...) all load the React app
         return FileResponse(build_dir / "index.html")
 
 
-# Set by the Dockerfile; unset in local development (the React dev server runs separately).
 if os.environ.get("FRONTEND_BUILD_DIR") and Path(os.environ["FRONTEND_BUILD_DIR"]).is_dir():
-    mount_frontend(Path(os.environ["FRONTEND_BUILD_DIR"]))
+    _mount_frontend(Path(os.environ["FRONTEND_BUILD_DIR"]))
 
 app.add_middleware(
     CORSMiddleware,
@@ -121,3 +145,91 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger(__name__)
+
+
+@app.on_event("startup")
+async def startup_seed():
+    await db.users.create_index("email", unique=True)
+    await db.login_attempts.create_index("identifier")
+    await db.products.create_index("id", unique=True)
+    await seed_seller(db)
+    await seed_products(db)
+    # Fige les prix EUR/USD affichés (fin de la conversion automatique)
+    await freeze_localized_prices(db)
+    await db.product_images.create_index([("product_id", 1), ("image_id", 1)])
+    # Cart-abandonment recovery loop (checks every 30 min)
+    import asyncio
+    asyncio.create_task(_recovery_loop())
+    # Rattrapage durable des paiements Paxity restés « en attente » : rend la
+    # confirmation (et les emails) indépendante de l'IPN, du retour navigateur
+    # et des redéploiements. Sans cette boucle, une commande réellement payée
+    # pouvait rester « pending » pour toujours → aucun email envoyé.
+    from paxity_router import reconciliation_loop
+    asyncio.create_task(reconciliation_loop(db))
+    # Migration en arrière-plan : photos base64 → URLs légères + miniatures
+    asyncio.create_task(migrate_base64_images(db))
+
+
+async def _recovery_loop():
+    """Relance panier : 2 fois par semaine maximum (tous les ~3,5 jours),
+    pendant 3 mois maximum. Abandon automatique si le client a finalement
+    passé une commande payée, ou après ~26 relances (2/semaine × 13 semaines)."""
+    import asyncio
+    from datetime import timedelta
+    from email_service import send_recovery_email
+    while True:
+        try:
+            now = datetime.now(timezone.utc)
+            oldest = (now - timedelta(days=90)).isoformat()   # abandon après 3 mois
+            newest = (now - timedelta(hours=1)).isoformat()   # laisse 1 h pour payer
+            resend_cutoff = (now - timedelta(days=3, hours=12)).isoformat()  # 2×/semaine
+            candidates = await db.orders.find({
+                "status": {"$in": ["pending", "failed"]},
+                "customer.email": {"$nin": [None, ""]},
+                "is_test": {"$ne": True},
+                "created_at": {"$gte": oldest, "$lte": newest},
+                "recovery_count": {"$not": {"$gte": 26}},
+                "$or": [
+                    {"recovery_email_at": {"$exists": False}},
+                    {"recovery_email_at": {"$lte": resend_cutoff}},
+                ],
+            }, {"_id": 0}).to_list(20)
+            for order in candidates:
+                email = (order.get("customer") or {}).get("email")
+                # Le client a fini par commander (payé) après ce panier → on abandonne
+                converted = await db.orders.find_one({
+                    "customer.email": email,
+                    "status": "success",
+                    "created_at": {"$gte": order.get("created_at", "")},
+                }, {"_id": 1})
+                if converted:
+                    await db.orders.update_one(
+                        {"id": order["id"]}, {"$set": {"recovery_count": 26}})
+                    continue
+                # Claim atomique : jamais de double envoi (redémarrages/répliques)
+                claimed = await db.orders.find_one_and_update(
+                    {"id": order["id"], "$or": [
+                        {"recovery_email_at": {"$exists": False}},
+                        {"recovery_email_at": {"$lte": resend_cutoff}},
+                    ]},
+                    {"$set": {"recovery_email_sent": True,
+                              "recovery_email_at": now.isoformat()},
+                     "$inc": {"recovery_count": 1}},
+                )
+                if claimed:
+                    await send_recovery_email(db, order)
+        except Exception:
+            logger.exception("[Recovery] loop iteration failed")
+        await asyncio.sleep(1800)
+
+
+@app.on_event("shutdown")
+async def shutdown_db_client():
+    client.close()

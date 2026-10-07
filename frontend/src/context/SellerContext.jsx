@@ -1,195 +1,272 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { categories } from "@/data/products";
+import { productsAPI, ordersAPI, trackingAPI } from "@/lib/api";
+import { PAYMENT_GROUPS, OTHER_GROUP, paymentGroupId } from "@/lib/payments";
 import { useCatalog } from "@/context/CatalogContext";
-import { useSellerAuth } from "@/context/SellerAuthContext";
-import { adminAPI } from "@/lib/api";
 
 const SellerContext = createContext(null);
-const POLL_MS = 30000;
-const NEW_FOR_MS = 10 * 60 * 1000; // badge "Nouveau" on orders younger than this
 
-// Mirrors ORDER_STATUSES in backend/orders.py.
-const STATUSES = [
-    "en attente de paiement",
-    "paiement à vérifier",
-    "confirmée",
-    "en préparation",
-    "expédiée",
-    "livrée",
-    "annulée",
-];
+// Fulfilment statuses = the real tracking steps (shared with /suivi)
+const STATUSES = ["ordered", "shipped", "customs", "delivery", "delivered"];
 const STATUS_LABELS = {
-    "en attente de paiement": { label: "Paiement en attente", color: "bg-muted text-muted-foreground", dot: "bg-muted-foreground" },
-    "paiement à vérifier": { label: "Paiement à vérifier", color: "bg-amber-100 text-amber-800", dot: "bg-amber-500" },
-    confirmée: { label: "Confirmée", color: "bg-primary/10 text-primary", dot: "bg-primary" },
-    "en préparation": { label: "En préparation", color: "bg-blue-100 text-blue-700", dot: "bg-blue-500" },
-    expédiée: { label: "Expédiée", color: "bg-purple-100 text-purple-700", dot: "bg-purple-500" },
-    livrée: { label: "Livrée", color: "bg-success/15 text-success", dot: "bg-success" },
-    annulée: { label: "Annulée", color: "bg-destructive/10 text-destructive", dot: "bg-destructive" },
-};
-export const getStatus = (status) =>
-    STATUS_LABELS[status] || { label: status, color: "bg-muted text-muted-foreground", dot: "bg-muted-foreground" };
-
-// Delivery steps shown as a progress bar on an order.
-export const FULFILMENT_STEPS = ["confirmée", "en préparation", "expédiée", "livrée"];
-// Orders counted in revenue: paid, or to be paid on delivery.
-const COUNTED = new Set(["paiement à vérifier", "confirmée", "en préparation", "expédiée", "livrée"]);
-// Orders waiting on the seller.
-const TO_HANDLE = new Set(["paiement à vérifier", "confirmée", "en préparation", "expédiée"]);
-
-export const PAYMENT_LABELS = {
-    livraison: "Paiement à la livraison",
-    mobile_money: "Wave / Orange Money",
-    carte: "Carte bancaire",
+    ordered: { label: "Commandé", color: "bg-primary/10 text-primary", dot: "bg-primary" },
+    shipped: { label: "Expédié de Chine", color: "bg-blue-100 text-blue-700", dot: "bg-blue-500" },
+    customs: { label: "En douane", color: "bg-amber-100 text-amber-700", dot: "bg-amber-500" },
+    delivery: { label: "En livraison", color: "bg-purple-100 text-purple-700", dot: "bg-purple-500" },
+    delivered: { label: "Livré", color: "bg-success/15 text-success", dot: "bg-success" },
 };
 
-const fullName = (customer) => `${customer.first_name} ${customer.last_name}`;
-
-/** An API order, plus the fields the seller pages display directly. */
-const toView = (order, productsById) => {
-    const createdAt = Date.parse(order.created_at);
-    return {
-        ...order,
-        contact: order.customer,
-        customer: fullName(order.customer),
-        city: order.customer.city,
-        createdAt,
-        fresh: Date.now() - createdAt < NEW_FOR_MS,
-        items: order.items.map((it) => ({ ...it, id: it.product_id, image: productsById.get(it.product_id)?.image })),
-    };
+const PAYMENT_LABELS = {
+    success: { label: "Payée", color: "bg-success/15 text-success" },
+    pending: { label: "Paiement en attente", color: "bg-amber-100 text-amber-700" },
+    failed: { label: "Paiement échoué", color: "bg-destructive/10 text-destructive" },
 };
 
-/** Real orders and products for the seller area (requires a seller session). */
+// Statuts considérés comme PAYÉS — tolérant envers les anciennes commandes
+// (période Stripe / anciennes versions) : variantes de « success » + étapes
+// de livraison stockées dans status (une commande expédiée/livrée est payée).
+const PAID_STATUSES = new Set([
+    "success", "successful", "paid", "completed", "confirmed", "ok", "done",
+    "shipped", "customs", "delivery", "delivered",
+]);
+const isPaidOrder = (o) => PAID_STATUSES.has(String(o.status || "").toLowerCase());
+
+const mapOrder = (o, productsById) => ({
+    id: o.id,
+    customer: o.customer?.name || "Client",
+    city: o.customer?.city || "—",
+    email: o.customer?.email || null,
+    phone: o.customer?.phone || null,
+    address: o.customer?.address || null,
+    items: (o.items || []).map((it) => ({
+        id: it.product_id,
+        product_id: it.product_id,
+        name: it.name,
+        price: it.price,
+        qty: it.qty || 1,
+        color: it.color || null,
+        size: it.size || null,
+        image: productsById[it.product_id]?.image || null,
+    })),
+    // Stats vendeur toujours en F CFA : amount_xof (équivalent) prioritaire,
+    // sinon amount (commandes XOF historiques).
+    total: o.amount_xof ?? o.amount ?? 0,
+    paidAmount: o.amount ?? 0,
+    paidCurrency: o.currency || "XOF",
+    paymentMethod: o.payment_method || null,
+    deliveryMode: o.delivery_mode === "express" ? "express" : "standard",
+    payment: isPaidOrder(o) ? "success" : (PAYMENT_LABELS[o.status] ? o.status : "pending"),
+    // Étape de suivi : tracking_step prioritaire ; anciennes commandes où
+    // l'étape était stockée dans status : on la récupère aussi.
+    status: STATUSES.includes(o.tracking_step)
+        ? o.tracking_step
+        : (STATUSES.includes(o.status) ? o.status : "ordered"),
+    createdAt: Date.parse(o.created_at) || Date.now(),
+});
+
 export const SellerProvider = ({ children }) => {
-    const { token, logout } = useSellerAuth();
-    const catalog = useCatalog();
-    const [rawOrders, setRawOrders] = useState([]);
-    const [ordersStatus, setOrdersStatus] = useState("loading");
-    const [liveEvents, setLiveEvents] = useState([]);
-    const knownIds = useRef(null);
+    // Products live in MongoDB (via /api/products) — seule source de vérité.
+    const [products, setProducts] = useState([]);
+    const { refresh: refreshCatalog } = useCatalog();
 
     useEffect(() => {
-        // Demo data from the old browser-only seller area.
-        try {
-            localStorage.removeItem("sec_seller_products_v1");
-            localStorage.removeItem("sec_seller_orders_v1");
-        } catch {
-            // storage unavailable
-        }
+        productsAPI.list()
+            .then((list) => { if (Array.isArray(list)) setProducts(list); })
+            .catch(() => {});
     }, []);
+
+    // ---- Real customer orders (from db.orders, created by the checkout) ----
+    const [orders, setOrders] = useState([]);
+    const [ordersLoaded, setOrdersLoaded] = useState(false);
+
+    const productsById = useMemo(
+        () => Object.fromEntries(products.map((p) => [p.id, p])),
+        [products],
+    );
 
     const refreshOrders = useCallback(async () => {
         try {
-            const list = await adminAPI.orders(token);
-            if (knownIds.current) {
-                const arrived = list.filter((o) => !knownIds.current.has(o.id));
-                if (arrived.length) {
-                    setLiveEvents((events) =>
-                        [
-                            ...arrived.map((o) => ({ id: o.id, type: "new", customer: fullName(o.customer), city: o.customer.city, total: o.total, at: Date.now() })),
-                            ...events,
-                        ].slice(0, 10),
-                    );
-                }
+            const list = await ordersAPI.list();
+            if (Array.isArray(list)) {
+                // Le Dashboard n'affiche que les commandes PAYÉES
+                // (les paiements échoués ou en attente sont masqués)
+                setOrders(
+                    list.filter(isPaidOrder)
+                        .map((o) => mapOrder(o, productsById)),
+                );
             }
-            knownIds.current = new Set(list.map((o) => o.id));
-            setRawOrders(list);
-            setOrdersStatus("ready");
-        } catch (err) {
-            if (err.response?.status === 401) logout();
-            else setOrdersStatus((s) => (s === "ready" ? s : "error"));
+        } catch {
+            // token expired / network — keep current list
+        } finally {
+            setOrdersLoaded(true);
         }
-    }, [token, logout]);
+    }, [productsById]);
 
     useEffect(() => {
         refreshOrders();
-        const timer = setInterval(refreshOrders, POLL_MS);
-        return () => clearInterval(timer);
+        const t = setInterval(refreshOrders, 30000);
+        return () => clearInterval(t);
     }, [refreshOrders]);
 
-    const products = catalog.products;
-    const productsById = useMemo(() => new Map(products.map((p) => [p.id, p])), [products]);
-    const orders = useMemo(() => rawOrders.map((o) => toView(o, productsById)), [rawOrders, productsById]);
+    // Live feed = the most recent real orders
+    const liveEvents = useMemo(
+        () => orders.slice(0, 5).map((o) => ({
+            id: o.id, type: "new", customer: o.customer, city: o.city, total: o.total, at: o.createdAt,
+        })),
+        [orders],
+    );
 
-    // ---- Actions (each throws on failure; callers show the error) ----
-    const updateOrderStatus = async (id, status) => {
-        const updated = await adminAPI.updateOrder(token, id, status);
-        setRawOrders((list) => list.map((o) => (o.id === id ? updated : o)));
-        setLiveEvents((events) =>
-            [{ id, type: "status", status: getStatus(status).label, customer: fullName(updated.customer), at: Date.now() }, ...events].slice(0, 10),
-        );
-        return updated;
-    };
-
-    const addProduct = async ({ oldPrice, ...product }) => {
-        const created = await adminAPI.createProduct(token, { ...product, old_price: oldPrice ?? null });
-        catalog.reload();
+    // ---- Products CRUD (persisted server-side, visible to all customers) ----
+    const addProduct = async (data) => {
+        const created = await productsAPI.create(data);
+        setProducts((prev) => [created, ...prev]);
+        refreshCatalog();
         return created;
     };
-
+    const updateProduct = async (id, patch) => {
+        const current = products.find((p) => p.id === id) || {};
+        const updated = await productsAPI.update(id, { ...current, ...patch });
+        setProducts((prev) => prev.map((p) => (p.id === id ? { ...p, ...updated } : p)));
+        refreshCatalog();
+        return updated;
+    };
     const deleteProduct = async (id) => {
-        await adminAPI.deleteProduct(token, id);
-        catalog.reload();
+        await productsAPI.remove(id);
+        setProducts((prev) => prev.filter((p) => p.id !== id));
+        refreshCatalog();
     };
 
-    // ---- Metrics (from real orders) ----
+    // ---- Order status (tracking step) — single + bulk, persisted ----
+    const updateOrderStatus = async (id, step) => {
+        await trackingAPI.updateStep(id, step);
+        setOrders((prev) => prev.map((o) => (o.id === id ? { ...o, status: step } : o)));
+    };
+
+    const bulkUpdateOrderStatus = async (ids, step) => {
+        const res = await ordersAPI.bulkTracking(ids, step);
+        const idSet = new Set(ids);
+        setOrders((prev) => prev.map((o) => (idSet.has(o.id) ? { ...o, status: step } : o)));
+        return res;
+    };
+
+    // ---- Metrics (computed from real PAID orders) ----
     const metrics = useMemo(() => {
         const now = Date.now();
-        const counted = orders.filter((o) => COUNTED.has(o.status));
-        const last30 = counted.filter((o) => now - o.createdAt <= 30 * 86400000);
-        const revenue30 = last30.reduce((s, o) => s + o.total, 0);
+        const paid = orders.filter((o) => o.payment === "success");
+        const last30 = paid.filter((o) => now - o.createdAt <= 30 * 86400000);
+        const last7 = paid.filter((o) => now - o.createdAt <= 7 * 86400000);
+        const today = paid.filter((o) => now - o.createdAt <= 86400000);
 
+        // Périodes calendaires (jour / mois / année en cours) + total
+        const d = new Date();
+        const startOfDay = new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+        const startOfMonth = new Date(d.getFullYear(), d.getMonth(), 1).getTime();
+        const startOfYear = new Date(d.getFullYear(), 0, 1).getTime();
+        const inRange = (from) => paid.filter((o) => o.createdAt >= from);
+        const dayOrders = inRange(startOfDay);
+        const monthOrders = inRange(startOfMonth);
+        const yearOrders = inRange(startOfYear);
+        const sum = (arr) => arr.reduce((s, o) => s + o.total, 0);
+
+        const revenue30 = last30.reduce((s, o) => s + o.total, 0);
+        const revenue7 = last7.reduce((s, o) => s + o.total, 0);
+        const revenueToday = today.reduce((s, o) => s + o.total, 0);
+
+        // Previous 30-day window (days 31–60) for REAL month-over-month trends
+        const prev30 = paid.filter((o) => {
+            const age = now - o.createdAt;
+            return age > 30 * 86400000 && age <= 60 * 86400000;
+        });
+        const revenuePrev30 = prev30.reduce((s, o) => s + o.total, 0);
+        const pct = (cur, prev) => (prev > 0 ? ((cur - prev) / prev) * 100 : null);
+        const trendRevenue = pct(revenue30, revenuePrev30);
+        const trendOrders = pct(last30.length, prev30.length);
+        const avgPrev = prev30.length ? revenuePrev30 / prev30.length : 0;
+        const avgCur = last30.length ? revenue30 / last30.length : 0;
+        const trendBasket = pct(avgCur, avgPrev);
+
+        const active = paid.filter((o) => o.status !== "delivered").length;
+        const delivered = paid.filter((o) => o.status === "delivered").length;
+
+        // Daily revenue for last 14 days
         const daily = [];
         for (let i = 13; i >= 0; i--) {
-            const dayStart = new Date(now - i * 86400000).setHours(0, 0, 0, 0);
-            const dayEnd = dayStart + 86400000;
-            daily.push({
-                day: new Date(dayStart).toLocaleDateString("fr-FR", { day: "2-digit", month: "short" }),
-                revenue: counted.filter((o) => o.createdAt >= dayStart && o.createdAt < dayEnd).reduce((s, o) => s + o.total, 0),
-            });
+            const dayStart = now - i * 86400000;
+            const dayLabel = new Date(dayStart).toLocaleDateString("fr-FR", { day: "2-digit", month: "short" });
+            const dayRevenue = paid
+                .filter((o) => o.createdAt >= dayStart - 43200000 && o.createdAt < dayStart + 43200000)
+                .reduce((s, o) => s + o.total, 0);
+            daily.push({ day: dayLabel, revenue: dayRevenue });
         }
 
+        // Top products by revenue
         const productRevenue = {};
-        counted.forEach((o) => o.items.forEach((it) => {
-            productRevenue[it.id] = (productRevenue[it.id] || 0) + it.price * it.qty;
-        }));
+        paid.forEach((o) => {
+            o.items.forEach((it) => {
+                productRevenue[it.id] = (productRevenue[it.id] || 0) + it.price * it.qty;
+            });
+        });
         const topProducts = Object.entries(productRevenue)
-            .map(([id, rev]) => (productsById.has(id) ? { ...productsById.get(id), soldRevenue: rev } : null))
+            .map(([id, rev]) => {
+                const p = productsById[id];
+                return p ? { ...p, soldRevenue: rev } : null;
+            })
             .filter(Boolean)
             .sort((a, b) => b.soldRevenue - a.soldRevenue)
             .slice(0, 5);
 
-        const catDist = categories
-            .map((c) => ({
-                name: c.name,
-                value: counted.reduce(
-                    (s, o) => s + o.items.filter((it) => productsById.get(it.id)?.category === c.id).reduce((ss, it) => ss + it.price * it.qty, 0),
-                    0,
-                ),
-            }))
-            .filter((c) => c.value > 0);
+        // Category distribution
+        const catDist = categories.map((c) => ({
+            name: c.name,
+            value: paid.reduce((s, o) => {
+                const catRev = o.items
+                    .filter((it) => productsById[it.id]?.category === c.id)
+                    .reduce((ss, it) => ss + it.price * it.qty, 0);
+                return s + catRev;
+            }, 0),
+        })).filter((c) => c.value > 0);
+
+        // Répartition par moyen de paiement (données réelles uniquement) :
+        // qui a payé par carte / Wave / Orange Money / MTN, et combien au total.
+        const groupsOrder = [...PAYMENT_GROUPS, OTHER_GROUP];
+        const paymentDist = groupsOrder
+            .map((g) => {
+                const list = paid.filter((o) => paymentGroupId(o.paymentMethod) === g.id);
+                return {
+                    id: g.id,
+                    label: g.label,
+                    icon: g.icon,
+                    count: list.length,
+                    total: sum(list),
+                    orders: list.slice(0, 50),
+                };
+            })
+            .filter((g) => g.count > 0);
 
         return {
-            revenue30,
-            orders30: last30.length,
+            revenueToday, revenue7, revenue30,
+            ordersToday: today.length, orders7: last7.length, orders30: last30.length,
+            // Compteurs calendaires : aujourd'hui / mois en cours / année / total
+            ordersDay: dayOrders.length, revenueDay: sum(dayOrders),
+            ordersMonth: monthOrders.length, revenueMonth: sum(monthOrders),
+            ordersYear: yearOrders.length, revenueYear: sum(yearOrders),
+            ordersTotal: paid.length, revenueTotal: sum(paid),
+            active, delivered,
             avgBasket: last30.length ? revenue30 / last30.length : 0,
-            active: orders.filter((o) => TO_HANDLE.has(o.status)).length,
-            toVerify: orders.filter((o) => o.status === "paiement à vérifier").length,
-            delivered: orders.filter((o) => o.status === "livrée").length,
-            daily,
-            topProducts,
-            catDist,
+            trendRevenue, trendOrders, trendBasket,
+            daily, topProducts, catDist, paymentDist,
         };
     }, [orders, productsById]);
 
     return (
         <SellerContext.Provider
             value={{
-                products, addProduct, deleteProduct,
-                orders, ordersStatus, refreshOrders, updateOrderStatus,
+                products, addProduct, updateProduct, deleteProduct,
+                orders, ordersLoaded, refreshOrders,
+                updateOrderStatus, bulkUpdateOrderStatus,
                 liveEvents,
                 metrics,
-                STATUS_LABELS, STATUSES,
+                STATUS_LABELS, STATUSES, PAYMENT_LABELS,
             }}
         >
             {children}

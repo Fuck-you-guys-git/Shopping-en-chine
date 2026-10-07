@@ -1,26 +1,37 @@
-import { createContext, useCallback, useContext, useEffect, useState } from "react";
-import { catalogAPI } from "@/lib/api";
+import { createContext, useContext, useEffect, useState } from "react";
+import { productsAPI } from "@/lib/api";
 
+/*
+ * Global product catalog for the PUBLIC shop.
+ * Products live in MongoDB (managed from the Espace vendeur) — la base de
+ * données est la SEULE source de vérité (plus de produits de démo statiques).
+ */
 const CatalogContext = createContext(null);
 
-/** Loads the product catalog from the backend once for the whole app. */
 export const CatalogProvider = ({ children }) => {
-    const [state, setState] = useState({ status: "loading", products: [] });
+    const [products, setProducts] = useState([]);
+    const [loaded, setLoaded] = useState(false);
 
-    const load = useCallback(() => {
-        // A refresh keeps the current list on screen instead of showing the loader.
-        setState((s) => (s.status === "ready" ? s : { ...s, status: "loading" }));
-        catalogAPI
-            .list()
-            .then((products) => setState({ status: "ready", products }))
-            .catch(() => setState((s) => (s.status === "ready" ? s : { status: "error", products: [] })));
-    }, []);
+    const refresh = async () => {
+        try {
+            const list = await productsAPI.list();
+            if (Array.isArray(list)) setProducts(list);
+        } catch {
+            // réseau indisponible — on garde la liste actuelle
+        } finally {
+            setLoaded(true);
+        }
+    };
 
     useEffect(() => {
-        load();
-    }, [load]);
+        refresh();
+    }, []);
 
-    return <CatalogContext.Provider value={{ ...state, reload: load }}>{children}</CatalogContext.Provider>;
+    return (
+        <CatalogContext.Provider value={{ products, loaded, refresh }}>
+            {children}
+        </CatalogContext.Provider>
+    );
 };
 
 export const useCatalog = () => {

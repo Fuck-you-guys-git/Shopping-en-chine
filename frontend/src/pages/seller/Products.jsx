@@ -1,14 +1,13 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { Search, Edit3, Trash2, PlusCircle, Package, Star } from "lucide-react";
+import { Search, Edit3, Trash2, PlusCircle, Package, Star, Eye } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { useSeller } from "@/context/SellerContext";
-import { formatPrice } from "@/lib/money";
-import { apiErrorMessage } from "@/lib/api";
+import { formatCfa as formatPrice } from "@/lib/locale";
 import { categories } from "@/data/products";
 import { toast } from "sonner";
 
@@ -87,6 +86,11 @@ export default function Products() {
                                     {p.oldPrice && (
                                         <p className="text-xs text-muted-foreground line-through">{formatPrice(p.oldPrice)}</p>
                                     )}
+                                    {(p.outOfStock === true || p.stock === 0) ? (
+                                        <p className="text-[11px] font-medium text-destructive" data-testid={`stock-status-${p.id}`}>Rupture de stock</p>
+                                    ) : p.stock != null && (
+                                        <p className="text-[11px] text-muted-foreground" data-testid={`stock-status-${p.id}`}>Stock : {p.stock}</p>
+                                    )}
                                 </div>
                                 <div className="col-span-1 hidden md:flex items-center gap-1 text-sm">
                                     {p.rating > 0 ? (
@@ -99,8 +103,11 @@ export default function Products() {
                                     )}
                                 </div>
                                 <div className="col-span-3 md:col-span-2 flex items-center justify-end gap-1">
-                                    <Button asChild variant="ghost" size="icon" className="h-8 w-8">
-                                        <Link to={`/produit/${p.id}`} target="_blank"><Edit3 className="h-4 w-4" /></Link>
+                                    <Button asChild variant="ghost" size="icon" className="h-8 w-8" title="Modifier">
+                                        <Link to={`../modifier/${p.id}`} data-testid={`edit-product-${p.id}`}><Edit3 className="h-4 w-4" /></Link>
+                                    </Button>
+                                    <Button asChild variant="ghost" size="icon" className="h-8 w-8 hidden md:inline-flex" title="Voir sur le site">
+                                        <a href={`/produit/${p.id}`} target="_blank" rel="noreferrer" data-testid={`view-product-${p.id}`}><Eye className="h-4 w-4" /></a>
                                     </Button>
                                     <AlertDialog>
                                         <AlertDialogTrigger asChild>
@@ -118,13 +125,9 @@ export default function Products() {
                                             <AlertDialogFooter>
                                                 <AlertDialogCancel>Annuler</AlertDialogCancel>
                                                 <AlertDialogAction
-                                                    onClick={async () => {
-                                                        try {
-                                                            await deleteProduct(p.id);
-                                                            toast.success("Produit supprimé");
-                                                        } catch (err) {
-                                                            toast.error("Suppression impossible", { description: apiErrorMessage(err) });
-                                                        }
+                                                    onClick={() => {
+                                                        deleteProduct(p.id);
+                                                        toast.success("Produit supprimé");
                                                     }}
                                                     className="bg-destructive hover:bg-destructive/90"
                                                 >
