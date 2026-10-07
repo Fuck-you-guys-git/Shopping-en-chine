@@ -2,18 +2,14 @@ import { Link } from "react-router-dom";
 import { Heart, ShoppingBag, Star } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useCart } from "@/context/CartContext";
+import { useCurrency } from "@/context/CurrencyContext";
 import { toast } from "sonner";
 
-export const formatPrice = (v) => {
-    // Prices are in CFA (XOF). Format: "12 500 F CFA"
-    const formatted = new Intl.NumberFormat("fr-FR", {
-        maximumFractionDigits: 0,
-    }).format(Math.round(v));
-    return `${formatted} F`;
-};
+export { formatPrice } from "@/lib/money";
 
 export const ProductCard = ({ product, index = 0 }) => {
     const { addItem } = useCart();
+    const { format } = useCurrency();
 
     const handleAdd = (e) => {
         e.preventDefault();
@@ -66,11 +62,11 @@ export const ProductCard = ({ product, index = 0 }) => {
                 </h3>
                 <div className="mt-auto pt-2 flex items-baseline gap-2">
                     <span className="font-display text-lg font-semibold text-foreground">
-                        {formatPrice(product.price)}
+                        {format(product.price)}
                     </span>
                     {product.oldPrice && (
                         <span className="text-xs text-muted-foreground line-through">
-                            {formatPrice(product.oldPrice)}
+                            {format(product.oldPrice)}
                         </span>
                     )}
                 </div>

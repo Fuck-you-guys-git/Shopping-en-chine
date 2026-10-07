@@ -10,7 +10,12 @@ Voir **[DEMARRAGE-PC.md](DEMARRAGE-PC.md)** — ou, sous Windows, double-cliquez
 ## Structure
 
 - `frontend/` — application React. Port 3000. Lit `REACT_APP_BACKEND_URL` pour joindre l'API.
-- `backend/` — API FastAPI (`server.py`), MongoDB via motor. Port 8001, routes sous `/api`.
+- `backend/` — API FastAPI, routes sous `/api`, port 8001 :
+  - `catalog.py` — produits (`GET /api/products`). Les prix de départ sont dans `data/products.json`
+    et sont copiés dans MongoDB au démarrage (un produit déjà en base n'est jamais écrasé).
+  - `orders.py` — commandes (`POST /api/orders`). Le serveur calcule lui-même prix, livraison et total.
+  - `payments.py` — configuration du paiement (`GET /api/payments/config`) et retour du widget Paxity.
+  - `money.py` — devises : F CFA, € (taux fixe légal) et $ (taux choisi, à modifier ici).
 - `backend/tests/` — tests pytest de l'API (base en mémoire via `mongomock-motor`, pas de serveur MongoDB requis).
 
 ## Configuration
@@ -20,5 +25,15 @@ puis adaptez les valeurs. Les fichiers `.env` ne sont jamais commités.
 
 ## Paiement
 
-Aucun prestataire de paiement n'est intégré pour le moment : une commande est enregistrée via
-`POST /api/orders` avec « paiement à la livraison ». L'intégration Paxity v2 sera ajoutée séparément.
+| Moyen | Devise | Traité par |
+|---|---|---|
+| Wave / Orange Money | F CFA | widget Paxity v2 |
+| Carte bancaire | € ou $ | widget Paxity v2 (onglet carte) |
+| Paiement à la livraison | F CFA | — |
+
+Le paiement en ligne s'active en renseignant `PAXITY_ORG_ID` dans `backend/.env`. Les montants envoyés
+à Paxity sont calculés par le serveur (`amount_minor` : F CFA × 100, centimes pour € et $).
+
+⚠️ Le signal « paiement réussi » du widget vient du navigateur du client et peut être falsifié : une
+commande payée en ligne passe en « paiement à vérifier ». Vérifiez-la dans le tableau de bord Paxity avant
+d'expédier, jusqu'à ce que la vérification côté serveur (webhook Paxity) soit branchée.

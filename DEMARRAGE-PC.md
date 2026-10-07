@@ -86,8 +86,16 @@ Les tests n'ont pas besoin de MongoDB (base en mémoire via `mongomock-motor`).
   MongoDB ne tourne pas (Services Windows → « MongoDB » → Démarrer).
 - **Erreur réseau (`ECONNRESET`) pendant `yarn install`** — relancez simplement la commande.
 
-## Paiement
+## Paiement (Paxity v2)
 
-Aucun prestataire de paiement n'est intégré pour l'instant : la commande est enregistrée avec
-« paiement à la livraison ». L'intégration Paxity (v2) sera ajoutée séparément à partir de la nouvelle
-documentation — les clés iront dans `backend/.env`, jamais dans le code ni dans le frontend.
+1. Ouvrez `backend/.env` et renseignez votre identifiant d'organisation Paxity :
+   `PAXITY_ORG_ID=...` (sans lui, seul le paiement à la livraison est proposé).
+2. Redémarrez le backend.
+3. Au paiement, le client choisit : **Wave / Orange Money** (F CFA), **Carte bancaire** (€ ou $) ou
+   **Paiement à la livraison**.
+
+Le taux du dollar se règle dans `backend/money.py` (ligne `"USD"`). Le taux de l'euro est fixe
+(1 € = 655,957 F CFA).
+
+**Important :** une commande payée en ligne arrive avec le statut « paiement à vérifier ».
+Vérifiez le paiement dans votre tableau de bord Paxity avant d'expédier.

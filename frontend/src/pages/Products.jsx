@@ -9,12 +9,17 @@ import { Label } from "@/components/ui/label";
 import { Sheet, SheetContent, SheetTrigger, SheetTitle, SheetHeader } from "@/components/ui/sheet";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ProductCard } from "@/components/ProductCard";
-import { products, categories } from "@/data/products";
+import { CatalogFallback } from "@/components/CatalogFallback";
+import { useCatalog } from "@/context/CatalogContext";
+import { useCurrency } from "@/context/CurrencyContext";
+import { categories } from "@/data/products";
 
 export default function Products() {
     const { categoryId } = useParams();
     const [searchParams] = useSearchParams();
     const searchQuery = searchParams.get("q") || "";
+    const { status, products } = useCatalog();
+    const { format } = useCurrency();
 
     const [priceRange, setPriceRange] = useState([0, 200000]);
     const [selectedCats, setSelectedCats] = useState(categoryId ? [categoryId] : []);
@@ -48,7 +53,7 @@ export default function Products() {
             default: break;
         }
         return list;
-    }, [priceRange, selectedCats, categoryId, sortBy, searchQuery]);
+    }, [products, priceRange, selectedCats, categoryId, sortBy, searchQuery]);
 
     const FiltersPanel = () => (
         <div className="space-y-8">
@@ -85,8 +90,8 @@ export default function Products() {
                     className="mb-3"
                 />
                 <div className="flex justify-between text-sm text-muted-foreground">
-                    <span>{new Intl.NumberFormat("fr-FR").format(priceRange[0])} F</span>
-                    <span>{new Intl.NumberFormat("fr-FR").format(priceRange[1])} F</span>
+                    <span>{format(priceRange[0])}</span>
+                    <span>{format(priceRange[1])}</span>
                 </div>
             </div>
 
@@ -130,7 +135,9 @@ export default function Products() {
                             {activeCategory ? activeCategory.name : searchQuery ? `« ${searchQuery} »` : "Toute la boutique"}
                         </h1>
                         <p className="text-muted-foreground mt-2">
-                            {filtered.length} produit{filtered.length > 1 ? "s" : ""} · trié{filtered.length > 1 ? "s" : ""} pour vous
+                            {status === "ready"
+                                ? `${filtered.length} produit${filtered.length > 1 ? "s" : ""} · trié${filtered.length > 1 ? "s" : ""} pour vous`
+                                : "Chargement des produits…"}
                         </p>
                     </div>
                     <div className="flex items-center gap-2">
@@ -172,7 +179,7 @@ export default function Products() {
                         })}
                         {(priceRange[0] > 0 || priceRange[1] < 200000) && (
                             <Badge variant="secondary" className="rounded-full px-3 py-1 gap-1">
-                                {new Intl.NumberFormat("fr-FR").format(priceRange[0])}–{new Intl.NumberFormat("fr-FR").format(priceRange[1])} F
+                                {format(priceRange[0])}–{format(priceRange[1])}
                                 <button onClick={() => setPriceRange([0, 200000])}><X className="h-3 w-3" /></button>
                             </Badge>
                         )}
@@ -194,7 +201,9 @@ export default function Products() {
                 </aside>
 
                 <div>
-                    {filtered.length === 0 ? (
+                    {status !== "ready" ? (
+                        <CatalogFallback count={8} className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-x-4 gap-y-10 md:gap-x-6 md:gap-y-12" />
+                    ) : filtered.length === 0 ? (
                         <div className="text-center py-24 border-2 border-dashed border-border rounded-2xl">
                             <div className="text-5xl mb-4 opacity-40">🌿</div>
                             <h3 className="font-display text-xl mb-2">Aucun produit trouvé</h3>

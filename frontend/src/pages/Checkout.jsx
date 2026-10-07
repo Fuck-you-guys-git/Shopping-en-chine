@@ -1,37 +1,79 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
-import { Check, Truck, ShieldCheck, ArrowLeft, Loader2, MapPin } from "lucide-react";
+import { Check, ShieldCheck, ArrowLeft, Loader2, MapPin, Smartphone, CreditCard, Truck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { PaxityWidget } from "@/components/PaxityWidget";
 import { useCart } from "@/context/CartContext";
-import { formatPrice } from "@/components/ProductCard";
+import { useCurrency } from "@/context/CurrencyContext";
+import { apiErrorMessage, ordersAPI, paymentsAPI } from "@/lib/api";
+import { formatMinor, formatMoney, formatPrice } from "@/lib/money";
+import { SHIPPING_METHODS, shippingFee } from "@/lib/shipping";
 import { toast } from "sonner";
-import { ordersAPI } from "@/lib/api";
+
+const COUNTRIES = [
+    { code: "SN", label: "Sénégal" },
+    { code: "CI", label: "Côte d'Ivoire" },
+];
+
+// Wave / Orange Money are paid in F CFA; cards in € or $ (see backend/orders.py).
+const PAYMENT_OPTIONS = [
+    { id: "mobile_money", icon: Smartphone, label: "Wave / Orange Money", hint: "Payez en F CFA depuis votre téléphone", online: true },
+    { id: "carte", icon: CreditCard, label: "Carte bancaire", hint: "Payez en euros ou en dollars", online: true },
+    { id: "livraison", icon: Truck, label: "Paiement à la livraison", hint: "Réglez en F CFA à la réception du colis", online: false },
+];
+const CARD_CURRENCIES = [
+    { code: "EUR", label: "€ Euro" },
+    { code: "USD", label: "$ Dollar" },
+];
 
 export default function Checkout() {
     const { items, subtotal, clear } = useCart();
+    const { currency: displayCurrency, rates, paxity } = useCurrency();
     const [step, setStep] = useState(1);
-    const shipping = subtotal > 30000 || subtotal === 0 ? 0 : 3000;
-    const total = subtotal + shipping;
 
     const [buyer, setBuyer] = useState({
         firstName: "", lastName: "", email: "",
-        phone: "", address: "", zip: "", city: "",
+        phone: "", address: "", zip: "", city: "", country: "SN",
     });
+    const [shippingMethod, setShippingMethod] = useState("standard");
+    const [paymentChoice, setPaymentChoice] = useState(null);
+    const [cardCurrency, setCardCurrency] = useState(displayCurrency === "USD" ? "USD" : "EUR");
 
     const [processing, setProcessing] = useState(false);
-    const [order, setOrder] = useState(null); // order returned by the backend once confirmed
+    const [pendingOrder, setPendingOrder] = useState(null); // created, waiting for the Paxity widget
+    const [doneOrder, setDoneOrder] = useState(null);
+    const paymentBox = useRef(null);
+
+    // The widget replaces the payment choices: bring it into view.
+    useEffect(() => {
+        if (pendingOrder) paymentBox.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, [pendingOrder]);
+
+    const shipping = shippingFee(shippingMethod, subtotal);
+    const total = subtotal + shipping;
+    const paymentOptions = PAYMENT_OPTIONS.filter((o) => paxity.enabled || !o.online);
+    const payment = paymentOptions.some((o) => o.id === paymentChoice) ? paymentChoice : paymentOptions[0].id;
+    const paymentCurrency = payment === "carte" ? cardCurrency : "XOF";
 
     const buyerValid = () =>
         buyer.firstName && buyer.lastName && buyer.email && buyer.phone && buyer.address && buyer.city;
 
-    const handleConfirm = async () => {
+    const finish = (order) => {
+        setPendingOrder(null);
+        setDoneOrder(order);
+        clear();
+        toast.success("Commande confirmée ✦", { description: `Commande ${order.id}` });
+    };
+
+    const handleSubmit = async () => {
         setProcessing(true);
         try {
-            const res = await ordersAPI.create({
+            const order = await ordersAPI.create({
                 customer: {
                     first_name: buyer.firstName,
                     last_name: buyer.lastName,
@@ -40,32 +82,48 @@ export default function Checkout() {
                     address: buyer.address,
                     zip: buyer.zip,
                     city: buyer.city,
+                    country: buyer.country,
                 },
-                items: items.map((it) => ({
-                    product_id: it.id,
-                    name: it.name,
-                    price: it.price,
-                    qty: it.qty,
-                })),
-                shipping,
+                // Only ids and quantities: the server prices the order from its catalog.
+                items: items.map((it) => ({ product_id: it.id, qty: it.qty })),
+                shipping_method: shippingMethod,
+                payment_method: payment,
+                payment_currency: paymentCurrency,
             });
-            setOrder(res);
-            clear();
-            toast.success("Commande confirmée ✦", { description: `Commande ${res.id}` });
+            if (order.payment_method === "livraison") finish(order);
+            else setPendingOrder(order);
         } catch (err) {
-            const detail = err.response?.data?.detail;
-            toast.error("Impossible d'enregistrer la commande", {
-                description: typeof detail === "string"
-                    ? detail
-                    : "Vérifiez que le serveur est démarré, puis réessayez.",
-            });
+            toast.error("Impossible d'enregistrer la commande", { description: apiErrorMessage(err) });
         } finally {
             setProcessing(false);
         }
     };
 
+    const paxityHandlers = {
+        onSuccess: async () => {
+            const order = pendingOrder;
+            try {
+                await paymentsAPI.reportPaxity(order.id);
+            } catch {
+                // The payment itself went through; the shop owner checks it in the Paxity dashboard anyway.
+            }
+            finish(order);
+        },
+        onFailure: (reason) =>
+            toast.error("Paiement refusé", { description: reason ? String(reason) : "Réessayez ou choisissez un autre moyen de paiement." }),
+        onCancel: () => {
+            setPendingOrder(null);
+            toast("Paiement annulé");
+        },
+        onError: (message) => {
+            setPendingOrder(null);
+            toast.error("Paiement indisponible", { description: message ? String(message) : "Réessayez dans un instant." });
+        },
+    };
+
     // ---------- Success screen ----------
-    if (order) {
+    if (doneOrder) {
+        const paidOnline = doneOrder.payment_method !== "livraison";
         return (
             <div className="container mx-auto px-5 py-24 text-center">
                 <div className="max-w-lg mx-auto">
@@ -74,10 +132,20 @@ export default function Checkout() {
                     </div>
                     <h1 className="font-display text-4xl sm:text-5xl mb-3">Commande confirmée !</h1>
                     <p className="text-muted-foreground mb-2">
-                        Merci ! Votre commande de <span className="font-semibold text-foreground">{formatPrice(order.total)}</span> est confirmée.
-                        Vous réglerez à la livraison.
+                        {paidOnline ? (
+                            <>
+                                Merci ! Votre paiement de{" "}
+                                <span className="font-semibold text-foreground">{formatMinor(doneOrder.amount_minor, doneOrder.payment_currency)}</span>{" "}
+                                a bien été transmis. Nous vérifions sa réception, puis préparons votre colis.
+                            </>
+                        ) : (
+                            <>
+                                Merci ! Votre commande de <span className="font-semibold text-foreground">{formatPrice(doneOrder.total)}</span> est confirmée.
+                                Vous réglerez à la livraison.
+                            </>
+                        )}
                     </p>
-                    <p className="text-xs font-mono text-muted-foreground mb-8">Commande {order.id}</p>
+                    <p className="text-xs font-mono text-muted-foreground mb-8">Commande {doneOrder.id}</p>
                     <div className="flex flex-wrap gap-3 justify-center">
                         <Button asChild size="lg" className="rounded-full bg-ink text-ink-foreground hover:bg-ink/90">
                             <Link to="/">Retour à l'accueil</Link>
@@ -105,8 +173,15 @@ export default function Checkout() {
     const steps = [
         { n: 1, label: "Adresse" },
         { n: 2, label: "Livraison" },
-        { n: 3, label: "Confirmation" },
+        { n: 3, label: "Paiement" },
     ];
+
+    const submitLabel =
+        payment === "livraison"
+            ? `Confirmer la commande · ${formatPrice(total)}`
+            : payment === "carte"
+                ? `Payer ${formatMoney(total, cardCurrency, rates)} par carte`
+                : `Payer ${formatPrice(total)}`;
 
     return (
         <div className="container mx-auto px-5 py-10 md:py-14">
@@ -140,7 +215,16 @@ export default function Checkout() {
                                 <div className="space-y-1.5 sm:col-span-2"><Label>Adresse</Label><Input required placeholder="Rue, quartier…" value={buyer.address} onChange={(e) => setBuyer({ ...buyer, address: e.target.value })} /></div>
                                 <div className="space-y-1.5"><Label>Code postal</Label><Input placeholder="10000" value={buyer.zip} onChange={(e) => setBuyer({ ...buyer, zip: e.target.value })} /></div>
                                 <div className="space-y-1.5"><Label>Ville</Label><Input required placeholder="Dakar" value={buyer.city} onChange={(e) => setBuyer({ ...buyer, city: e.target.value })} /></div>
-                                <div className="space-y-1.5 sm:col-span-2"><Label>Téléphone</Label><Input required type="tel" placeholder="77 XXX XX XX" value={buyer.phone} onChange={(e) => setBuyer({ ...buyer, phone: e.target.value })} /></div>
+                                <div className="space-y-1.5">
+                                    <Label>Pays</Label>
+                                    <Select value={buyer.country} onValueChange={(country) => setBuyer({ ...buyer, country })}>
+                                        <SelectTrigger aria-label="Pays"><SelectValue /></SelectTrigger>
+                                        <SelectContent>
+                                            {COUNTRIES.map((c) => <SelectItem key={c.code} value={c.code}>{c.label}</SelectItem>)}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                                <div className="space-y-1.5"><Label>Téléphone</Label><Input required type="tel" placeholder="77 XXX XX XX" value={buyer.phone} onChange={(e) => setBuyer({ ...buyer, phone: e.target.value })} /></div>
                             </div>
                             <Button
                                 type="button"
@@ -158,34 +242,21 @@ export default function Checkout() {
                     {step === 2 && (
                         <div className="space-y-5 bg-card p-6 md:p-8 rounded-2xl shadow-card">
                             <h2 className="font-display text-2xl">Mode de livraison</h2>
-                            <RadioGroup defaultValue="std" className="space-y-3">
-                                <label className="flex items-center gap-4 p-4 border rounded-xl cursor-pointer hover:border-primary transition-colors">
-                                    <RadioGroupItem value="std" />
-                                    <Truck className="h-5 w-5 text-primary" />
-                                    <div className="flex-1">
-                                        <p className="font-medium">Livraison standard</p>
-                                        <p className="text-xs text-muted-foreground">2–4 jours ouvrés</p>
-                                    </div>
-                                    <span className="font-medium text-success">Offerte</span>
-                                </label>
-                                <label className="flex items-center gap-4 p-4 border rounded-xl cursor-pointer hover:border-primary transition-colors">
-                                    <RadioGroupItem value="exp" />
-                                    <i className="fa-solid fa-bolt text-primary" />
-                                    <div className="flex-1">
-                                        <p className="font-medium">Livraison express</p>
-                                        <p className="text-xs text-muted-foreground">24–48h chrono</p>
-                                    </div>
-                                    <span className="font-medium">5 000 F</span>
-                                </label>
-                                <label className="flex items-center gap-4 p-4 border rounded-xl cursor-pointer hover:border-primary transition-colors">
-                                    <RadioGroupItem value="pickup" />
-                                    <i className="fa-solid fa-store text-primary" />
-                                    <div className="flex-1">
-                                        <p className="font-medium">Point relais</p>
-                                        <p className="text-xs text-muted-foreground">3–5 jours · 500+ points</p>
-                                    </div>
-                                    <span className="font-medium">2 000 F</span>
-                                </label>
+                            <RadioGroup value={shippingMethod} onValueChange={setShippingMethod} className="space-y-3">
+                                {SHIPPING_METHODS.map((m) => {
+                                    const fee = shippingFee(m.id, subtotal);
+                                    return (
+                                        <label key={m.id} className="flex items-center gap-4 p-4 border rounded-xl cursor-pointer hover:border-primary transition-colors">
+                                            <RadioGroupItem value={m.id} />
+                                            <i className={`fa-solid ${m.icon} text-primary w-5 text-center`} />
+                                            <div className="flex-1">
+                                                <p className="font-medium">{m.label}</p>
+                                                <p className="text-xs text-muted-foreground">{m.delay}</p>
+                                            </div>
+                                            <span className={`font-medium ${fee === 0 ? "text-success" : ""}`}>{fee === 0 ? "Offerte" : formatPrice(fee)}</span>
+                                        </label>
+                                    );
+                                })}
                             </RadioGroup>
                             <div className="flex gap-2 pt-2">
                                 <Button type="button" variant="outline" onClick={() => setStep(1)} className="rounded-full h-11 px-6">Retour</Button>
@@ -194,19 +265,57 @@ export default function Checkout() {
                         </div>
                     )}
 
-                    {step === 3 && (
-                        <div className="space-y-5 bg-card p-6 md:p-8 rounded-2xl shadow-card">
-                            <h2 className="font-display text-2xl">Confirmation</h2>
-
-                            <div className="flex gap-3 p-4 rounded-xl bg-primary/5 border border-primary/20 text-sm">
-                                <ShieldCheck className="h-5 w-5 shrink-0 text-primary mt-0.5" />
-                                <div>
-                                    <p className="font-medium">Paiement à la livraison</p>
-                                    <p className="text-xs text-muted-foreground mt-1">
-                                        Aucun paiement en ligne : vous réglez {formatPrice(total)} à la réception de votre colis.
-                                    </p>
-                                </div>
+                    {step === 3 && pendingOrder && (
+                        <div ref={paymentBox} className="space-y-5 bg-card p-6 md:p-8 rounded-2xl shadow-card scroll-mt-28">
+                            <div className="flex items-baseline justify-between gap-4">
+                                <h2 className="font-display text-2xl">Paiement sécurisé</h2>
+                                <span className="font-display text-xl font-semibold">
+                                    {formatMinor(pendingOrder.amount_minor, pendingOrder.payment_currency)}
+                                </span>
                             </div>
+                            <p className="text-xs text-muted-foreground">Commande {pendingOrder.id} · paiement traité par Paxity</p>
+                            <PaxityWidget order={pendingOrder} orgId={paxity.org_id} {...paxityHandlers} />
+                            <Button type="button" variant="outline" onClick={() => setPendingOrder(null)} className="rounded-full h-11 px-6">
+                                Choisir un autre moyen de paiement
+                            </Button>
+                        </div>
+                    )}
+
+                    {step === 3 && !pendingOrder && (
+                        <div className="space-y-5 bg-card p-6 md:p-8 rounded-2xl shadow-card">
+                            <h2 className="font-display text-2xl">Paiement</h2>
+
+                            <RadioGroup value={payment} onValueChange={setPaymentChoice} className="space-y-3">
+                                {paymentOptions.map((o) => (
+                                    <label key={o.id} className={`block p-4 border rounded-xl cursor-pointer transition-colors ${payment === o.id ? "border-primary bg-primary/5" : "hover:border-primary"}`}>
+                                        <div className="flex items-center gap-4">
+                                            <RadioGroupItem value={o.id} />
+                                            <o.icon className="h-5 w-5 text-primary" />
+                                            <div className="flex-1">
+                                                <p className="font-medium">{o.label}</p>
+                                                <p className="text-xs text-muted-foreground">{o.hint}</p>
+                                            </div>
+                                        </div>
+                                        {o.id === "carte" && payment === "carte" && (
+                                            <div className="mt-3 ml-9 flex flex-wrap items-center gap-2">
+                                                {CARD_CURRENCIES.map((c) => (
+                                                    <button
+                                                        key={c.code}
+                                                        type="button"
+                                                        onClick={() => setCardCurrency(c.code)}
+                                                        className={`h-8 px-3 rounded-full border text-xs font-medium ${cardCurrency === c.code ? "bg-ink text-ink-foreground border-ink" : "border-border hover:border-foreground"}`}
+                                                    >
+                                                        {c.label}
+                                                    </button>
+                                                ))}
+                                                <span className="text-xs text-muted-foreground">
+                                                    soit {formatMoney(total, cardCurrency, rates)} pour {formatPrice(total)}
+                                                </span>
+                                            </div>
+                                        )}
+                                    </label>
+                                ))}
+                            </RadioGroup>
 
                             <div className="p-4 rounded-xl border text-sm space-y-1">
                                 <div className="flex items-center justify-between">
@@ -214,15 +323,24 @@ export default function Checkout() {
                                     <button type="button" onClick={() => setStep(1)} className="text-xs text-muted-foreground hover:text-foreground underline">Modifier</button>
                                 </div>
                                 <p>{buyer.firstName} {buyer.lastName}</p>
-                                <p className="text-muted-foreground">{buyer.address}{buyer.zip ? `, ${buyer.zip}` : ""} {buyer.city}</p>
+                                <p className="text-muted-foreground">
+                                    {buyer.address}{buyer.zip ? `, ${buyer.zip}` : ""} {buyer.city} · {COUNTRIES.find((c) => c.code === buyer.country)?.label}
+                                </p>
                                 <p className="text-muted-foreground">{buyer.phone} · {buyer.email}</p>
                             </div>
+
+                            {payment !== "livraison" && (
+                                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                                    <ShieldCheck className="h-4 w-4 text-success" />
+                                    Paiement sécurisé par Paxity
+                                </div>
+                            )}
 
                             <div className="flex gap-2 pt-2">
                                 <Button type="button" variant="outline" onClick={() => setStep(2)} className="rounded-full h-11 px-6">Retour</Button>
                                 <Button
                                     type="button"
-                                    onClick={handleConfirm}
+                                    onClick={handleSubmit}
                                     disabled={processing}
                                     className="bg-primary hover:bg-primary/90 text-primary-foreground rounded-full h-11 px-8 flex-1 sm:flex-none shadow-warm"
                                 >
@@ -232,7 +350,7 @@ export default function Checkout() {
                                             Enregistrement…
                                         </>
                                     ) : (
-                                        <>Confirmer la commande · {formatPrice(total)}</>
+                                        submitLabel
                                     )}
                                 </Button>
                             </div>
@@ -268,6 +386,9 @@ export default function Checkout() {
                             <span className="font-medium">Total</span>
                             <span className="font-display text-2xl font-semibold">{formatPrice(total)}</span>
                         </div>
+                        {step === 3 && payment === "carte" && (
+                            <p className="text-xs text-muted-foreground text-right">Payé par carte : {formatMoney(total, cardCurrency, rates)}</p>
+                        )}
                     </div>
                 </aside>
             </div>

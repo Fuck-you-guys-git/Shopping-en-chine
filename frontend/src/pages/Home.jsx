@@ -4,7 +4,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { ProductCard } from "@/components/ProductCard";
-import { categories, products, testimonials } from "@/data/products";
+import { CatalogFallback } from "@/components/CatalogFallback";
+import { useCatalog } from "@/context/CatalogContext";
+import { categories, testimonials } from "@/data/products";
 import { useNavigate } from "react-router-dom";
 import { useState } from "react";
 
@@ -18,6 +20,7 @@ const benefits = [
 export default function Home() {
     const navigate = useNavigate();
     const [query, setQuery] = useState("");
+    const { status, products } = useCatalog();
 
     const onSearch = (e) => {
         e.preventDefault();
@@ -85,11 +88,15 @@ export default function Home() {
                         <Link to="/boutique">Voir tout <ArrowRight className="ml-1 h-4 w-4" /></Link>
                     </Button>
                 </div>
-                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-x-4 gap-y-8 md:gap-x-6 md:gap-y-10">
-                    {products.slice(0, 8).map((p, i) => (
-                        <ProductCard key={p.id} product={p} index={i} />
-                    ))}
-                </div>
+                {status === "ready" ? (
+                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-x-4 gap-y-8 md:gap-x-6 md:gap-y-10">
+                        {products.slice(0, 8).map((p, i) => (
+                            <ProductCard key={p.id} product={p} index={i} />
+                        ))}
+                    </div>
+                ) : (
+                    <CatalogFallback count={8} />
+                )}
             </section>
 
             {/* PROMO STRIP */}
@@ -156,11 +163,15 @@ export default function Home() {
                         <Link to="/boutique">Voir tout <ArrowRight className="ml-1 h-4 w-4" /></Link>
                     </Button>
                 </div>
-                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-x-4 gap-y-8 md:gap-x-6 md:gap-y-10">
-                    {products.slice(2, 8).reverse().map((p, i) => (
-                        <ProductCard key={p.id} product={p} index={i} />
-                    ))}
-                </div>
+                {status === "ready" ? (
+                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-x-4 gap-y-8 md:gap-x-6 md:gap-y-10">
+                        {products.slice(2, 8).reverse().map((p, i) => (
+                            <ProductCard key={p.id} product={p} index={i} />
+                        ))}
+                    </div>
+                ) : (
+                    <CatalogFallback count={4} />
+                )}
             </section>
 
             {/* BENEFITS */}

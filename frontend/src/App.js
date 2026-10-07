@@ -2,6 +2,8 @@ import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom";
 import "@/App.css";
 import { Toaster } from "@/components/ui/sonner";
 import { CartProvider } from "@/context/CartContext";
+import { CatalogProvider } from "@/context/CatalogContext";
+import { CurrencyProvider } from "@/context/CurrencyContext";
 import { SellerAuthProvider } from "@/context/SellerAuthContext";
 import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
@@ -37,57 +39,61 @@ function App() {
     return (
         <div className="App min-h-screen bg-background text-foreground">
             <BrowserRouter>
-                <SellerAuthProvider>
-                    <CartProvider>
-                        <ScrollToTop />
-                        <Shell>
-                            <Routes>
-                                <Route path="/" element={<Home />} />
-                                <Route path="/boutique" element={<Products />} />
-                                <Route path="/boutique/:categoryId" element={<Products />} />
-                                <Route path="/produit/:id" element={<ProductDetail />} />
-                                <Route path="/panier" element={<Cart />} />
-                                <Route path="/commande" element={<Checkout />} />
+                <CatalogProvider>
+                    <CurrencyProvider>
+                        <SellerAuthProvider>
+                            <CartProvider>
+                                <ScrollToTop />
+                                <Shell>
+                                    <Routes>
+                                        <Route path="/" element={<Home />} />
+                                        <Route path="/boutique" element={<Products />} />
+                                        <Route path="/boutique/:categoryId" element={<Products />} />
+                                        <Route path="/produit/:id" element={<ProductDetail />} />
+                                        <Route path="/panier" element={<Cart />} />
+                                        <Route path="/commande" element={<Checkout />} />
 
-                                {/* Seller login (public) */}
-                                <Route path="/vendeur/login" element={<SellerLogin />} />
-                                <Route path="/admin/login" element={<SellerLogin />} />
+                                        {/* Seller login (public) */}
+                                        <Route path="/vendeur/login" element={<SellerLogin />} />
+                                        <Route path="/admin/login" element={<SellerLogin />} />
 
-                                {/* Seller / admin area — protected */}
-                                <Route
-                                    path="/vendeur"
-                                    element={
-                                        <ProtectedSellerRoute>
-                                            <SellerLayout />
-                                        </ProtectedSellerRoute>
-                                    }
-                                >
-                                    <Route index element={<Dashboard />} />
-                                    <Route path="commandes" element={<Orders />} />
-                                    <Route path="produits" element={<SellerProducts />} />
-                                    <Route path="ajouter" element={<AddProduct />} />
-                                </Route>
-                                <Route
-                                    path="/admin"
-                                    element={
-                                        <ProtectedSellerRoute>
-                                            <SellerLayout />
-                                        </ProtectedSellerRoute>
-                                    }
-                                >
-                                    <Route index element={<Dashboard />} />
-                                    <Route path="commandes" element={<Orders />} />
-                                    <Route path="produits" element={<SellerProducts />} />
-                                    <Route path="ajouter" element={<AddProduct />} />
-                                    <Route path="orders" element={<Orders />} />
-                                    <Route path="products" element={<SellerProducts />} />
-                                    <Route path="add" element={<AddProduct />} />
-                                </Route>
-                            </Routes>
-                        </Shell>
-                        <Toaster position="bottom-right" />
-                    </CartProvider>
-                </SellerAuthProvider>
+                                        {/* Seller / admin area — protected */}
+                                        <Route
+                                            path="/vendeur"
+                                            element={
+                                                <ProtectedSellerRoute>
+                                                    <SellerLayout />
+                                                </ProtectedSellerRoute>
+                                            }
+                                        >
+                                            <Route index element={<Dashboard />} />
+                                            <Route path="commandes" element={<Orders />} />
+                                            <Route path="produits" element={<SellerProducts />} />
+                                            <Route path="ajouter" element={<AddProduct />} />
+                                        </Route>
+                                        <Route
+                                            path="/admin"
+                                            element={
+                                                <ProtectedSellerRoute>
+                                                    <SellerLayout />
+                                                </ProtectedSellerRoute>
+                                            }
+                                        >
+                                            <Route index element={<Dashboard />} />
+                                            <Route path="commandes" element={<Orders />} />
+                                            <Route path="produits" element={<SellerProducts />} />
+                                            <Route path="ajouter" element={<AddProduct />} />
+                                            <Route path="orders" element={<Orders />} />
+                                            <Route path="products" element={<SellerProducts />} />
+                                            <Route path="add" element={<AddProduct />} />
+                                        </Route>
+                                    </Routes>
+                                </Shell>
+                                <Toaster position="bottom-right" />
+                            </CartProvider>
+                        </SellerAuthProvider>
+                    </CurrencyProvider>
+                </CatalogProvider>
             </BrowserRouter>
         </div>
     );

@@ -1,4 +1,5 @@
 import { createContext, useContext, useEffect, useMemo, useState } from "react";
+import { useCatalog } from "@/context/CatalogContext";
 
 const CartContext = createContext(null);
 const STORAGE_KEY = "sec_cart_v1";
@@ -13,10 +14,19 @@ export const CartProvider = ({ children }) => {
         }
     });
     const [drawerOpen, setDrawerOpen] = useState(false);
+    const catalog = useCatalog();
 
     useEffect(() => {
         localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
     }, [items]);
+
+    // A saved cart may hold old prices: refresh items from the catalog and drop
+    // products that no longer exist. The server prices every order anyway.
+    useEffect(() => {
+        if (catalog.status !== "ready") return;
+        const byId = new Map(catalog.products.map((p) => [p.id, p]));
+        setItems((prev) => prev.filter((i) => byId.has(i.id)).map((i) => ({ ...byId.get(i.id), qty: i.qty })));
+    }, [catalog.status, catalog.products]);
 
     const addItem = (product, qty = 1) => {
         setItems((prev) => {
