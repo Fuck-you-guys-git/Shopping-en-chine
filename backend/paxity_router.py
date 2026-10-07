@@ -28,7 +28,10 @@ logger = logging.getLogger(__name__)
 
 V2_BASE_URL = os.environ.get("PAXITY_V2_BASE_URL", "https://api-v2.paxity.io").rstrip("/")
 V2_ORG_ID = os.environ.get("PAXITY_V2_ORG_ID", "").strip()
-V2_API_KEY = os.environ.get("PAXITY_V2_API_KEY", "").strip()
+V2_API_KEY = (
+    os.environ.get("PAXITY_V2_LIVE_KEY", "").strip()
+    or os.environ.get("PAXITY_V2_API_KEY", "").strip()
+)
 PAXITY_IPN_URL = os.environ.get("PAXITY_IPN_URL", "").strip()
 V2_ENV = "live" if V2_API_KEY.startswith("pax_live_") else "test"
 PAXITY_CONFIGURED = bool(V2_API_KEY and V2_ORG_ID)
